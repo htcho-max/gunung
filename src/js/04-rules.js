@@ -1,0 +1,207 @@
+// ===== 규칙: 내정·인사·외교 (플레이어와 AI가 함께 씀) =====
+const COST = { agri: 50, comm: 50, order: 20, wall: 80, train: 0, search: 0 };
+const DEV_NAME = { agri: '개간', comm: '상업', order: '치안', wall: '성벽' };
+
+function cmdDevelop(o, c, kind) {
+  if (c.gold < COST[kind]) return { ok: false, msg: '금이 모자랍니다' };
+  let gain = 0, msg = '';
+  if (kind === 'agri' || kind === 'comm') {
+    const max = kind === 'agri' ? c.agriMax : c.commMax;
+    if (c[kind] >= max) return { ok: false, msg: '이미 최대치입니다' };
+    gain = Math.round(o.pol / 6 + ri(2, 8 + o.pol / 10));
+    c[kind] = Math.min(max, c[kind] + gain);
+    msg = `${kind === 'agri' ? '농업' : '상업'} +${gain}`;
+  } else if (kind === 'order') {
+    if (c.order >= 100) return { ok: false, msg: '치안이 이미 최고입니다' };
+    gain = Math.round(3 + o.war / 20 + o.lead / 25 + ri(0, 4));
+    c.order = Math.min(100, c.order + gain);
+    msg = `치안 +${gain}`;
+  } else if (kind === 'wall') {
+    if (c.wall >= c.wallMax) return { ok: false, msg: '성벽이 이미 튼튼합니다' };
+    gain = Math.round(o.pol / 5 + o.lead / 10 + ri(4, 14));
+    c.wall = Math.min(c.wallMax, c.wall + gain);
+    msg = `성벽 +${gain}`;
+  }
+  c.gold -= COST[kind];
+  o.acted = true; o.merit += 10 + Math.round(gain / 2); o.fame += chance(.3) ? 1 : 0;
+  return { ok: true, msg, gain };
+}
+
+function draftMax(o, c) { return Math.max(0, Math.min(1000 + o.cha * 30 + o.lead * 10, Math.floor(c.pop * 0.08 / 100) * 100, Math.floor(c.gold * 10 / 100) * 100)); }
+function cmdDraft(o, c, n) {
+  n = Math.floor(n / 100) * 100;
+  if (n <= 0) return { ok: false, msg: '징병할 인원이 없습니다' };
+  const cost = Math.ceil(n / 10);
+  if (c.gold < cost) return { ok: false, msg: '금이 모자랍니다' };
+  c.gold -= cost; c.pop -= n;
+  c.train = Math.round((c.train * c.troops + 25 * n) / (c.troops + n));
+  c.troops += n; c.order = Math.max(0, c.order - Math.ceil(n / 600));
+  o.acted = true; o.merit += 8 + Math.round(n / 300);
+  return { ok: true, msg: `병사 +${fmt(n)} (금 −${cost})` };
+}
+function cmdTrain(o, c) {
+  if (c.troops <= 0) return { ok: false, msg: '훈련할 병사가 없습니다' };
+  if (c.train >= 100) return { ok: false, msg: '훈련이 이미 최고입니다' };
+  const gain = Math.round(2 + o.lead / 16 + ri(0, 2) - c.troops / 12000);
+  c.train = Math.min(100, c.train + Math.max(1, gain));
+  o.acted = true; o.merit += 10;
+  return { ok: true, msg: `훈련 +${Math.max(1, gain)}` };
+}
+function cmdSearch(o, c, forPlayer) {
+  o.acted = true; o.merit += 8;
+  const hidden = roninIn(c.id).filter(r => !r.found);
+  for (const r of shuffle(hidden)) {
+    if (chance(.35 + o.int / 250 + o.cha / 400)) { r.found = true; return { ok: true, msg: `재야 인물 ${eul(r.name)} 찾았습니다`, found: r }; }
+  }
+  if (chance(.45)) {
+    const g = ri(30, 60 + o.pol * 2);
+    if (forPlayer === 'self') G.pgold += g; else c.gold += g;
+    return { ok: true, msg: `금 ${g}을 찾았습니다`, gold: g };
+  }
+  if (chance(.25)) { o.fame += 2; return { ok: true, msg: '백성들에게서 소문을 들었습니다. 명성 +2' }; }
+  return { ok: true, msg: '아무것도 찾지 못했습니다' };
+}
+
+function hireChance(o, target, f) {
+  const ruler = G.officers[G.factions[f].ruler];
+  if (target.st === 'ronin') {
+    let p = .28 + o.cha / 260 + (25 - affDist(target, ruler)) / 90;
+    if (target.tag && target.fk && G.factions.find(x => x.key === target.fk && x.alive && x.id !== f)) p *= .25;
+    if (target.tag) { const lord = G.factions.find(x => x.alive && G.officers[x.ruler].tag === target.tag); if (lord && lord.id !== f) p *= .1; }
+    if (G.player === target.id) return 0;
+    return clamp(p, .04, .9);
+  }
+  if (target.st !== 'on' || target.f === f || target.f < 0) return 0;
+  if (isRuler(target) || G.player === target.id) return 0;
+  const tr = G.officers[G.factions[target.f].ruler];
+  if (target.tag && target.tag === tr.tag) return 0;
+  if (target.loy >= 95) return 0;
+  const p = (100 - target.loy) / 100 * (.45 + o.cha / 200) + (25 - affDist(target, ruler)) / 160 - (25 - affDist(target, tr)) / 160;
+  return clamp(p, 0, .8);
+}
+function cmdHire(o, c, target) {
+  o.acted = true;
+  const p = hireChance(o, target, c.f);
+  if (chance(p)) {
+    const wasEnemy = target.st === 'on';
+    if (wasEnemy) logMsg(`${iga(target.name)} ${facName(target.f)}군을 떠나 ${facName(c.f)}군에 들어갔습니다`);
+    joinFaction(target, c.f, c.id);
+    o.merit += 40;
+    return { ok: true, msg: `${eun(target.name)} 기꺼이 따르겠다고 합니다!`, joined: true };
+  }
+  o.merit += 5;
+  if (target.st === 'on') target.loy = Math.max(0, target.loy - ri(1, 4)); // 흔들림
+  return { ok: true, msg: `${eun(target.name)} 거절했습니다`, joined: false };
+}
+function joinFaction(t, f, cid) {
+  if (t.st === 'on' && t.f >= 0) {
+    const oc = G.cities[t.city]; if (oc.gov === t.id) oc.gov = -1;
+  }
+  t.st = 'on'; t.f = f; t.city = cid; t.found = true; t.acted = true;
+  const ruler = G.officers[G.factions[f].ruler];
+  t.loy = (t.tag && t.tag === ruler.tag) ? 100 : clamp(78 - affDist(t, ruler) / 2 + ri(0, 12), 55, 96);
+  t.merit = Math.max(t.merit, 100);
+}
+function cmdReward(giver, c, t) {
+  if (c.gold < 100) return { ok: false, msg: '금이 모자랍니다 (100 필요)' };
+  if (t.loy >= 100) return { ok: false, msg: '이미 충성이 지극합니다' };
+  c.gold -= 100; const g = ri(5, 10); t.loy = Math.min(100, t.loy + g);
+  return { ok: true, msg: `${t.name} 충성 +${g}` };
+}
+function cmdMove(o, to) { const from = G.cities[o.city]; if (from.gov === o.id) from.gov = -1; o.city = to; o.acted = true; }
+function cmdTransport(o, from, to, gold, food, troops) {
+  gold = clamp(Math.floor(gold), 0, from.gold); food = clamp(Math.floor(food), 0, from.food); troops = clamp(Math.floor(troops / 100) * 100, 0, from.troops);
+  from.gold -= gold; to.gold += gold; from.food -= food; to.food += food;
+  if (troops > 0) { to.train = Math.round((to.train * to.troops + from.train * troops) / (to.troops + troops)); from.troops -= troops; to.troops += troops; }
+  o.acted = true; o.merit += 6;
+  return { ok: true, msg: `${to.name}에 금 ${fmt(gold)}·쌀 ${fmt(food)}·병사 ${fmt(troops)} 보냄` };
+}
+
+// 외교
+function dipGift(env, fromF, toF, gold) {
+  const c = G.cities.find(x => x.f === fromF && x.id === env.city);
+  if (!c || c.gold < gold) return { ok: false, msg: '금이 모자랍니다' };
+  c.gold -= gold; const d = Math.round(gold / 25 + env.cha / 15 + ri(0, 4));
+  addRel(fromF, toF, d); env.acted = true; env.merit += 15;
+  return { ok: true, msg: `${facName(toF)}와의 우호 +${d} (지금 ${getRel(fromF, toF)})` };
+}
+function allyChance(env, fromF, toF) {
+  const r = getRel(fromF, toF);
+  if (r < 55) return 0;
+  const powA = factionPower(fromF), powB = factionPower(toF);
+  let p = (r - 50) / 50 * (.45 + env.cha / 200);
+  if (powA < powB * .4) p *= .6; // 너무 약하면 얕봄
+  return clamp(p, 0, .9);
+}
+function dipAlly(env, fromF, toF) {
+  env.acted = true;
+  if (chance(allyChance(env, fromF, toF))) { makeAlly(fromF, toF); addRel(fromF, toF, 10); env.merit += 60; logMsg(`${facName(fromF)}군과 ${facName(toF)}군이 동맹을 맺었습니다`, 'dip'); return { ok: true, msg: `${facName(toF)}군과 동맹을 맺었습니다!` }; }
+  addRel(fromF, toF, -3);
+  return { ok: true, msg: `${facName(toF)}군이 동맹을 거절했습니다` };
+}
+function breakAlly(a, b) { delete G.ally[relKey(a, b)]; addRel(a, b, -40); logMsg(`${facName(a)}군이 ${facName(b)}군과의 동맹을 끊었습니다`, 'dip'); }
+function plotChance(env, t) {
+  if (t.st !== 'on' || isRuler(t)) return 0;
+  const tr = G.officers[G.factions[t.f].ruler];
+  if (t.tag && t.tag === tr.tag) return 0;
+  return clamp(.3 + (env.int - t.int) / 90, .05, .85);
+}
+function plotSow(env, t) {
+  env.acted = true;
+  if (chance(plotChance(env, t))) { const d = ri(6, 14); t.loy = Math.max(0, t.loy - d); env.merit += 25; return { ok: true, msg: `이간 성공 — ${t.name} 충성 −${d} (지금 ${t.loy})` }; }
+  return { ok: true, msg: '이간이 들통나 실패했습니다' };
+}
+
+function factionPower(f) {
+  let p = 0;
+  for (const c of G.cities) if (c.f === f) p += c.troops * (.6 + c.train / 250);
+  return p;
+}
+function factionOfficers(f) { return G.officers.filter(o => o.st === 'on' && o.f === f); }
+
+// ===== 죽음·계승·멸망 =====
+function killOfficer(o, why) {
+  const wasRuler = isRuler(o);
+  const c = G.cities[o.city];
+  if (c && c.gov === o.id) c.gov = -1;
+  const f = o.f;
+  o.st = 'dead'; o.f = -1;
+  if (why) logMsg(why, 'death');
+  if (wasRuler && f >= 0) succession(f, o);
+  if (o.id === G.player) onPlayerDeath(o, f, wasRuler);
+}
+function succession(f, old) {
+  const F = G.factions[f];
+  const cands = factionOfficers(f);
+  if (!cands.length) { destroyFaction(f, `${F.name}군은 이어받을 사람이 없어 무너졌습니다`); return null; }
+  cands.sort((a, b) => ((b.tag && b.tag === old.tag) - (a.tag && a.tag === old.tag)) * 1000 + (b.merit / 10 + b.cha + b.lead) - (a.merit / 10 + a.cha + a.lead));
+  const n = cands[0];
+  F.ruler = n.id; n.loy = 100; F.name = n.name; F.capital = n.city;
+  logMsg(`${iga(n.name)} ${old.name}의 뒤를 이어 군주가 되었습니다`, 'big');
+  // 충성이 낮은 장수는 흩어지기도
+  for (const o of cands) if (o !== n && o.loy < 50 && chance(.4) && o.id !== G.player) { leaveToRonin(o); }
+  assignGovs();
+  return n;
+}
+function leaveToRonin(o) {
+  const c = G.cities[o.city]; if (c.gov === o.id) c.gov = -1;
+  o.st = 'ronin'; o.f = -1; o.found = true; o.loy = 0;
+}
+function destroyFaction(f, why) {
+  const F = G.factions[f]; if (!F.alive) return;
+  F.alive = false;
+  for (const c of G.cities) if (c.f === f) { c.f = -1; c.gov = -1; c.deleg = false; }
+  for (const o of G.officers) if (o.st === 'on' && o.f === f) { o.st = 'ronin'; o.f = -1; o.found = true; }
+  for (const k in G.ally) if (k.split(',').map(Number).includes(f)) delete G.ally[k];
+  logMsg(why || `${F.name}군이 멸망했습니다`, 'big');
+}
+function checkFactions() {
+  for (const F of G.factions) {
+    if (!F.alive) continue;
+    if (!G.cities.some(c => c.f === F.id)) {
+      const r = G.officers[F.ruler];
+      destroyFaction(F.id, `${F.name}군이 마지막 성을 잃고 멸망했습니다`);
+      if (r && r.st === 'ronin' && r.id === G.player) UI.queue({ title: '세력 멸망', text: '모든 성을 잃었습니다. 이제 재야의 몸으로 다시 일어서야 합니다.' });
+    }
+  }
+}
