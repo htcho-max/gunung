@@ -32,6 +32,7 @@ async function endMonth() {
     await monthlyEvents();
     G.month++;
     if (G.month > 12) { G.month = 1; G.year++; await yearlyEvents(); }
+    await runEvents();
     for (const o of G.officers) o.acted = false;
     G.ap = 3;
     assignGovs();
@@ -84,10 +85,13 @@ async function runWar(from, to, army, food) {
 function monthlyEconomy() {
   for (const c of G.cities) {
     if (c.f >= 0) {
-      c.gold += Math.round(c.comm / 4 + c.pop / 25000);
+      const pf = me() && me().st === 'on' ? me().f : -2;
+      const inc = c.f === pf ? DIFF().pInc : DIFF().aiInc;
+      c.gold += Math.round((c.comm / 4 + c.pop / 25000) * inc);
       c.food -= Math.round(c.troops * .03);
-      if (G.month === 7) c.food += Math.round(c.agri * 22 * (.55 + c.order / 220));
-      if (c.food < 0) { const loss = Math.round(c.troops * .12); c.troops -= loss; c.food = 0; if (c.f === me()?.f) logMsg(`${c.name}에 군량이 떨어져 병사 ${fmt(loss)}명이 달아났습니다`, 'bad'); }
+      if (G.month === 7) c.food += Math.round(c.agri * 22 * (.55 + c.order / 220) * inc);
+      if (c.troops > troopMax(c)) { const loss = Math.round((c.troops - troopMax(c)) * .3); c.troops -= loss; c.pop += loss; }
+      if (c.food < 0) { const loss = Math.round(c.troops * .25); c.troops -= loss; c.food = 0; if (c.f === me()?.f) logMsg(`${c.name}에 군량이 떨어져 병사 ${fmt(loss)}명이 달아났습니다`, 'bad'); }
       if (c.gold > 30000) c.gold = 30000;
     } else {
       c.gold += 20; if (G.month === 7) c.food += Math.round(c.agri * 8);

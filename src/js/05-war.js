@@ -38,7 +38,7 @@ function launchAttack(from, to, army, food) {
   return B;
 }
 function occupy(c, f, oids, troops, train, food) {
-  c.f = f; c.troops = troops; c.train = train; c.food += food; c.deleg = false;
+  c.f = f; c.troops = Math.min(troops, troopMax(c)); c.train = train; c.food += food; c.deleg = false;
   c.order = Math.max(20, c.order - 10);
   for (const id of oids) { const o = G.officers[id]; if (o.st === 'on') o.city = c.id; }
   c.gov = -1;

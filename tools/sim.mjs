@@ -14,6 +14,8 @@ for (let i = 0; i < months; i++) {
   await p.evaluate(() => endMonth());
   if (i % 12 === 11) console.log(await p.evaluate(() => `${G.year}.${G.month} ` + G.factions.filter(f => f.alive).map(f => `${f.name}${citiesOf(f.id).length}`).filter(s => !s.endsWith('0')).join(' ') + ` | 빈땅 ${G.cities.filter(c => c.f < 0).length} 전투 ${G.stats.battles} 장수 ${G.officers.filter(o=>o.st==='on').length} 재야 ${G.officers.filter(o=>o.st==='ronin').length} 사망 ${G.officers.filter(o=>o.st==='dead').length}`));
 }
+console.log('EVENTS', await p.evaluate(() => Object.keys(G.ev).join(' ')));
+console.log(await p.evaluate(() => G.log.filter(l => l.kind === 'big').reverse().map(l => l.t + ' ' + l.text).filter(t => /동탁|옥새|여포|서주|손책|천자|관도|오소|서서|삼고|현산|손견/.test(t)).join('\n')));
 console.log('ms/month', Math.round((Date.now() - t0) / months));
 console.log('player', await p.evaluate(() => `${me().name} ${me().st} ${role()}`));
 console.log(await p.evaluate(() => { const L=G.log; return "함락 "+L.filter(l=>/함락/.test(l.text)).length+" 수비 "+L.filter(l=>/지켜 냈/.test(l.text)).length; }));

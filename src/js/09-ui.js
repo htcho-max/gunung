@@ -68,7 +68,7 @@ const UI = {
     const v = (x) => vis ? fmt(x) : '?';
     head.append(el('div', { class: 'kv' },
       kvi('인구', v(c.pop)), kvi('금', v(c.gold)), kvi('쌀', v(c.food)),
-      kvi('병사', v(c.troops)), kvi('훈련', vis ? c.train : '?'), kvi('치안', vis ? c.order : '?'),
+      kvi('병사', vis ? `${fmt(c.troops)}` : '?'), kvi('훈련', vis ? c.train : '?'), kvi('치안', vis ? c.order : '?'),
       kvi('농업', vis ? `${c.agri}/${c.agriMax}` : '?'), kvi('상업', vis ? `${c.comm}/${c.commMax}` : '?'), kvi('성벽', vis ? `${c.wall}/${c.wallMax}` : '?')));
     side.append(head);
     // 명령
@@ -220,7 +220,7 @@ const UI = {
     const o = await this.pickOfficer(c, { title: '수송을 맡을 장수', stat: 'lead' }); if (!o) return;
     const vals = { gold: 0, food: 0, troops: 0 };
     const row = (key, label, max, step) => { const lab = el('b', { class: 'num', style: 'min-width:70px;text-align:right' }, '0'); return el('label', { class: 'fld' }, label, el('div', { class: 'slider' }, el('input', { type: 'range', id: 'tr_' + key, min: 0, max, step, value: 0, oninput: e => { vals[key] = +e.target.value; lab.textContent = fmt(vals[key]); } }), lab)); };
-    const k = await this.modal({ title: `수송 — ${c.name} → ${to.name}`, body: el('div', { style: 'display:flex;flex-direction:column;gap:10px' }, row('gold', '금', c.gold, 10), row('food', '쌀', c.food, 100), row('troops', '병사', c.troops, 100)), cancel: 'x', buttons: [{ k: 'x', label: '취소' }, { k: 'ok', label: '보낸다', cls: 'pri' }] });
+    const k = await this.modal({ title: `수송 — ${c.name} → ${to.name}`, body: el('div', { style: 'display:flex;flex-direction:column;gap:10px' }, row('gold', '금', c.gold, 10), row('food', '쌀', c.food, 100), row('troops', '병사', Math.min(c.troops, Math.max(0, troopMax(to) - to.troops)), 100)), cancel: 'x', buttons: [{ k: 'x', label: '취소' }, { k: 'ok', label: '보낸다', cls: 'pri' }] });
     if (k !== 'ok') return;
     const r = cmdTransport(o, c, to, vals.gold, vals.food, vals.troops); this.toast(r.msg); this.refresh();
   },
@@ -495,9 +495,10 @@ const UI = {
     this.modal({ title: '인물', wide: true, body: box, cancel: 'x', buttons: [{ k: 'x', label: '닫기' }] });
   },
   async menu() {
-    const k = await this.choose({ title: '메뉴', options: [{ k: 'save', label: '저장하기' }, { k: 'load', label: '불러오기' }, { k: 'snd', label: SFX.on ? '소리 끄기' : '소리 켜기' }, { k: 'help', label: '하는 법' }, { k: 'title', label: '처음 화면으로' }, { k: 'x', label: '닫기' }] });
+    const k = await this.choose({ title: `메뉴 · 난이도 ${DIFF().name}`, options: [{ k: 'save', label: '저장하기' }, { k: 'load', label: '불러오기' }, { k: 'snd', label: SFX.on ? '소리 끄기' : '소리 켜기' }, { k: 'scn', label: scenesOn() ? '남의 역사 사건 장면 끄기' : '남의 역사 사건 장면 켜기' }, { k: 'help', label: '하는 법' }, { k: 'title', label: '처음 화면으로' }, { k: 'x', label: '닫기' }] });
     if (k === 'save') this.saveDialog();
     if (k === 'load') this.loadDialog();
+    if (k === 'scn') { store('gunung.scenes', scenesOn() ? '0' : '1'); this.toast(scenesOn() ? '모든 역사 사건을 장면으로 봅니다' : '내가 얽힌 사건만 장면으로 봅니다'); }
     if (k === 'snd') { SFX.toggle(); this.toast(SFX.on ? '소리를 켰습니다' : '소리를 껐습니다'); }
     if (k === 'help') showHelp();
     if (k === 'title') { if (await this.confirm('처음 화면으로', '저장하지 않은 진행은 자동 저장(매달 초)까지만 남습니다.')) showScreen('scrTitle'); }

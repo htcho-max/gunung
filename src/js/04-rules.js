@@ -27,7 +27,9 @@ function cmdDevelop(o, c, kind) {
   return { ok: true, msg, gain };
 }
 
-function draftMax(o, c) { return Math.max(0, Math.min(1000 + o.cha * 30 + o.lead * 10, Math.floor(c.pop * 0.08 / 100) * 100, Math.floor(c.gold * 10 / 100) * 100)); }
+// 성 하나에 둘 수 있는 병사 상한
+const troopMax = c => 12000 + c.size * 6000;
+function draftMax(o, c) { return Math.max(0, Math.min(troopMax(c) - c.troops, 1000 + o.cha * 30 + o.lead * 10, Math.floor(c.pop * 0.08 / 100) * 100, Math.floor(c.gold * 10 / 100) * 100)); }
 function cmdDraft(o, c, n) {
   n = Math.floor(n / 100) * 100;
   if (n <= 0) return { ok: false, msg: '징병할 인원이 없습니다' };
@@ -110,7 +112,7 @@ function cmdReward(giver, c, t) {
 }
 function cmdMove(o, to) { const from = G.cities[o.city]; if (from.gov === o.id) from.gov = -1; o.city = to; o.acted = true; }
 function cmdTransport(o, from, to, gold, food, troops) {
-  gold = clamp(Math.floor(gold), 0, from.gold); food = clamp(Math.floor(food), 0, from.food); troops = clamp(Math.floor(troops / 100) * 100, 0, from.troops);
+  gold = clamp(Math.floor(gold), 0, from.gold); food = clamp(Math.floor(food), 0, from.food); troops = clamp(Math.floor(troops / 100) * 100, 0, Math.min(from.troops, Math.max(0, troopMax(to) - to.troops)));
   from.gold -= gold; to.gold += gold; from.food -= food; to.food += food;
   if (troops > 0) { to.train = Math.round((to.train * to.troops + from.train * troops) / (to.troops + troops)); from.troops -= troops; to.troops += troops; }
   o.acted = true; o.merit += 6;

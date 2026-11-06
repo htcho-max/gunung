@@ -18,14 +18,14 @@ function startPlaying(isNew) {
       ronin: `재야의 몸으로 ${G.cities[P.city].name}에서 시작합니다.\n떠돌며 인재와 사귀고, 빈 땅에서 거병하거나 마음에 드는 군주에게 사관하세요.`,
     }[r];
     UI.queue({ title: `${G.year}년 ${G.month}월`, portrait: P, text: `동탁이 낙양을 손에 쥐고 천자를 끼고 있다. 각지의 제후들이 들고일어나는 난세가 열렸다.\n\n${txt}` });
-    UI.flush();
+    UI.flush().then(() => runEvents()).then(() => UI.refresh());
   }
 }
 
 const Setup = {
-  mode: null, tab: 'all', stats: null,
+  mode: null, tab: 'all', stats: null, diff: +(store('gunung.diff') ?? 1),
   open() {
-    newGame(); // 고르기용 상태
+    newGame({ diff: this.diff }); // 고르기용 상태
     showScreen('scrSetup');
     this.renderModes();
   },
@@ -34,6 +34,9 @@ const Setup = {
     const card = (k, title, desc) => el('button', { class: 'modeCard', onclick: () => { this.mode = k; k === 'create' ? this.renderCreate() : this.renderPick(); } }, el('b', {}, title), el('span', { class: 'muted', style: 'font-size:14px' }, desc));
     box.append(el('div', { style: 'display:flex;align-items:center;gap:10px' }, el('button', { class: 'btn sm ghost', onclick: () => showScreen('scrTitle') }, '◂ 처음으로'), el('h2', {}, '190년 · 반동탁 연합')),
       el('p', { class: 'muted', style: 'margin:0;max-width:65ch' }, '열네 제후와 수많은 재야 인물이 있습니다. 누구로 난세를 살아갈지 고르세요.'),
+      el('div', { style: 'display:flex;flex-direction:column;gap:6px' },
+        el('div', { class: 'tabs', role: 'radiogroup', 'aria-label': '난이도' }, DIFFS.map((d, i) => el('button', { class: 'tab' + (this.diff === i ? ' on' : ''), role: 'radio', 'aria-checked': this.diff === i ? 'true' : 'false', onclick: () => { this.diff = i; G.diff = i; store('gunung.diff', String(i)); this.renderModes(); } }, d.name))),
+        el('div', { class: 'muted', style: 'font-size:13px' }, DIFFS[this.diff].desc)),
       el('div', { class: 'modeCards' },
         card('ruler', '군주로 시작', '세력 하나를 맡아 모든 성을 다스립니다. 고전적인 방식.'),
         card('officer', '장수로 시작', '군주 밑의 장수나 재야 인물이 되어 출세하거나 떠돌거나 독립합니다.'),

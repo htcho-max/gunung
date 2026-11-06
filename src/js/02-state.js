@@ -16,10 +16,17 @@ function buildAdj() {
 buildAdj();
 
 const START_YEAR = 190;
+// 난이도: grace 플레이어 유예(달), vsP 플레이어 공격 기준 가산, base AI 공격 기준, aiInc AI 수입, pInc 플레이어 수입, pDmg 플레이어 부대 피해 배율
+const DIFFS = [
+  { name: '쉬움', desc: '처음 1년 반은 아무도 쳐들어오지 않고, 수입과 전투력이 넉넉합니다.', grace: 18, vsP: .55, base: 1.45, aiInc: .85, pInc: 1.3, pDmg: 1.15 },
+  { name: '보통', desc: '처음 1년은 평화롭고, 적은 확실히 이길 때만 쳐들어옵니다.', grace: 12, vsP: .3, base: 1.4, aiInc: .95, pInc: 1.1, pDmg: 1.05 },
+  { name: '어려움', desc: '반년 뒤부터 적이 노리고 들어옵니다. 처음 만든 판과 같은 세기입니다.', grace: 6, vsP: .1, base: 1.2, aiInc: 1.05, pInc: 1, pDmg: 1 },
+];
+const DIFF = () => DIFFS[G && G.diff != null ? G.diff : 1];
 const TROOP_MUL = { dz: 1.7, ys: 1.25, ysh: 1.2, cc: .9, lb: .7, kr: .8, gd: 1, md: 1.1, sj: 1, lbi: 1.05, ly: 1.05, tq: 1, gz: 1.15, hf: 1.15 };
 
 function newGame(opts = {}) {
-  const g = { ver: 1, year: START_YEAR, month: 1, factions: [], cities: [], officers: [], log: [], rel: {}, ally: {}, player: -1, ap: 3, seen: {}, over: false, pgold: 0, stats: { battles: 0, wins: 0 } };
+  const g = { ver: 1, year: START_YEAR, month: 1, factions: [], cities: [], officers: [], log: [], rel: {}, ally: {}, player: -1, diff: opts.diff ?? 1, ev: {}, ap: 3, seen: {}, over: false, pgold: 0, stats: { battles: 0, wins: 0 } };
   const fIdx = {};
   FACTION_DEFS.forEach(([key, name, ruler, color], i) => { fIdx[key] = i; g.factions.push({ id: i, key, name, color, ruler: -1, alive: true, capital: -1 }); });
   CITY_DEFS.forEach(([name, han, x, y, own, s], i) => {

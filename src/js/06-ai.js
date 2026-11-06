@@ -42,7 +42,7 @@ function aiPlanAttacks(F) {
   const ruler = G.officers[F.ruler];
   const aggr = .85 + (ruler.war - 60) / 160 - (ruler.int - 60) / 400;
   const plans = [];
-  const graceForPlayer = (G.year - START_YEAR) * 12 + G.month < 7;
+  const graceForPlayer = mIdx() <= DIFF().grace;
   const pf = me() && me().st === 'on' ? me().f : -2;
   for (const c of G.cities.filter(x => x.f === F.id)) {
     if (playerControls(c)) continue;
@@ -61,9 +61,10 @@ function aiPlanAttacks(F) {
       const myQ = top.reduce((a, o) => a + o.lead * .55 + o.war * .45, 0) / top.length;
       const thQ = tOffs.slice(0, 5).reduce((a, o) => a + o.lead * .6 + o.int * .2 + o.war * .2, 0) / Math.min(5, tOffs.length);
       const myPow = c.troops * .75 * myQ * (.6 + c.train / 250);
-      const thPow = t.troops * thQ * (.6 + t.train / 250) * (1.15 + Math.min(.5, t.wall / 2000));
+      const tEff = Math.min(t.troops, tOffs.slice(0, 5).reduce((a, o) => a + troopCap(o), 0));
+      const thPow = tEff * thQ * (.6 + t.train / 250) * (1.15 + Math.min(.5, t.wall / 2000));
       const ratio = myPow / Math.max(1, thPow);
-      const need = Math.max(.75, 1.2 / aggr + (t.f === pf ? .1 : 0) - Math.min(.4, (F.idle || 0) * .025));
+      const need = Math.max(.95, DIFF().base / aggr - Math.min(.35, (F.idle || 0) * .015)) + (t.f === pf ? DIFF().vsP : 0);
       if (ratio > need && c.food > c.troops * .3) { const s = ratio * (1 + t.size / 5) + (getRel(F.id, t.f) < 30 ? .3 : 0); if (s > bestS) { bestS = s; bestT = t; } }
     }
     if (!bestT) continue;
@@ -96,7 +97,7 @@ function aiLogistics(F) {
   const cs = G.cities.filter(x => x.f === F.id && !playerControls(x));
   if (!cs.length) return;
   const pf = me() && me().st === 'on' ? me().f : -2;
-  const grace = mIdx() < 7;
+  const grace = mIdx() <= DIFF().grace;
   let tgt = F.target != null ? G.cities[F.target] : null;
   const bad = t => !t || t.f === F.id || isAlly(F.id, t.f) || !ADJ[t.id].some(i => G.cities[i].f === F.id) || (grace && t.f === pf);
   if (bad(tgt) || chance(.04)) {

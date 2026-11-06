@@ -132,7 +132,8 @@ function estDamage(B, a, d, ranged) {
 }
 function doAttack(B, a, d) {
   const ranged = hexDist(a.at, d.at) > 1 || a.type === 'arc';
-  const dmg = Math.round(estDamage(B, a, d, ranged) * (.85 + rand() * .3));
+  const pm = B.playerSide == null ? 1 : a.side === B.playerSide ? DIFF().pDmg : 1 / DIFF().pDmg;
+  const dmg = Math.round(estDamage(B, a, d, ranged) * (.85 + rand() * .3) * pm);
   d.troops -= dmg; d.morale = clamp(d.morale - Math.round(dmg / Math.max(1, d.troops + dmg) * 45) - 1, 0, 100);
   a.morale = clamp(a.morale + 2, 0, 100);
   let cdmg = 0;

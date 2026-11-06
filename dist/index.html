@@ -168,6 +168,14 @@ input[type=text],select{background:var(--ink);border:1px solid var(--line);color
 .duel .hp{width:100%;height:10px;background:#0f171a;border-radius:5px;overflow:hidden;}
 .duel .hp i{display:block;height:100%;background:var(--cinnabar);transition:width .35s;}
 .duel .vs{font-family:var(--f-disp);font-size:30px;color:var(--brass);}
+.scene{display:flex;flex-direction:column;gap:12px;}
+.scene .eyebrow{font-size:12px;letter-spacing:.12em;color:var(--brass);}
+.scene .nar{margin:0;color:var(--muted);font-size:14px;line-height:1.7;max-width:62ch;}
+.scene .sline{display:flex;gap:12px;align-items:flex-start;}
+.scene .sline img{width:52px;height:61px;border-radius:4px;flex:none;}
+.scene .say{background:var(--lacq2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;min-width:0;}
+.scene .say b{font-weight:400;font-size:16px;color:var(--brass);}
+.scene .say p{margin:2px 0 0;line-height:1.65;}
 .duelLog{min-height:64px;font-size:14px;display:flex;flex-direction:column;gap:2px;}
 
 @media (max-width:760px){
@@ -227,7 +235,7 @@ input[type=text],select{background:var(--ink);border:1px solid var(--line);color
 <script>
 // ---- 00-util.js
 // ===== 공용 도구 =====
-const VERSION = '0.1.0';
+const VERSION = '0.2.0';
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -500,10 +508,17 @@ function buildAdj() {
 buildAdj();
 
 const START_YEAR = 190;
+// 난이도: grace 플레이어 유예(달), vsP 플레이어 공격 기준 가산, base AI 공격 기준, aiInc AI 수입, pInc 플레이어 수입, pDmg 플레이어 부대 피해 배율
+const DIFFS = [
+  { name: '쉬움', desc: '처음 1년 반은 아무도 쳐들어오지 않고, 수입과 전투력이 넉넉합니다.', grace: 18, vsP: .55, base: 1.45, aiInc: .85, pInc: 1.3, pDmg: 1.15 },
+  { name: '보통', desc: '처음 1년은 평화롭고, 적은 확실히 이길 때만 쳐들어옵니다.', grace: 12, vsP: .3, base: 1.4, aiInc: .95, pInc: 1.1, pDmg: 1.05 },
+  { name: '어려움', desc: '반년 뒤부터 적이 노리고 들어옵니다. 처음 만든 판과 같은 세기입니다.', grace: 6, vsP: .1, base: 1.2, aiInc: 1.05, pInc: 1, pDmg: 1 },
+];
+const DIFF = () => DIFFS[G && G.diff != null ? G.diff : 1];
 const TROOP_MUL = { dz: 1.7, ys: 1.25, ysh: 1.2, cc: .9, lb: .7, kr: .8, gd: 1, md: 1.1, sj: 1, lbi: 1.05, ly: 1.05, tq: 1, gz: 1.15, hf: 1.15 };
 
 function newGame(opts = {}) {
-  const g = { ver: 1, year: START_YEAR, month: 1, factions: [], cities: [], officers: [], log: [], rel: {}, ally: {}, player: -1, ap: 3, seen: {}, over: false, pgold: 0, stats: { battles: 0, wins: 0 } };
+  const g = { ver: 1, year: START_YEAR, month: 1, factions: [], cities: [], officers: [], log: [], rel: {}, ally: {}, player: -1, diff: opts.diff ?? 1, ev: {}, ap: 3, seen: {}, over: false, pgold: 0, stats: { battles: 0, wins: 0 } };
   const fIdx = {};
   FACTION_DEFS.forEach(([key, name, ruler, color], i) => { fIdx[key] = i; g.factions.push({ id: i, key, name, color, ruler: -1, alive: true, capital: -1 }); });
   CITY_DEFS.forEach(([name, han, x, y, own, s], i) => {
@@ -769,7 +784,9 @@ function cmdDevelop(o, c, kind) {
   return { ok: true, msg, gain };
 }
 
-function draftMax(o, c) { return Math.max(0, Math.min(1000 + o.cha * 30 + o.lead * 10, Math.floor(c.pop * 0.08 / 100) * 100, Math.floor(c.gold * 10 / 100) * 100)); }
+// 성 하나에 둘 수 있는 병사 상한
+const troopMax = c => 12000 + c.size * 6000;
+function draftMax(o, c) { return Math.max(0, Math.min(troopMax(c) - c.troops, 1000 + o.cha * 30 + o.lead * 10, Math.floor(c.pop * 0.08 / 100) * 100, Math.floor(c.gold * 10 / 100) * 100)); }
 function cmdDraft(o, c, n) {
   n = Math.floor(n / 100) * 100;
   if (n <= 0) return { ok: false, msg: '징병할 인원이 없습니다' };
@@ -852,7 +869,7 @@ function cmdReward(giver, c, t) {
 }
 function cmdMove(o, to) { const from = G.cities[o.city]; if (from.gov === o.id) from.gov = -1; o.city = to; o.acted = true; }
 function cmdTransport(o, from, to, gold, food, troops) {
-  gold = clamp(Math.floor(gold), 0, from.gold); food = clamp(Math.floor(food), 0, from.food); troops = clamp(Math.floor(troops / 100) * 100, 0, from.troops);
+  gold = clamp(Math.floor(gold), 0, from.gold); food = clamp(Math.floor(food), 0, from.food); troops = clamp(Math.floor(troops / 100) * 100, 0, Math.min(from.troops, Math.max(0, troopMax(to) - to.troops)));
   from.gold -= gold; to.gold += gold; from.food -= food; to.food += food;
   if (troops > 0) { to.train = Math.round((to.train * to.troops + from.train * troops) / (to.troops + troops)); from.troops -= troops; to.troops += troops; }
   o.acted = true; o.merit += 6;
@@ -989,7 +1006,7 @@ function launchAttack(from, to, army, food) {
   return B;
 }
 function occupy(c, f, oids, troops, train, food) {
-  c.f = f; c.troops = troops; c.train = train; c.food += food; c.deleg = false;
+  c.f = f; c.troops = Math.min(troops, troopMax(c)); c.train = train; c.food += food; c.deleg = false;
   c.order = Math.max(20, c.order - 10);
   for (const id of oids) { const o = G.officers[id]; if (o.st === 'on') o.city = c.id; }
   c.gov = -1;
@@ -1160,7 +1177,7 @@ function aiPlanAttacks(F) {
   const ruler = G.officers[F.ruler];
   const aggr = .85 + (ruler.war - 60) / 160 - (ruler.int - 60) / 400;
   const plans = [];
-  const graceForPlayer = (G.year - START_YEAR) * 12 + G.month < 7;
+  const graceForPlayer = mIdx() <= DIFF().grace;
   const pf = me() && me().st === 'on' ? me().f : -2;
   for (const c of G.cities.filter(x => x.f === F.id)) {
     if (playerControls(c)) continue;
@@ -1179,9 +1196,10 @@ function aiPlanAttacks(F) {
       const myQ = top.reduce((a, o) => a + o.lead * .55 + o.war * .45, 0) / top.length;
       const thQ = tOffs.slice(0, 5).reduce((a, o) => a + o.lead * .6 + o.int * .2 + o.war * .2, 0) / Math.min(5, tOffs.length);
       const myPow = c.troops * .75 * myQ * (.6 + c.train / 250);
-      const thPow = t.troops * thQ * (.6 + t.train / 250) * (1.15 + Math.min(.5, t.wall / 2000));
+      const tEff = Math.min(t.troops, tOffs.slice(0, 5).reduce((a, o) => a + troopCap(o), 0));
+      const thPow = tEff * thQ * (.6 + t.train / 250) * (1.15 + Math.min(.5, t.wall / 2000));
       const ratio = myPow / Math.max(1, thPow);
-      const need = Math.max(.75, 1.2 / aggr + (t.f === pf ? .1 : 0) - Math.min(.4, (F.idle || 0) * .025));
+      const need = Math.max(.95, DIFF().base / aggr - Math.min(.35, (F.idle || 0) * .015)) + (t.f === pf ? DIFF().vsP : 0);
       if (ratio > need && c.food > c.troops * .3) { const s = ratio * (1 + t.size / 5) + (getRel(F.id, t.f) < 30 ? .3 : 0); if (s > bestS) { bestS = s; bestT = t; } }
     }
     if (!bestT) continue;
@@ -1214,7 +1232,7 @@ function aiLogistics(F) {
   const cs = G.cities.filter(x => x.f === F.id && !playerControls(x));
   if (!cs.length) return;
   const pf = me() && me().st === 'on' ? me().f : -2;
-  const grace = mIdx() < 7;
+  const grace = mIdx() <= DIFF().grace;
   let tgt = F.target != null ? G.cities[F.target] : null;
   const bad = t => !t || t.f === F.id || isAlly(F.id, t.f) || !ADJ[t.id].some(i => G.cities[i].f === F.id) || (grace && t.f === pf);
   if (bad(tgt) || chance(.04)) {
@@ -1406,7 +1424,8 @@ function estDamage(B, a, d, ranged) {
 }
 function doAttack(B, a, d) {
   const ranged = hexDist(a.at, d.at) > 1 || a.type === 'arc';
-  const dmg = Math.round(estDamage(B, a, d, ranged) * (.85 + rand() * .3));
+  const pm = B.playerSide == null ? 1 : a.side === B.playerSide ? DIFF().pDmg : 1 / DIFF().pDmg;
+  const dmg = Math.round(estDamage(B, a, d, ranged) * (.85 + rand() * .3) * pm);
   d.troops -= dmg; d.morale = clamp(d.morale - Math.round(dmg / Math.max(1, d.troops + dmg) * 45) - 1, 0, 100);
   a.morale = clamp(a.morale + 2, 0, 100);
   let cdmg = 0;
@@ -1715,6 +1734,7 @@ async function endMonth() {
     await monthlyEvents();
     G.month++;
     if (G.month > 12) { G.month = 1; G.year++; await yearlyEvents(); }
+    await runEvents();
     for (const o of G.officers) o.acted = false;
     G.ap = 3;
     assignGovs();
@@ -1767,10 +1787,13 @@ async function runWar(from, to, army, food) {
 function monthlyEconomy() {
   for (const c of G.cities) {
     if (c.f >= 0) {
-      c.gold += Math.round(c.comm / 4 + c.pop / 25000);
+      const pf = me() && me().st === 'on' ? me().f : -2;
+      const inc = c.f === pf ? DIFF().pInc : DIFF().aiInc;
+      c.gold += Math.round((c.comm / 4 + c.pop / 25000) * inc);
       c.food -= Math.round(c.troops * .03);
-      if (G.month === 7) c.food += Math.round(c.agri * 22 * (.55 + c.order / 220));
-      if (c.food < 0) { const loss = Math.round(c.troops * .12); c.troops -= loss; c.food = 0; if (c.f === me()?.f) logMsg(`${c.name}에 군량이 떨어져 병사 ${fmt(loss)}명이 달아났습니다`, 'bad'); }
+      if (G.month === 7) c.food += Math.round(c.agri * 22 * (.55 + c.order / 220) * inc);
+      if (c.troops > troopMax(c)) { const loss = Math.round((c.troops - troopMax(c)) * .3); c.troops -= loss; c.pop += loss; }
+      if (c.food < 0) { const loss = Math.round(c.troops * .25); c.troops -= loss; c.food = 0; if (c.f === me()?.f) logMsg(`${c.name}에 군량이 떨어져 병사 ${fmt(loss)}명이 달아났습니다`, 'bad'); }
       if (c.gold > 30000) c.gold = 30000;
     } else {
       c.gold += 20; if (G.month === 7) c.food += Math.round(c.agri * 8);
@@ -1864,6 +1887,350 @@ function onPlayerDeath(o, f, wasRuler) {
   UI.queue({ title: '영웅의 죽음', portrait: o, text: `${eun(o.name)} 세상을 떠났습니다.\n다른 인물로 이어서 할 수 있습니다.`, after: () => UI.pickSuccessor() });
 }
 
+// ---- 08b-events.js
+// ===== 역사 사건 =====
+// 각 사건은 한 번만 일어남. cond()가 참이 되는 달에 run()을 실행.
+// 선택지의 첫 번째는 언제나 역사대로 흘러가는 쪽(자동 시험도 이쪽을 고름).
+const byName = n => G.officers.find(o => o.name === n);
+const live = o => !!o && (o.st === 'on' || o.st === 'ronin');
+const onIn = (o, f) => !!o && o.st === 'on' && o.f === f;
+const rulerNamed = n => { const o = byName(n); return o && o.st === 'on' && isRuler(o) ? o : null; };
+const isP = o => !!o && o.id === G.player;
+const facAdj = (a, b) => G.cities.some(c => c.f === a && ADJ[c.id].some(i => G.cities[i].f === b));
+const cityN = n => G.cities[CITY_BY_NAME[n]];
+const scenesOn = () => store('gunung.scenes') !== '0';
+
+// 장면 보여 주기. 당사자가 아니고 장면을 꺼 두었으면 첫 선택지를 돌려줌
+async function scene({ title, lines, options, involved }) {
+  if (!involved && !scenesOn()) return options ? options[0].k : 'ok';
+  const body = el('div', { class: 'scene' },
+    el('div', { class: 'eyebrow' }, `${G.year}년 ${G.month}월 · 역사 사건`),
+    lines.map(([who, text, alt]) => who
+      ? el('div', { class: 'sline' }, portraitImg(who, ''), el('div', { class: 'say' }, el('b', { class: 'disp' }, who.name), el('p', {}, text)))
+      : el('p', { class: 'nar' }, alt || text)));
+  SFX.play('gong');
+  if (!options) { await UI.modal({ title, body, wide: true, buttons: [{ k: 'ok', label: '계속', cls: 'pri' }] }); return 'ok'; }
+  return UI.modal({ title, body, wide: true, col: options.length > 2, buttons: options.map((o, i) => ({ k: o.k, label: o.label, cls: i === 0 ? 'pri' : '', danger: o.danger })) });
+}
+
+// 세력 합치기 (서주 양도)
+function mergeFaction(from, to) {
+  for (const c of G.cities) if (c.f === from) { c.f = to; c.gov = -1; c.deleg = false; }
+  for (const o of G.officers) if (o.st === 'on' && o.f === from) { const cid = o.city; joinFaction(o, to, cid); o.acted = false; }
+  G.factions[from].alive = false;
+  for (const k in G.ally) if (k.split(',').map(Number).includes(from)) delete G.ally[k];
+  assignGovs();
+}
+// 한 성을 들고 갈라져 나가기 (연환계 뒤 여포)
+function splitOff(leader, c, oldF, followers) {
+  const home = G.cities.filter(x => x.f === oldF && x.id !== c.id);
+  for (const o of officersIn(c.id, oldF)) {
+    if (o === leader || followers.includes(o)) continue;
+    if (home.length) o.city = (home.find(h => ADJ[h.id].includes(c.id)) || home[0]).id; else leaveToRonin(o);
+  }
+  leaveToRonin(leader);
+  const F = createFaction(leader, c, c.troops, true);
+  for (const f of followers) { if (c.gov === f.id) c.gov = -1; f.st = 'on'; f.f = F.id; f.city = c.id; f.loy = 90; }
+  G.rel[relKey(F.id, oldF)] = 0;
+  assignGovs();
+  return F;
+}
+
+const EVENTS = [
+  // ── 도원결의: 유비·관우·장비로 시작하면 처음에 한 번
+  {
+    id: 'peach',
+    cond: () => mIdx() <= 1 && ['유비', '관우', '장비'].some(n => isP(byName(n))) && ['유비', '관우', '장비'].every(n => onIn(byName(n), byName('유비').f)),
+    async run() {
+      const [a, b, c] = ['유비', '관우', '장비'].map(byName);
+      await scene({ title: '도원결의', involved: true, lines: [
+        [null, '복숭아꽃이 흐드러진 장비의 집 뒤뜰. 세 사람이 향을 피우고 하늘에 고한다.'],
+        [a, '비록 성은 다르나 형제가 되어, 마음과 힘을 합쳐 어려움에 빠진 이를 돕겠습니다.'],
+        [b, '한날한시에 나기를 바라지 않으나, 한날한시에 죽기를 바랍니다.'],
+        [c, '하늘과 땅이 이 마음을 굽어보소서! 저버리는 자는 하늘과 사람이 함께 벌하리라!'],
+      ] });
+      for (const o of [a, b, c]) o.fame += 3;
+    },
+  },
+
+  // ── 낙양 방화와 장안 천도
+  {
+    id: 'luoyang_fire',
+    cond: () => { const d = rulerNamed('동탁'); return d && mIdx() >= 3 && cityN('낙양').f === d.f && cityN('장안').f === d.f; },
+    async run() {
+      const d = rulerNamed('동탁'), li = byName('이유'), F = G.factions[d.f];
+      const ly = cityN('낙양'), ca = cityN('장안');
+      const ch = await scene({ title: '낙양 방화', involved: isP(d) || onIn(me(), d.f), lines: [
+        [null, '반동탁 연합군이 사수관과 호뢰관으로 밀려든다.'],
+        [live(li) ? li : null, '연합군의 기세가 거셉니다. 낙양을 불태우고 천자를 모셔 장안으로 옮기소서. 관중은 지키기 쉬운 땅입니다.', '모사들이 낙양을 버리고 지키기 쉬운 장안으로 천도하자고 아뢴다.'],
+        [d, '좋다! 백성들도 모두 끌고 가라. 낙양에는 풀 한 포기 남기지 마라!'],
+      ], options: isP(d) ? [{ k: 'go', label: '낙양을 불태우고 장안으로 천도한다' }, { k: 'stay', label: '낙양을 지킨다' }] : null });
+      if (ch === 'stay') { logMsg('동탁이 천도를 거두고 낙양에 남았습니다', 'big'); return; }
+      ca.gold += Math.round(ly.gold * .8); ly.gold = Math.round(ly.gold * .2);
+      ca.pop += Math.round(ly.pop * .3); ly.pop = Math.round(ly.pop * .4);
+      ly.comm = Math.round(ly.comm * .4); ly.agri = Math.round(ly.agri * .7); ly.order = Math.max(10, ly.order - 30);
+      ly.wall = Math.round(ly.wall * .6);
+      const move = Math.round(ly.troops * .5); ly.troops -= move; ca.troops += move;
+      for (const o of [d, li].filter(o => onIn(o, d.f))) { if (ly.gov === o.id) ly.gov = -1; o.city = ca.id; }
+      F.capital = ca.id;
+      d.fame -= 5; d.cha = Math.max(1, d.cha - 3);
+      logMsg('동탁이 낙양을 불태우고 장안으로 천도했습니다', 'big');
+      assignGovs();
+    },
+  },
+
+  // ── 손견, 우물에서 옥새를 줍다
+  {
+    id: 'jade_seal',
+    cond: () => G.ev.luoyang_fire && !!rulerNamed('손견') && mIdx() >= 4,
+    async run() {
+      const s = rulerNamed('손견'), cp = byName('정보'), ysh = rulerNamed('원술');
+      const ch = await scene({ title: '전국옥새', involved: isP(s) || onIn(me(), s.f), lines: [
+        [null, '불탄 낙양에 들어선 손견의 군사들이 건장전 남쪽 우물에서 오색 빛을 본다.'],
+        [s, '이것은… 전국옥새가 아닌가! 「하늘에서 명을 받으니 영원히 창성하리라」.'],
+        [onIn(cp, s.f) ? cp : null, '하늘이 주공께 뜻을 보이신 것입니다. 다만 이 일은 결코 새어 나가서는 안 됩니다.', '곁에 있던 장수들이 이 일을 비밀에 부치자고 입을 모은다.'],
+      ], options: isP(s) ? [{ k: 'keep', label: '옥새를 몰래 간직한다' }, { k: 'give', label: '조정에 바친다' }] : null });
+      if (ch === 'give') { s.fame += 8; for (const f of G.factions) if (f.alive && f.id !== s.f) addRel(s.f, f.id, 5); logMsg('손견이 옥새를 조정에 바쳤습니다', 'big'); return; }
+      s.fame += 15; s.cha = Math.min(100, s.cha + 2);
+      G.sealHolder = s.f;
+      if (ysh) addRel(s.f, ysh.f, -20);
+      logMsg('손견이 낙양의 우물에서 전국옥새를 손에 넣었다는 소문이 돕니다', 'big');
+    },
+  },
+
+  // ── 손견, 현산에서 지다
+  {
+    id: 'sunjian_death',
+    cond: () => { const s = rulerNamed('손견'); const lb = G.factions.find(f => f.key === 'lbi' && f.alive); return s && lb && mIdx() >= 16 && mIdx() <= 40 && facAdj(s.f, lb.id) && chance(.2); },
+    async run() {
+      const s = rulerNamed('손견'), hz = byName('황조'), lb = G.factions.find(f => f.key === 'lbi');
+      const lines = [
+        [null, `손견이 ${lb.name}군을 쳐서 강을 건넌다. 쫓기던 황조의 군사가 현산 쪽으로 달아난다.`],
+        [live(hz) ? hz : null, '현산 숲에 활과 돌을 숨겨 두었다. 손견이 홀로 쫓아오면 그때다!', '현산의 숲속에 활과 돌을 든 군사들이 숨어 있다.'],
+      ];
+      if (isP(s)) {
+        const ch = await scene({ title: '현산', involved: true, lines: [...lines, [s, '적이 겁을 먹고 달아난다. 이대로 끝까지 쫓을 것인가…']], options: [{ k: 'chase', label: '끝까지 추격한다', danger: true }, { k: 'stop', label: '추격을 멈추고 진을 친다' }] });
+        if (ch === 'stop') { s.fame += 2; logMsg('손견이 현산 앞에서 추격을 멈췄습니다', 'big'); return; }
+        if (chance(.5)) { await scene({ title: '현산', involved: true, lines: [[null, '숲에서 화살과 돌이 비처럼 쏟아졌지만, 손견은 칼을 휘둘러 가까스로 빠져나왔다.']] }); s.fame += 6; return; }
+      } else {
+        await scene({ title: '손견의 최후', involved: onIn(me(), s.f) || onIn(me(), lb.id), lines: [...lines, [null, '숲에서 쏟아진 화살과 돌에 강동의 호랑이가 쓰러졌다.']] });
+      }
+      killOfficer(s, `${eun(s.name)} 현산에서 매복에 걸려 전사했습니다 (향년 ${age(s)}세)`);
+    },
+  },
+
+  // ── 연환계: 왕윤·초선·여포
+  {
+    id: 'chain',
+    cond: () => { const d = rulerNamed('동탁'), lb = byName('여포'), wy = byName('왕윤'); return d && mIdx() >= 28 && onIn(lb, d.f) && G.cities.filter(c => c.f === d.f).length >= 2 && (onIn(wy, d.f) || mIdx() >= 34); },
+    async run() {
+      const d = rulerNamed('동탁'), lb = byName('여포'), wy0 = byName('왕윤'), oldF = d.f;
+      const wy = onIn(wy0, oldF) ? wy0 : null;
+      const lines = [
+        wy ? [wy, '역적 동탁을 칼로 이길 수 없다면, 사람의 마음으로 무너뜨려야 한다. 초선아, 너를 여포에게 주겠다 약속하고 동탁에게 바치겠다.'] : [null, '사도 왕윤은 가희 초선을 여포와 동탁 두 사람에게 모두 약속하여 그 사이를 갈라놓았다.'],
+        [null, '초선은 두 사람 사이를 오가며 눈물로 여포의 마음을 흔든다.'],
+        [lb, '의부라는 자가 내 여인을 빼앗다니… 더는 참지 않겠다!'],
+      ];
+      let ch = 'go';
+      if (isP(d)) {
+        ch = await scene({ title: '연환계', involved: true, lines: [[wy, `${wy ? '' : '사도 왕윤이 아룁니다. '}승상께 가희 초선을 바칩니다.`], [null, '여포가 초선을 바라보는 눈빛이 심상치 않다. 이유가 몰래 아뢴다. "초선을 여포에게 내리시어 그 마음을 붙드소서."']], options: [{ k: 'go', label: '초선을 곁에 둔다' }, { k: 'no', label: '이유의 말대로 초선을 여포에게 준다' }] });
+      } else if (isP(lb)) {
+        ch = await scene({ title: '연환계', involved: true, lines: [...lines, [wy, `${wy ? '' : '왕윤이 은밀히 전한다. '}장군, 나라를 위해 역적을 베소서. 천하가 장군의 이름을 기억할 것이오.`]], options: [{ k: 'go', label: '동탁을 벤다' }, { k: 'no', label: '그래도 의부를 따른다' }] });
+      } else if (wy && isP(wy)) {
+        ch = await scene({ title: '연환계', involved: true, lines: lines.slice(0, 2), options: [{ k: 'go', label: '계책을 끝까지 밀고 간다' }, { k: 'no', label: '그만둔다' }] });
+      }
+      if (ch === 'no') {
+        lb.loy = 100;
+        if (wy && !isP(wy)) { leaveToRonin(wy); logMsg(`${eun(wy.name)} 계책이 드러날까 두려워 장안을 떠났습니다`, 'big'); }
+        else logMsg('연환계는 끝내 실행되지 않았습니다', 'big');
+        assignGovs(); return;
+      }
+      await scene({ title: '동탁의 최후', involved: onIn(me(), oldF), lines: [
+        ...(isP(d) || isP(lb) || isP(wy) ? [] : lines),
+        [null, '미오성에서 입궐하던 동탁이 수레에서 내리는 순간, 여포의 방천화극이 그의 목을 꿰뚫었다.'],
+        [lb, '조서를 받들어 역적 동탁을 벤다!'],
+        [null, '장안 저잣거리의 백성들이 춤을 추었다. 그러나 동탁의 옛 부하들이 곧 칼을 거꾸로 들었다.'],
+      ] });
+      // 여포와 따르는 이들은 뒤를 잇는 후보에서 빼 둠
+      const followers = ['장료', '고순'].map(byName).filter(o => onIn(o, oldF) && !isRuler(o));
+      for (const o of [lb, ...followers]) o.f = -1;
+      killOfficer(d, `${eun(d.name)} 여포의 손에 죽었습니다 (연환계)`);
+      for (const o of [lb, ...followers]) o.f = oldF;
+      if (!G.factions[oldF].alive) { for (const o of [lb, ...followers]) if (o.st === 'on') leaveToRonin(o); return; }
+      const nr = G.officers[G.factions[oldF].ruler];
+      let c = G.cities[lb.city];
+      if (c.f !== oldF || nr.city === c.id) c = G.cities.filter(x => x.f === oldF && x.id !== nr.city).sort((a, b) => b.troops - a.troops)[0];
+      if (!c) { leaveToRonin(lb); return; }
+      for (const f of followers) { const oc = G.cities[f.city]; if (oc.gov === f.id) oc.gov = -1; f.city = c.id; }
+      if (lb.city !== c.id) { const oc = G.cities[lb.city]; if (oc.gov === lb.id) oc.gov = -1; lb.city = c.id; }
+      splitOff(lb, c, oldF, followers);
+      if (wy && onIn(wy, oldF) && !isP(wy)) killOfficer(wy, `${eun(wy.name)} ${nr.name}의 군사에게 죽었습니다`);
+      logMsg(`${eun(lb.name)} ${c.name}에서 따로 일어섰고, 동탁군은 ${nr.name}${josa(nr.name, '이', '가').slice(nr.name.length)} 이끕니다`, 'big');
+    },
+  },
+
+  // ── 도겸, 서주를 유비에게 맡기다
+  {
+    id: 'xuzhou',
+    cond: () => { const t = rulerNamed('도겸'), lb = rulerNamed('유비'); if (!t || !lb || isP(t) || G.year < 194) return false; const near = G.cities.some(c => c.f === lb.f && ADJ[c.id].some(i => G.cities[i].f === t.f || ADJ[i].some(j => G.cities[j].f === t.f))); return near; },
+    async run() {
+      const t = rulerNamed('도겸'), lb = rulerNamed('유비'), mz = byName('미축');
+      const from = t.f, to = lb.f;
+      const ch = await scene({ title: '서주 양도', involved: isP(lb) || onIn(me(), from), lines: [
+        [null, `병이 깊어진 ${t.name}${josa(t.name, '이', '가').slice(t.name.length)} 머리맡에 유비를 불렀다.`],
+        [t, '천하가 어지러운데 내 아들들은 그릇이 못 되오. 서주의 백성을 맡을 사람은 현덕 공뿐이오. 부디 거절하지 마시오.'],
+        [onIn(mz, from) ? mz : null, '서주의 백성이 모두 사군을 바라고 있습니다.', '서주의 관리와 백성들이 길을 막고 유비에게 머물러 달라고 청한다.'],
+      ], options: isP(lb) ? [{ k: 'take', label: '서주를 받는다' }, { k: 'no', label: '끝내 사양한다' }] : null });
+      if (ch === 'no') { lb.fame += 10; killOfficer(t, `${eun(t.name)} 병으로 세상을 떠났습니다`); logMsg('유비가 서주를 사양했습니다', 'big'); return; }
+      mergeFaction(from, to);
+      killOfficer(t, null);
+      lb.fame += 8;
+      logMsg(`${eun(t.name)} 세상을 떠나며 서주를 유비에게 넘겼습니다`, 'big');
+    },
+  },
+
+  // ── 단금지교: 손책과 주유
+  {
+    id: 'sun_zhou',
+    cond: () => { const s = byName('손책'), z = byName('주유'); return s && s.st === 'on' && age(s) >= 19 && z && z.st === 'ronin'; },
+    async run() {
+      const s = byName('손책'), z = byName('주유');
+      const ch = await scene({ title: '단금지교', involved: isP(s) || isP(z) || onIn(me(), s.f), lines: [
+        [null, '서성에서 함께 자란 동갑내기 두 사람이 다시 만났다.'],
+        [s, '공근, 강동을 평정하려 하네. 자네가 곁에 있어 주게.'],
+        [z, '백부, 우리 둘이 마음을 합하면 그 날카로움은 쇠도 끊을 것이오.'],
+      ], options: isP(z) ? [{ k: 'yes', label: '손책을 돕는다' }, { k: 'no', label: '아직은 홀로 길을 간다' }] : null });
+      if (ch === 'no') return;
+      joinFaction(z, s.f, s.city); z.loy = 100; z.tag = s.tag || z.tag;
+      if (!isP(s) && G.cities[s.city].f === s.f) G.cities[s.city].troops += 3000;
+      logMsg(`${eun(z.name)} 손책과 의를 맺고 ${facName(s.f)}군에 들어왔습니다`, 'big');
+    },
+  },
+
+  // ── 조조, 천자를 맞이하다
+  {
+    id: 'emperor',
+    cond: () => { const c = rulerNamed('조조'); return c && G.year >= 196 && (cityN('허창').f === c.f || cityN('낙양').f === c.f); },
+    async run() {
+      const c = rulerNamed('조조'), xy = byName('순욱');
+      const ch = await scene({ title: '봉천자', involved: isP(c) || onIn(me(), c.f), lines: [
+        [null, '이각과 곽사의 난을 피해 낙양으로 돌아온 천자는 끼니조차 잇지 못하고 있었다.'],
+        [onIn(xy, c.f) ? xy : null, '천자를 받들어 따르지 않는 자를 호령하소서. 이것이 대의이며 대략입니다.', '모사들이 천자를 받들어 천하를 호령하자고 권한다.'],
+        [c, '좋다. 천자를 허도로 모시겠다.'],
+      ], options: isP(c) ? [{ k: 'yes', label: '천자를 맞이한다' }, { k: 'no', label: '천자는 짐이 될 뿐이다' }] : null });
+      if (ch === 'no') return;
+      const cap = cityN('허창').f === c.f ? cityN('허창') : cityN('낙양');
+      cap.gold += 1500; cap.food += 8000;
+      for (const x of G.cities) if (x.f === c.f) x.order = Math.min(100, x.order + 10);
+      c.fame += 20; G.emperor = c.f;
+      for (const f of G.factions) if (f.alive && f.id !== c.f) addRel(c.f, f.id, -5);
+      logMsg(`${eun(c.name)} 천자를 ${cap.name}에 모셨습니다`, 'big');
+    },
+  },
+
+  // ── 관도대전
+  {
+    id: 'guandu',
+    cond: () => { const c = rulerNamed('조조'), y = rulerNamed('원소'); return c && y && G.year >= 199 && facAdj(c.f, y.f); },
+    async run() {
+      const c = rulerNamed('조조'), y = rulerNamed('원소'), hy = byName('허유');
+      delete G.ally[relKey(c.f, y.f)]; G.rel[relKey(c.f, y.f)] = 0;
+      const lines = [
+        [null, '하북을 손에 넣은 원소가 대군을 일으켜 남쪽으로 내려온다. 조조는 관도에서 이를 막는다.'],
+        [y, '조조 따위가 천자를 끼고 거들먹거리는구나. 단숨에 짓밟아 주마!'],
+      ];
+      let ch = 'defect';
+      if (isP(y) && onIn(hy, y.f)) {
+        ch = await scene({ title: '관도대전', involved: true, lines: [...lines, [hy, '주공, 조조의 본진 허도가 비었습니다. 날랜 군사로 허도를 치소서!']], options: [{ k: 'defect', label: '허유의 말을 물리친다' }, { k: 'heed', label: '허유의 계책을 받아들인다' }] });
+      } else {
+        await scene({ title: '관도대전', involved: isP(c) || onIn(me(), c.f) || onIn(me(), y.f), lines });
+      }
+      const ycs = G.cities.filter(x => x.f === y.f && ADJ[x.id].some(i => G.cities[i].f === c.f)).sort((a, b) => b.food - a.food);
+      if (ch === 'heed') {
+        const ccs = G.cities.filter(x => x.f === c.f && ADJ[x.id].some(i => G.cities[i].f === y.f));
+        for (const x of ccs) { x.troops = Math.round(x.troops * .85); x.order = Math.max(0, x.order - 10); }
+        hy.loy = 100;
+        await scene({ title: '관도대전', involved: true, lines: [[null, '원소군의 기습에 조조의 후방이 흔들렸다.']] });
+        return;
+      }
+      if (onIn(hy, y.f) && !isP(hy)) {
+        const dest = G.cities.find(x => x.f === c.f && ADJ[x.id].some(i => G.cities[i].f === y.f)) || G.cities.find(x => x.f === c.f);
+        joinFaction(hy, c.f, dest.id);
+      }
+      if (ycs[0]) { ycs[0].food = Math.round(ycs[0].food * .35); for (const x of ycs) x.troops = Math.round(x.troops * .9); }
+      await scene({ title: '오소 습격', involved: isP(c) || isP(y) || onIn(me(), c.f) || onIn(me(), y.f), lines: [
+        [onIn(hy, c.f) ? hy : null, '원소의 군량은 모두 오소에 쌓여 있소. 그곳만 불태우면 원소군은 사흘을 못 버팁니다.', '원소 진영에서 넘어온 자가 군량이 오소에 쌓여 있다고 알려 왔다.'],
+        [c, '하하, 자원(허유)이 왔으니 일은 끝났다! 내가 직접 오소를 치겠다.'],
+        [null, `오소의 군량 창고가 불길에 휩싸였다. ${ycs[0] ? ycs[0].name + '의 쌀이 바닥나고 ' : ''}원소군의 사기가 꺾였다.`],
+      ] });
+      logMsg('관도에서 조조가 오소의 군량을 불태웠습니다', 'big');
+    },
+  },
+
+  // ── 서서의 천거
+  {
+    id: 'xushu',
+    cond: () => { const l = rulerNamed('유비'), x = byName('서서'); if (!l || !x || x.st !== 'ronin') return false; const near = G.cities.some(c => c.f === l.f && (c.id === x.city || ADJ[c.id].includes(x.city))); return (G.year >= 195 && near) || G.year >= 200; },
+    async run() {
+      const l = rulerNamed('유비'), x = byName('서서');
+      const ch = await scene({ title: '서서', involved: isP(l) || isP(x) || onIn(me(), l.f), lines: [
+        [null, '저잣거리에서 한 선비가 노래를 부른다. "어진 임금은 선비를 구하는데, 선비는 밝은 주인을 모르는구나."'],
+        [l, '그대의 노래에 뜻이 있구려. 나와 함께 백성을 구하지 않겠소?'],
+        [x, '단복이라 불러 주십시오. 미력하나마 사군을 돕겠습니다.'],
+      ], options: isP(x) ? [{ k: 'yes', label: '유비를 섬긴다' }, { k: 'no', label: '좀 더 지켜본다' }] : null });
+      if (ch === 'no') return;
+      joinFaction(x, l.f, l.city); x.loy = 95;
+      logMsg(`${eun(x.name)} 유비를 섬기게 되었습니다`, 'big');
+    },
+  },
+
+  // ── 삼고초려
+  {
+    id: 'three_visits',
+    cond: () => { const l = rulerNamed('유비'), z = byName('제갈량'); return l && z && z.st === 'ronin' && G.year >= 200 && (G.ev.xushu || G.year >= 203); },
+    async run() {
+      const l = rulerNamed('유비'), z = byName('제갈량'), x = byName('서서'), gy = byName('관우'), zf = byName('장비');
+      const sx = onIn(x, l.f) ? x : null;
+      await scene({ title: '와룡', involved: isP(l) || isP(z) || onIn(me(), l.f), lines: [
+        [sx, '융중에 와룡이라 불리는 제갈공명이 있습니다. 그는 불러서 올 사람이 아니니, 사군께서 몸소 찾아가셔야 합니다.', '수경 선생 사마휘가 말한다. "복룡과 봉추, 둘 중 하나만 얻어도 천하를 평정할 수 있소. 복룡은 융중의 제갈공명이오."'],
+        [l, '내가 직접 찾아가겠소.'],
+      ] });
+      if (isP(z)) {
+        const c = await scene({ title: '삼고초려', involved: true, lines: [[null, '눈보라를 뚫고 세 번째로 찾아온 유비가 섬돌 아래에서 공명이 낮잠에서 깨기를 기다린다.']], options: [{ k: 'yes', label: '유비를 따른다' }, { k: 'no', label: '초야에 남는다' }] });
+        if (c === 'no') { l.fame += 5; return; }
+      } else if (isP(l)) {
+        const v1 = await scene({ title: '첫 번째 방문', involved: true, lines: [[null, '융중 초가집. 동자가 문을 연다. "선생님은 아침 일찍 나가셨습니다. 언제 돌아오실지 모릅니다."'], [onIn(zf, l.f) ? zf : null, '형님, 촌사람 하나 때문에 이게 무슨 고생입니까. 돌아갑시다!', '따라온 이들이 투덜거린다.']], options: [{ k: 'again', label: '날을 잡아 다시 찾아간다' }, { k: 'stop', label: '그만둔다' }] });
+        if (v1 === 'stop') return;
+        const v2 = await scene({ title: '두 번째 방문', involved: true, lines: [[null, '한겨울, 눈보라를 뚫고 다시 찾아갔으나 공명은 벗과 함께 놀러 나가고 없었다. 유비는 글을 남기고 돌아선다.'], [onIn(gy, l.f) ? gy : null, '형님, 두 번이나 찾아갔으면 예는 다한 것입니다. 이름만 높은 자가 아닐까 걱정입니다.', '따르는 이들은 이름만 높은 선비가 아니냐며 고개를 젓는다.']], options: [{ k: 'again', label: '봄이 오면 세 번째로 찾아간다' }, { k: 'stop', label: '그만둔다' }] });
+        if (v2 === 'stop') return;
+      }
+      await scene({ title: '삼고초려', involved: isP(l) || isP(z) || onIn(me(), l.f), lines: [
+        [null, '세 번째 방문. 낮잠을 자는 공명을 깨우지 않고, 유비는 섬돌 아래에서 한나절을 서서 기다렸다.'],
+        [z, '조조는 이미 백만 대군을 거느리고 천자를 끼고 있으니 다툴 수 없습니다. 손권은 강동을 삼대째 다스려 백성이 따르니 도울지언정 칠 수 없습니다. 형주와 익주를 차지하여 솥발처럼 셋으로 나누어 선 뒤에야 중원을 도모할 수 있습니다.'],
+        [l, '선생의 말씀에 눈앞의 구름이 걷혔습니다. 부디 저를 도와주십시오.'],
+        [z, '장군께서 이토록 마음을 다하시니, 견마의 수고를 아끼지 않겠습니다.'],
+      ] });
+      joinFaction(z, l.f, l.city); z.loy = 100; z.tag = l.tag || z.tag;
+      l.fame += 10;
+      logMsg(`${eun(z.name)} 삼고초려 끝에 유비를 섬기게 되었습니다 (천하삼분지계)`, 'big');
+    },
+  },
+];
+
+async function runEvents() {
+  G.ev = G.ev || {};
+  for (const ev of EVENTS) {
+    if (G.ev[ev.id] || G.over) continue;
+    let ok = false;
+    try { ok = !!ev.cond(); } catch (e) { console.error('사건 조건 오류', ev.id, e); }
+    if (!ok) continue;
+    G.ev[ev.id] = true;
+    try { await ev.run(); } catch (e) { console.error('사건 오류', ev.id, e); }
+    checkFactions(); assignGovs();
+    if (UI.q.length) await UI.flush();
+  }
+}
+
 // ---- 09-ui.js
 // ===== 화면: 모달·패널·명령 =====
 const STAT_NAMES = { lead: '통솔', war: '무력', int: '지력', pol: '정치', cha: '매력' };
@@ -1935,7 +2302,7 @@ const UI = {
     const v = (x) => vis ? fmt(x) : '?';
     head.append(el('div', { class: 'kv' },
       kvi('인구', v(c.pop)), kvi('금', v(c.gold)), kvi('쌀', v(c.food)),
-      kvi('병사', v(c.troops)), kvi('훈련', vis ? c.train : '?'), kvi('치안', vis ? c.order : '?'),
+      kvi('병사', vis ? `${fmt(c.troops)}` : '?'), kvi('훈련', vis ? c.train : '?'), kvi('치안', vis ? c.order : '?'),
       kvi('농업', vis ? `${c.agri}/${c.agriMax}` : '?'), kvi('상업', vis ? `${c.comm}/${c.commMax}` : '?'), kvi('성벽', vis ? `${c.wall}/${c.wallMax}` : '?')));
     side.append(head);
     // 명령
@@ -2087,7 +2454,7 @@ const UI = {
     const o = await this.pickOfficer(c, { title: '수송을 맡을 장수', stat: 'lead' }); if (!o) return;
     const vals = { gold: 0, food: 0, troops: 0 };
     const row = (key, label, max, step) => { const lab = el('b', { class: 'num', style: 'min-width:70px;text-align:right' }, '0'); return el('label', { class: 'fld' }, label, el('div', { class: 'slider' }, el('input', { type: 'range', id: 'tr_' + key, min: 0, max, step, value: 0, oninput: e => { vals[key] = +e.target.value; lab.textContent = fmt(vals[key]); } }), lab)); };
-    const k = await this.modal({ title: `수송 — ${c.name} → ${to.name}`, body: el('div', { style: 'display:flex;flex-direction:column;gap:10px' }, row('gold', '금', c.gold, 10), row('food', '쌀', c.food, 100), row('troops', '병사', c.troops, 100)), cancel: 'x', buttons: [{ k: 'x', label: '취소' }, { k: 'ok', label: '보낸다', cls: 'pri' }] });
+    const k = await this.modal({ title: `수송 — ${c.name} → ${to.name}`, body: el('div', { style: 'display:flex;flex-direction:column;gap:10px' }, row('gold', '금', c.gold, 10), row('food', '쌀', c.food, 100), row('troops', '병사', Math.min(c.troops, Math.max(0, troopMax(to) - to.troops)), 100)), cancel: 'x', buttons: [{ k: 'x', label: '취소' }, { k: 'ok', label: '보낸다', cls: 'pri' }] });
     if (k !== 'ok') return;
     const r = cmdTransport(o, c, to, vals.gold, vals.food, vals.troops); this.toast(r.msg); this.refresh();
   },
@@ -2362,9 +2729,10 @@ const UI = {
     this.modal({ title: '인물', wide: true, body: box, cancel: 'x', buttons: [{ k: 'x', label: '닫기' }] });
   },
   async menu() {
-    const k = await this.choose({ title: '메뉴', options: [{ k: 'save', label: '저장하기' }, { k: 'load', label: '불러오기' }, { k: 'snd', label: SFX.on ? '소리 끄기' : '소리 켜기' }, { k: 'help', label: '하는 법' }, { k: 'title', label: '처음 화면으로' }, { k: 'x', label: '닫기' }] });
+    const k = await this.choose({ title: `메뉴 · 난이도 ${DIFF().name}`, options: [{ k: 'save', label: '저장하기' }, { k: 'load', label: '불러오기' }, { k: 'snd', label: SFX.on ? '소리 끄기' : '소리 켜기' }, { k: 'scn', label: scenesOn() ? '남의 역사 사건 장면 끄기' : '남의 역사 사건 장면 켜기' }, { k: 'help', label: '하는 법' }, { k: 'title', label: '처음 화면으로' }, { k: 'x', label: '닫기' }] });
     if (k === 'save') this.saveDialog();
     if (k === 'load') this.loadDialog();
+    if (k === 'scn') { store('gunung.scenes', scenesOn() ? '0' : '1'); this.toast(scenesOn() ? '모든 역사 사건을 장면으로 봅니다' : '내가 얽힌 사건만 장면으로 봅니다'); }
     if (k === 'snd') { SFX.toggle(); this.toast(SFX.on ? '소리를 켰습니다' : '소리를 껐습니다'); }
     if (k === 'help') showHelp();
     if (k === 'title') { if (await this.confirm('처음 화면으로', '저장하지 않은 진행은 자동 저장(매달 초)까지만 남습니다.')) showScreen('scrTitle'); }
@@ -2986,14 +3354,14 @@ function startPlaying(isNew) {
       ronin: `재야의 몸으로 ${G.cities[P.city].name}에서 시작합니다.\n떠돌며 인재와 사귀고, 빈 땅에서 거병하거나 마음에 드는 군주에게 사관하세요.`,
     }[r];
     UI.queue({ title: `${G.year}년 ${G.month}월`, portrait: P, text: `동탁이 낙양을 손에 쥐고 천자를 끼고 있다. 각지의 제후들이 들고일어나는 난세가 열렸다.\n\n${txt}` });
-    UI.flush();
+    UI.flush().then(() => runEvents()).then(() => UI.refresh());
   }
 }
 
 const Setup = {
-  mode: null, tab: 'all', stats: null,
+  mode: null, tab: 'all', stats: null, diff: +(store('gunung.diff') ?? 1),
   open() {
-    newGame(); // 고르기용 상태
+    newGame({ diff: this.diff }); // 고르기용 상태
     showScreen('scrSetup');
     this.renderModes();
   },
@@ -3002,6 +3370,9 @@ const Setup = {
     const card = (k, title, desc) => el('button', { class: 'modeCard', onclick: () => { this.mode = k; k === 'create' ? this.renderCreate() : this.renderPick(); } }, el('b', {}, title), el('span', { class: 'muted', style: 'font-size:14px' }, desc));
     box.append(el('div', { style: 'display:flex;align-items:center;gap:10px' }, el('button', { class: 'btn sm ghost', onclick: () => showScreen('scrTitle') }, '◂ 처음으로'), el('h2', {}, '190년 · 반동탁 연합')),
       el('p', { class: 'muted', style: 'margin:0;max-width:65ch' }, '열네 제후와 수많은 재야 인물이 있습니다. 누구로 난세를 살아갈지 고르세요.'),
+      el('div', { style: 'display:flex;flex-direction:column;gap:6px' },
+        el('div', { class: 'tabs', role: 'radiogroup', 'aria-label': '난이도' }, DIFFS.map((d, i) => el('button', { class: 'tab' + (this.diff === i ? ' on' : ''), role: 'radio', 'aria-checked': this.diff === i ? 'true' : 'false', onclick: () => { this.diff = i; G.diff = i; store('gunung.diff', String(i)); this.renderModes(); } }, d.name))),
+        el('div', { class: 'muted', style: 'font-size:13px' }, DIFFS[this.diff].desc)),
       el('div', { class: 'modeCards' },
         card('ruler', '군주로 시작', '세력 하나를 맡아 모든 성을 다스립니다. 고전적인 방식.'),
         card('officer', '장수로 시작', '군주 밑의 장수나 재야 인물이 되어 출세하거나 떠돌거나 독립합니다.'),
