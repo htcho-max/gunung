@@ -156,42 +156,152 @@ const BattleUI = {
     SFX.play('duel');
     return new Promise(res => {
       const layer = $('#modalLayer');
-      let hp = [100, 100], round = 0;
+      let hp = [100, 100], round = 0, busy = false, over = false;
       const bars = [el('i', { style: 'width:100%' }), el('i', { style: 'width:100%' })];
-      const side = (o, i) => el('div', { class: 'side' }, portraitImg(o), el('div', { class: 'disp', style: 'font-size:20px' }, o.name), el('div', { class: 'muted num', style: 'font-size:13px' }, `무력 ${o.war}`), el('div', { class: 'hp' }, bars[i]));
+      const hpTxt = [el('b', { class: 'num' }, '100'), el('b', { class: 'num' }, '100')];
+      const side = (o, i) => el('div', { class: 'side' }, el('div', { style: 'display:flex;align-items:center;gap:8px' }, portraitImg(o, 'dpt'), el('div', {}, el('div', { class: 'disp', style: 'font-size:20px' }, o.name), el('div', { class: 'muted num', style: 'font-size:12px' }, `무력 ${o.war}`))), el('div', { class: 'hp' }, bars[i]), hpTxt[i]);
+      const stage = el('canvas', { class: 'duelStage', width: 640, height: 220 });
       const logBox = el('div', { class: 'duelLog' });
       const btns = el('footer', {});
-      const box = el('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true' },
-        el('header', {}, el('h4', {}, '일기토')),
-        el('div', { class: 'body' }, el('div', { class: 'duel' }, side(A, 0), el('div', { class: 'vs' }, '對'), side(D, 1)), logBox), btns);
+      const box = el('div', { class: 'modal wide', role: 'dialog', 'aria-modal': 'true' },
+        el('header', {}, el('h4', {}, '일기토'), el('span', { class: 'muted num', id: 'duelRound', style: 'font-size:13px' }, '')),
+        el('div', { class: 'body' }, stage, el('div', { class: 'duel' }, side(A, 0), el('div', { class: 'vs' }, '對'), side(D, 1)), logBox), btns);
       layer.innerHTML = ''; layer.append(box); layer.classList.add('on');
-      const close = () => { layer.classList.remove('on'); layer.innerHTML = ''; res(); };
-      const finish = (how, winner) => {
+      // ── 무대
+      const sx = stage.getContext('2d');
+      const dpr = Math.min(2, devicePixelRatio || 1); stage.width = 640 * dpr; stage.height = 220 * dpr; sx.scale(dpr, dpr);
+      const imgs = [A, D].map(o => { const im = new Image(); im.src = portraitURL(o); return im; });
+      const cols = [facColor(B.units[cu.id].side === 0 ? B.attF : B.defF), facColor(tu.side === 0 ? B.attF : B.defF)];
+      const horseCol = o => o.name === '여포' ? '#a8321d' : o.name === '조운' || o.name === '마초' ? '#e8e2d6' : o.name === '장비' ? '#2a2420' : ['#6b4a2e', '#4a3424', '#8a6a48', '#3a2a20'][hashStr(o.name) % 4];
+      const weapon = o => ({ 관우: 'glaive', 장비: 'serpent', 여포: 'halberd', 조운: 'spear', 마초: 'spear', 황충: 'saber', 허저: 'saber', 전위: 'axes' })[o.name] || (o.war >= 80 ? 'spear' : 'saber');
+      const R = [{ x: 120, y: 150, dir: 1, fall: 0, off: 0, flash: 0, guard: 0, turn: 0 }, { x: 520, y: 150, dir: -1, fall: 0, off: 0, flash: 0, guard: 0, turn: 0 }];
+      const fx = []; let shakeT = 0, raf = 0;
+      const drawRider = (i, now) => {
+        const r = R[i], o = [A, D][i];
+        const gal = Math.abs(r.vx || 0) > .5 ? 1 : .25, ph = now / (gal > .5 ? 90 : 300) + i;
+        const bob = Math.sin(ph * 2) * 3 * gal;
+        sx.save(); sx.translate(r.x, r.y + bob); sx.scale(r.dir * (r.turn ? -1 : 1), 1);
+        // 그림자
+        sx.fillStyle = 'rgba(0,0,0,.35)'; sx.beginPath(); sx.ellipse(0, 52 - bob, 52, 8, 0, 0, 7); sx.fill();
+        // 말
+        const hc = horseCol(o);
+        sx.strokeStyle = shade(hc, -40); sx.lineWidth = 6; sx.lineCap = 'round';
+        const leg = (lx, ofs) => { const a = Math.sin(ph + ofs) * .6 * gal; sx.beginPath(); sx.moveTo(lx, 10); sx.lineTo(lx + Math.sin(a) * 18, 30); sx.lineTo(lx + Math.sin(a) * 12 + 4, 50); sx.stroke(); };
+        leg(-26, 0); leg(22, Math.PI);
+        sx.fillStyle = hc; sx.beginPath(); sx.ellipse(0, 4, 40, 17, 0, 0, 7); sx.fill();
+        sx.beginPath(); sx.moveTo(26, -4); sx.quadraticCurveTo(42, -22, 46, -38); sx.lineTo(60, -34); sx.quadraticCurveTo(62, -26, 54, -24); sx.quadraticCurveTo(46, -10, 36, 8); sx.closePath(); sx.fill();
+        sx.fillStyle = shade(hc, -45); sx.beginPath(); sx.moveTo(30, -10); sx.quadraticCurveTo(38, -36, 46, -40); sx.lineTo(42, -28); sx.quadraticCurveTo(36, -14, 34, -4); sx.fill();
+        sx.beginPath(); sx.moveTo(-38, 0); sx.quadraticCurveTo(-60, 4 + Math.sin(ph) * 6, -58, 26); sx.lineTo(-52, 24); sx.quadraticCurveTo(-52, 8, -38, 6); sx.fill();
+        leg(-18, Math.PI * .7); leg(30, Math.PI * 1.6);
+        sx.fillStyle = cols[i]; sx.fillRect(-16, -12, 30, 8);
+        // 기수 (떨어지면 기울어짐)
+        sx.save(); sx.translate(0, -12); sx.rotate(-r.fall * 1.4); sx.translate(-r.fall * 30, r.fall * 30);
+        sx.fillStyle = shade(cols[i], -20); sx.beginPath(); sx.moveTo(-12, 0); sx.lineTo(12, 0); sx.lineTo(10, -34); sx.lineTo(-10, -34); sx.closePath(); sx.fill();
+        sx.fillStyle = '#5d636b'; sx.fillRect(-12, -34, 24, 10);
+        // 무기
+        const sw = (r.swing || 0);
+        sx.save(); sx.translate(8, -26); sx.rotate(-.9 + sw * 1.6 - (r.guard ? .9 : 0));
+        const wp = weapon(o);
+        sx.strokeStyle = '#4a3020'; sx.lineWidth = 3; sx.beginPath(); sx.moveTo(-14, 0); sx.lineTo(wp === 'saber' || wp === 'axes' ? 30 : 64, 0); sx.stroke();
+        sx.fillStyle = '#e6e9ee'; sx.strokeStyle = '#8a9099'; sx.lineWidth = 1;
+        if (wp === 'glaive') { sx.beginPath(); sx.moveTo(60, -2); sx.quadraticCurveTo(84, -16, 92, 2); sx.quadraticCurveTo(80, 4, 62, 4); sx.closePath(); sx.fill(); sx.stroke(); sx.fillStyle = '#2f6b46'; sx.beginPath(); sx.arc(58, 0, 3, 0, 7); sx.fill(); }
+        else if (wp === 'serpent') { sx.beginPath(); sx.moveTo(62, -3); for (let k = 0; k < 5; k++) sx.lineTo(66 + k * 6, k % 2 ? 3 : -3); sx.lineTo(96, 0); sx.lineTo(66, 3); sx.closePath(); sx.fill(); sx.stroke(); }
+        else if (wp === 'halberd') { sx.beginPath(); sx.moveTo(62, -2); sx.lineTo(90, 0); sx.lineTo(62, 2); sx.fill(); sx.beginPath(); sx.moveTo(56, -2); sx.quadraticCurveTo(52, -16, 62, -18); sx.quadraticCurveTo(60, -8, 64, -2); sx.fill(); sx.beginPath(); sx.moveTo(56, 2); sx.quadraticCurveTo(52, 16, 62, 18); sx.quadraticCurveTo(60, 8, 64, 2); sx.fill(); }
+        else if (wp === 'spear') { sx.beginPath(); sx.moveTo(62, -3); sx.lineTo(82, 0); sx.lineTo(62, 3); sx.closePath(); sx.fill(); sx.stroke(); sx.fillStyle = '#c94a30'; sx.beginPath(); sx.moveTo(60, 0); sx.lineTo(54, 8); sx.lineTo(57, 0); sx.fill(); }
+        else if (wp === 'axes') { sx.beginPath(); sx.moveTo(26, -2); sx.quadraticCurveTo(36, -14, 40, 0); sx.quadraticCurveTo(36, 14, 26, 2); sx.fill(); sx.stroke(); }
+        else { sx.beginPath(); sx.moveTo(28, -3); sx.quadraticCurveTo(56, -6, 62, 0); sx.lineTo(28, 3); sx.closePath(); sx.fill(); sx.stroke(); }
+        sx.restore();
+        if (r.guard) { sx.strokeStyle = `rgba(160,210,255,${.5 + Math.sin(now / 80) * .3})`; sx.lineWidth = 3; sx.beginPath(); sx.arc(14, -30, 26, -1.2, 1.2); sx.stroke(); }
+        // 머리 = 초상
+        const im = imgs[i];
+        sx.save(); sx.translate(0, -48); sx.scale(r.dir * (r.turn ? -1 : 1), 1);
+        sx.beginPath(); sx.arc(0, 0, 16, 0, 7); sx.closePath(); sx.save(); sx.clip();
+        if (im.complete && im.naturalWidth) sx.drawImage(im, 14, 6, 92, 92, -16, -16, 32, 32); else { sx.fillStyle = '#d6a87e'; sx.fill(); }
+        sx.restore(); sx.strokeStyle = cols[i]; sx.lineWidth = 2.5; sx.stroke();
+        sx.restore();
+        sx.restore();
+        if (r.flash > 0) { sx.fillStyle = `rgba(255,80,50,${r.flash})`; sx.beginPath(); sx.arc(0, -30, 40, 0, 7); sx.fill(); }
+        sx.restore();
+      };
+      const loop = now => {
+        raf = requestAnimationFrame(loop);
+        sx.save();
+        if (now - shakeT < 220) sx.translate((Math.random() - .5) * 8, (Math.random() - .5) * 6);
+        // 들판
+        const sky = sx.createLinearGradient(0, 0, 0, 220); sky.addColorStop(0, '#3a4a50'); sky.addColorStop(.55, '#6a6650'); sky.addColorStop(.56, '#7d8550'); sky.addColorStop(1, '#4a5a30');
+        sx.fillStyle = sky; sx.fillRect(-10, -10, 660, 240);
+        sx.fillStyle = 'rgba(30,40,40,.45)'; sx.beginPath(); sx.moveTo(0, 122); for (let k = 0; k <= 16; k++) sx.lineTo(k * 40, 100 + Math.sin(k * 1.7) * 14); sx.lineTo(640, 122); sx.fill();
+        sx.fillStyle = 'rgba(200,170,110,.08)'; for (let k = 0; k < 6; k++) { sx.beginPath(); sx.ellipse(((now / 40 + k * 130) % 760) - 60, 190 + (k % 3) * 8, 30, 4, 0, 0, 7); sx.fill(); }
+        // 깃발 두 개
+        for (const [fxp, c2] of [[30, cols[0]], [610, cols[1]]]) { sx.strokeStyle = '#2a1a0a'; sx.lineWidth = 2; sx.beginPath(); sx.moveTo(fxp, 200); sx.lineTo(fxp, 120); sx.stroke(); sx.fillStyle = c2; sx.beginPath(); sx.moveTo(fxp, 122); for (let k = 1; k <= 5; k++) sx.lineTo(fxp + k * 5 * (fxp < 300 ? 1 : -1), 122 + Math.sin(now / 200 + k) * 2); sx.lineTo(fxp + 25 * (fxp < 300 ? 1 : -1), 146); sx.lineTo(fxp, 146); sx.fill(); }
+        for (const i of [0, 1]) { const r = R[i]; r.flash = Math.max(0, r.flash - .04); drawRider(i, now); }
+        // 불꽃과 숫자
+        for (let k = fx.length - 1; k >= 0; k--) {
+          const f = fx[k], t = (now - f.t0) / f.dur; if (t > 1) { fx.splice(k, 1); continue; }
+          if (f.kind === 'spark') { for (let j = 0; j < 14; j++) { const a = j * .45 + f.t0, rr = 8 + t * 60; sx.fillStyle = `rgba(255,${200 + j * 3},120,${1 - t})`; sx.beginPath(); sx.arc(f.x + Math.cos(a) * rr, f.y + Math.sin(a) * rr * .7, 2.2, 0, 7); sx.fill(); } sx.fillStyle = `rgba(255,255,230,${(1 - t) * .8})`; sx.beginPath(); sx.arc(f.x, f.y, 16 * (1 - t) + 4, 0, 7); sx.fill(); }
+          if (f.kind === 'num') { sx.font = "bold 26px 'Song Myung',serif"; sx.textAlign = 'center'; sx.lineWidth = 5; sx.strokeStyle = 'rgba(30,8,4,.9)'; sx.globalAlpha = 1 - t * t; sx.strokeText(f.text, f.x, f.y - t * 40); sx.fillStyle = f.col; sx.fillText(f.text, f.x, f.y - t * 40); sx.globalAlpha = 1; }
+          if (f.kind === 'word') { sx.font = "40px 'Song Myung',serif"; sx.textAlign = 'center'; sx.globalAlpha = Math.min(1, (1 - t) * 3); sx.lineWidth = 6; sx.strokeStyle = 'rgba(30,8,4,.9)'; sx.strokeText(f.text, 320, 70); sx.fillStyle = '#f3d991'; sx.fillText(f.text, 320, 70); sx.globalAlpha = 1; }
+        }
+        sx.restore();
+      };
+      raf = requestAnimationFrame(loop);
+      const tween = (ms, fn) => new Promise(r => { const t0 = performance.now(); const tick = () => { const t = Math.min(1, (performance.now() - t0) / ms); fn(t); if (t < 1) requestAnimationFrame(tick); else r(); }; tick(); });
+      const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const play = async (acts, r) => {
+        if (still) return;
+        // 달려 나가 맞부딪힘
+        const atk = acts.map(a => a === 'atk' || a === 'power');
+        R[0].guard = acts[0] === 'guard'; R[1].guard = acts[1] === 'guard';
+        const fled = r.fled;
+        if (fled >= 0) {
+          const f = R[fled]; f.turn = 1;
+          await tween(700, t => { f.vx = 1; f.x += f.dir * -9; });
+          f.vx = 0; return;
+        }
+        const x0 = [R[0].x, R[1].x];
+        await tween(320, t => { const e = t * t; R[0].vx = 1; R[1].vx = 1; R[0].x = x0[0] + (290 - 60 - x0[0]) * e; R[1].x = x0[1] + (350 + 60 - x0[1]) * e; R[0].swing = atk[0] ? t : 0; R[1].swing = atk[1] ? t : 0; });
+        SFX.play('clash'); fx.push({ kind: 'spark', x: 320, y: 112, t0: performance.now(), dur: 450 });
+        if (acts.includes('power')) shakeT = performance.now();
+        for (const i of [0, 1]) if (r.dmg[i] > 0) { R[i].flash = .7; fx.push({ kind: 'num', text: '−' + r.dmg[i], col: '#ffb09a', x: i ? 420 : 220, y: 80, t0: performance.now() + 60, dur: 900 }); if (r.dmg[i] >= 25) shakeT = performance.now(); }
+        await tween(160, t => { R[0].swing = atk[0] ? 1 - t : 0; R[1].swing = atk[1] ? 1 - t : 0; });
+        await tween(380, t => { R[0].x = 230 + (120 - 230) * t; R[1].x = 410 + (520 - 410) * t; R[0].vx = R[1].vx = t < .9 ? 1 : 0; });
+        R[0].vx = R[1].vx = 0; R[0].guard = R[1].guard = false;
+      };
+      const close = () => { cancelAnimationFrame(raf); layer.classList.remove('on'); layer.innerHTML = ''; res(); };
+      const finish = async (how, winner) => {
+        over = true;
+        if (how === 'ko' && !still) { const l = R[1 - winner]; fx.push({ kind: 'word', text: `${[A, D][winner].name} 승리!`, t0: performance.now(), dur: 2400 }); await tween(600, t => { l.fall = t; }); SFX.play('win'); }
+        if (how === 'draw') fx.push({ kind: 'word', text: '승부 없음', t0: performance.now(), dur: 2000 });
         if (how === 'draw') duelFinish(B, cu, tu, 'draw');
         else if (how === 'fled') duelFinish(B, winner === 0 ? cu : tu, winner === 0 ? tu : cu, 'fled');
         else duelFinish(B, winner === 0 ? cu : tu, winner === 0 ? tu : cu, 'ko');
-        btns.innerHTML = ''; let closed = false; const cl = () => { if (!closed) { closed = true; close(); } }; btns.append(el('button', { class: 'btn pri', onclick: cl }, '전장으로')); if (myIdx < 0) setTimeout(cl, 1600);
+        btns.innerHTML = ''; let closed = false; const cl = () => { if (!closed) { closed = true; close(); } }; btns.append(el('button', { class: 'btn pri', onclick: cl }, '전장으로')); if (myIdx < 0) setTimeout(cl, 1800);
         btns.querySelector('button').focus();
       };
-      const step = act => {
-        round++;
+      const step = async act => {
+        if (busy || over) return; busy = true; round++;
+        $('#duelRound') && ($('#duelRound').textContent = `${round}합`);
+        btns.querySelectorAll('button').forEach(b => b.disabled = true);
         const acts = [myIdx === 0 ? act : duelAI(A, D, hp[0], hp[1]), myIdx === 1 ? act : duelAI(D, A, hp[1], hp[0])];
         const r = duelRound(A, D, hp, acts);
+        await play(acts, r);
         logBox.innerHTML = ''; r.text.forEach(t => logBox.append(el('div', {}, t)));
-        if (r.dmg[0] + r.dmg[1] > 0) SFX.play('clash');
+        busy = false;
         if (r.fled >= 0) { logBox.append(el('div', { style: 'color:var(--brass)' }, '일기토가 끝났다')); return finish('fled', 1 - r.fled); }
         hp[0] = Math.max(0, hp[0] - r.dmg[0]); hp[1] = Math.max(0, hp[1] - r.dmg[1]);
-        bars[0].style.width = hp[0] + '%'; bars[1].style.width = hp[1] + '%';
-        if (hp[0] <= 0 || hp[1] <= 0) { const w = hp[0] > hp[1] ? 0 : 1; logBox.append(el('div', { style: 'color:var(--brass)' }, `${[A, D][w].name}의 승리!`)); SFX.play('win'); return finish('ko', w); }
+        bars[0].style.width = hp[0] + '%'; bars[1].style.width = hp[1] + '%'; hpTxt[0].textContent = hp[0]; hpTxt[1].textContent = hp[1];
+        if (hp[0] <= 0 || hp[1] <= 0) { const w = hp[0] > hp[1] ? 0 : 1; logBox.append(el('div', { style: 'color:var(--brass)' }, `${[A, D][w].name}의 승리!`)); return finish('ko', w); }
         if (round >= 10) { logBox.append(el('div', {}, '날이 저물어 승부를 내지 못했다')); return finish('draw'); }
-        if (myIdx < 0) setTimeout(() => step(null), 650); else drawBtns();
+        if (myIdx < 0) setTimeout(() => step(null), 350); else drawBtns();
       };
       const drawBtns = () => {
         btns.innerHTML = '';
-        for (const [k, l] of Object.entries(DUEL_ACTS)) btns.append(el('button', { class: 'btn' + (k === 'atk' ? ' pri' : ''), onclick: () => step(k) }, l));
+        const ic = { atk: 'sword', power: 'fire', guard: 'order', flee: 'retreat' };
+        for (const [k, l] of Object.entries(DUEL_ACTS)) btns.append(el('button', { class: 'btn' + (k === 'atk' ? ' pri' : k === 'power' ? ' red' : ''), onclick: () => step(k) }, icon(ic[k]), l));
       };
       logBox.append(el('div', {}, `${wa(A.name)} ${iga(D.name)} 말을 몰아 맞선다!`));
-      if (myIdx < 0) setTimeout(() => step(null), 700); else drawBtns();
+      fx.push({ kind: 'word', text: '일기토!', t0: performance.now(), dur: 1400 });
+      if (myIdx < 0) setTimeout(() => step(null), 900); else drawBtns();
     });
   },
 

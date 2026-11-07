@@ -9,6 +9,7 @@ await p.fill('#newName', '한결'); await p.selectOption('#newCity', String(awai
 await p.screenshot({ path: SH + 'm_create.png' });
 await p.click('button:has-text("이 인물로 시작")'); await p.waitForTimeout(400);
 await p.click('#modalLayer .btn.pri'); await p.waitForTimeout(300);
+for (let i = 0; i < 6; i++) { await p.waitForTimeout(250); const m = await p.$('#modalLayer.on footer .btn.pri'); if (!m) break; await m.click(); }
 await p.screenshot({ path: SH + 'm_game.png' });
 // 탐색 → 친교 → 이동
 await p.click('.cmd:has-text("탐색")'); await p.waitForTimeout(300);

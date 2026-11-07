@@ -111,7 +111,7 @@ const EVENTS = [
   // ── 손견, 현산에서 지다
   {
     id: 'sunjian_death',
-    cond: () => { const s = rulerNamed('손견'); const lb = G.factions.find(f => f.key === 'lbi' && f.alive); return s && lb && mIdx() >= 16 && mIdx() <= 40 && facAdj(s.f, lb.id) && chance(.2); },
+    cond: () => { const s = rulerNamed('손견'); const lb = G.factions.find(f => f.key === 'lbi' && f.alive); return s && lb && mIdx() >= 16 && mIdx() <= 40 && (facAdj(s.f, lb.id) || (HIST() && mIdx() >= 24)) && chance(HIST() ? .2 + Math.max(0, mIdx() - 16) * .06 : .2); },
     async run() {
       const s = rulerNamed('손견'), hz = byName('황조'), lb = G.factions.find(f => f.key === 'lbi');
       const lines = [
@@ -193,6 +193,7 @@ const EVENTS = [
       ], options: isP(lb) ? [{ k: 'take', label: '서주를 받는다' }, { k: 'no', label: '끝내 사양한다' }] : null });
       if (ch === 'no') { lb.fame += 10; killOfficer(t, `${eun(t.name)} 병으로 세상을 떠났습니다`); logMsg('유비가 서주를 사양했습니다', 'big'); return; }
       mergeFaction(from, to);
+      for (const x of G.focus || []) if (x.t === from) x.t = to;
       killOfficer(t, null);
       lb.fame += 8;
       logMsg(`${eun(t.name)} 세상을 떠나며 서주를 유비에게 넘겼습니다`, 'big');
@@ -245,6 +246,7 @@ const EVENTS = [
     async run() {
       const c = rulerNamed('조조'), y = rulerNamed('원소'), hy = byName('허유');
       delete G.ally[relKey(c.f, y.f)]; G.rel[relKey(c.f, y.f)] = 0;
+      addFocus(c.f, y.f, 30); addFocus(y.f, c.f, 30);
       const lines = [
         [null, '하북을 손에 넣은 원소가 대군을 일으켜 남쪽으로 내려온다. 조조는 관도에서 이를 막는다.'],
         [y, '조조 따위가 천자를 끼고 거들먹거리는구나. 단숨에 짓밟아 주마!'],
@@ -325,6 +327,160 @@ const EVENTS = [
       logMsg(`${eun(z.name)} 삼고초려 끝에 유비를 섬기게 되었습니다 (천하삼분지계)`, 'big');
     },
   },
+// ── 반동탁 연합: 시작할 때 동맹 1년, 동탁을 함께 침
+  {
+    id: 'coalition',
+    cond: () => mIdx() <= 3 && !!rulerNamed('동탁') && !!rulerNamed('원소'),
+    async run() {
+      const d = rulerNamed('동탁'), y = rulerNamed('원소'), c = byName('조조');
+      const keys = ['ys', 'cc', 'sj', 'ysh', 'hf', 'kr', 'gz', 'tq'];
+      const mem = G.factions.filter(f => f.alive && keys.includes(f.key)).map(f => f.id);
+      for (const a of mem) { for (const b of mem) if (a < b) makeAllyFor(a, b, 12); addFocus(a, d.f, 12); addRel(a, d.f, -30); }
+      await scene({ title: '반동탁 연합', involved: mem.includes(me()?.f) || onIn(me(), d.f), lines: [
+        [null, '동관에 격문이 나붙었다. 역적 동탁을 치자는 조조의 거짓 조서에 열여덟 제후가 호응한다.'],
+        [onIn(c, c?.f) ? c : null, '천하의 제후들이여, 함께 역적을 쳐 한실을 바로 세웁시다!', '격문을 띄운 이는 진류의 조조였다.'],
+        [y, '사세삼공의 이름을 걸고, 이 원본초가 맹주를 맡겠소.'],
+        [null, `${mem.map(f => G.factions[f].name).join('·')}의 군이 동맹을 맺었다 (1년). 동탁은 사수관과 호뢰관에서 이를 막는다.`],
+      ] });
+      logMsg('반동탁 연합이 결성되었습니다 (맹주 원소, 1년 동맹)', 'big');
+    },
+  },
+
+  // ── 원소, 기주를 얻다
+  {
+    id: 'jizhou',
+    cond: () => { const y = rulerNamed('원소'), H = G.factions.find(f => f.key === 'hf' && f.alive); return y && H && mIdx() >= 16 && !isP(G.officers[H.ruler]) && facAdj(y.f, H.id); },
+    async run() {
+      const y = rulerNamed('원소'), H = G.factions.find(f => f.key === 'hf' && f.alive), h = G.officers[H.ruler], fg = byName('봉기'), from = H.id;
+      await scene({ title: '기주 양도', involved: isP(y) || onIn(me(), from) || onIn(me(), y.f), lines: [
+        [onIn(fg, y.f) ? fg : null, '공손찬을 꾀어 기주를 치게 하면 한복은 겁을 먹고 주공께 기주를 바칠 것입니다.', '원소의 모사들은 공손찬을 부추겨 한복을 겁주었다.'],
+        [h, h.name === '한복' ? '나는 본래 원씨의 옛 관리였소. 재주도 원본초만 못하니 기주를 그에게 맡기겠소.' : '기주를 지킬 힘이 없으니, 원본초 공께 의탁하겠소.'],
+        [null, '저수와 심배 같은 기주의 인재들이 원소 아래로 들어갔다. 하북의 패자가 태어나는 순간이었다.'],
+      ] });
+      mergeFaction(from, y.f);
+      if (HIST()) for (const c of citiesOf(y.f)) { c.troops = Math.min(troopMax(c), c.troops + 2500); c.gold += 400; }
+      logMsg('한복이 기주를 원소에게 넘겼습니다', 'big');
+    },
+  },
+
+  // ── (역사를 따라) 연환계가 어긋나도 동탁은 192년에 쓰러짐
+  {
+    id: 'dong_death',
+    cond: () => HIST() && mIdx() >= 31 && !!rulerNamed('동탁') && !isP(rulerNamed('동탁')) && !isP(byName('여포')),
+    async run() {
+      const d = rulerNamed('동탁'), wy = byName('왕윤');
+      G.ev.chain = true;
+      await scene({ title: '동탁의 최후', involved: onIn(me(), d.f), lines: [
+        [onIn(wy, d.f) ? wy : null, '역적의 명은 오늘로 끝이다.', '사도 왕윤이 은밀히 무사들을 모았다.'],
+        [null, '입궐하던 동탁은 궁문 앞에서 숨어 있던 무사들의 창에 찔려 쓰러졌다. 장안의 백성들은 그의 배꼽에 심지를 꽂아 불을 밝혔다고 한다.'],
+      ] });
+      killOfficer(d, `${eun(d.name)} 장안에서 암살당했습니다`);
+    },
+  },
+
+  // ── 조숭 피살: 조조가 도겸을 원수로 삼다
+  {
+    id: 'cao_song',
+    cond: () => { const c = rulerNamed('조조'), t = rulerNamed('도겸'); return c && t && G.year >= 193 && G.month >= 6; },
+    async run() {
+      const c = rulerNamed('조조'), t = rulerNamed('도겸');
+      const ch = await scene({ title: '조숭 피살', involved: isP(c) || isP(t) || onIn(me(), c.f) || onIn(me(), t.f), lines: [
+        [null, '낭야에서 피난하던 조조의 아버지 조숭 일가가 서주를 지나다 도겸의 부하 장개에게 몰살당했다.'],
+        [c, '도겸, 이 원수는 서주 땅을 피로 씻어서라도 갚겠다!'],
+      ], options: isP(c) ? [{ k: 'war', label: '서주를 친다 (도겸군을 숙적으로)' }, { k: 'calm', label: '분을 삭이고 때를 기다린다' }] : null });
+      if (ch === 'calm') { c.fame += 5; return; }
+      delete G.ally[relKey(c.f, t.f)]; G.rel[relKey(c.f, t.f)] = 0;
+      addFocus(c.f, t.f, 24, '조조가 아버지의 원수를 갚으려 서주를 노립니다');
+    },
+  },
+
+  // ── 이각·곽사의 난
+  {
+    id: 'li_guo',
+    cond: () => { const F = G.factions.find(f => f.key === 'dz' && f.alive); if (!F || G.year < 195) return false; const r = G.officers[F.ruler]; const other = r.name === '이각' ? byName('곽사') : r.name === '곽사' ? byName('이각') : null; return !!other && onIn(other, F.id) && citiesOf(F.id).length >= 2 && !isP(other); },
+    async run() {
+      const F = G.factions.find(f => f.key === 'dz' && f.alive), r = G.officers[F.ruler];
+      const other = r.name === '이각' ? byName('곽사') : byName('이각');
+      await scene({ title: '이각·곽사의 난', involved: onIn(me(), F.id), lines: [
+        [null, '동탁이 죽은 뒤 장안을 차지한 이각과 곽사는 서로를 의심하기 시작했다.'],
+        [other, `${r.name}, 네가 천자를 끼고 홀로 권세를 누리려 하는구나!`],
+        [null, '장안 거리에서 두 사람의 군사가 맞붙었고, 그 틈에 천자는 낙양으로 몸을 피했다.'],
+      ] });
+      let c = G.cities.filter(x => x.f === F.id && x.id !== r.city).sort((a, b) => b.troops - a.troops)[0];
+      if (!c) return;
+      const oc = G.cities[other.city]; if (oc.gov === other.id) oc.gov = -1; other.city = c.id;
+      const NF = splitOff(other, c, F.id, []);
+      addFocus(NF.id, F.id, 24); addFocus(F.id, NF.id, 24);
+      logMsg(`${eun(other.name)} ${r.name}와 갈라서서 ${c.name}에서 따로 섰습니다`, 'big');
+    },
+  },
+
+  // ── 원술 칭제
+  {
+    id: 'yuan_emperor',
+    cond: () => !!rulerNamed('원술') && G.year >= 197,
+    async run() {
+      const y = rulerNamed('원술'), F = G.factions[y.f];
+      const ch = await scene({ title: '원술 칭제', involved: isP(y) || onIn(me(), y.f) || G.cities.some(c => c.f === me()?.f && ADJ[c.id].some(i => G.cities[i].f === y.f)), lines: [
+        [null, '수춘에서 원술이 스스로 황제라 일컫고 나라 이름을 중(仲)이라 했다.'],
+        [y, '한의 운은 다했다. 옥새와 하늘의 뜻이 내게 있으니, 짐이 천명을 받는다!'],
+        [null, '천하의 제후들이 한목소리로 원술을 역적이라 꾸짖었다.'],
+      ], options: isP(y) ? [{ k: 'yes', label: '황제를 칭한다 (금 3,000, 모두가 적이 됨)' }, { k: 'no', label: '아직 때가 아니다' }] : null });
+      if (ch === 'no') return;
+      const cap = G.cities[y.city]; if (cap.f === y.f) cap.gold += 3000;
+      for (const f of G.factions) if (f.alive && f.id !== y.f) { delete G.ally[relKey(f.id, y.f)]; addRel(f.id, y.f, -40); if (facAdj(f.id, y.f)) addFocus(f.id, y.f, 24); }
+      for (const o of factionOfficers(y.f)) if (!isRuler(o) && !(o.tag && o.tag === y.tag)) o.loy = Math.max(0, o.loy - 12);
+      y.fame -= 10;
+      logMsg('원술이 황제를 칭했습니다. 천하가 그를 역적이라 부릅니다', 'big');
+    },
+  },
+
+  // ── 하비성: 조조가 여포를 노림
+  {
+    id: 'xiapi',
+    cond: () => { const c = rulerNamed('조조'), l = rulerNamed('여포'); return c && l && G.year >= 197 && G.month >= 9 && facAdj(c.f, l.f); },
+    async run() {
+      const c = rulerNamed('조조'), l = rulerNamed('여포'), cg = byName('진궁');
+      await scene({ title: '하비 공방', involved: isP(c) || isP(l) || onIn(me(), c.f) || onIn(me(), l.f), lines: [
+        [c, '여포는 승냥이 같은 자다. 지금 없애지 않으면 뒷날 큰 화가 된다.'],
+        [onIn(cg, l.f) ? cg : null, '장군, 성 밖에 진을 쳐 기각지세를 이루소서. 성 안에만 있으면 굶어 죽습니다.', '여포의 모사들은 성 밖으로 나가 싸우자고 간했지만 여포는 듣지 않았다.'],
+        [l, '내게는 적토마와 방천화극이 있다. 무엇이 두려우랴!'],
+      ] });
+      delete G.ally[relKey(c.f, l.f)];
+      addFocus(c.f, l.f, 24, '조조가 여포를 치러 나섭니다');
+    },
+  },
+
+  // ── 역경: 원소가 공손찬을 몰아붙임
+  {
+    id: 'yijing',
+    cond: () => { const y = rulerNamed('원소'), g = rulerNamed('공손찬'); return y && g && G.year >= 198 && facAdj(y.f, g.f); },
+    async run() {
+      const y = rulerNamed('원소'), g = rulerNamed('공손찬');
+      await scene({ title: '역경루', involved: isP(y) || isP(g) || onIn(me(), y.f) || onIn(me(), g.f), lines: [
+        [g, '역경에 높은 누각을 쌓고 곡식 삼백만 섬을 쌓아 두었다. 천하가 어지러워도 여기서 버티면 그만이다.'],
+        [null, '공손찬이 성에 틀어박히자 원소는 땅굴을 파서 누각을 무너뜨리기로 했다.'],
+      ] });
+      addFocus(y.f, g.f, 30, '원소가 공손찬을 끝장내려 합니다');
+      if (HIST()) for (const c of citiesOf(y.f).filter(c => ADJ[c.id].some(i => G.cities[i].f === g.f))) { c.troops = Math.min(troopMax(c), c.troops + 6000); c.train = Math.max(c.train, 75); }
+      for (const c of citiesOf(g.f)) c.wall = Math.min(c.wallMax, c.wall + 150);
+    },
+  },
+
+  // ── 손책의 죽음
+  {
+    id: 'sun_ce_death',
+    cond: () => { const s = rulerNamed('손책'); return HIST() && s && !isP(s) && G.year >= 200 && G.month >= 4; },
+    async run() {
+      const s = rulerNamed('손책'), q = byName('손권');
+      await scene({ title: '소패왕의 죽음', involved: onIn(me(), s.f), lines: [
+        [null, '사냥을 나간 손책이 허공의 식객들이 쏜 화살에 얼굴을 맞았다.'],
+        [s, `중원의 군사를 이끌고 천하와 다투는 일은 네가 나만 못하다. 그러나 어진 이를 들어 강동을 지키는 일은 내가 너만 못하다. ${onIn(q, s.f) ? '중모야, 강동을 부탁한다.' : ''}`],
+      ] });
+      killOfficer(s, `${eun(s.name)} 자객의 화살에 맞은 상처로 세상을 떠났습니다 (향년 ${age(s)}세)`);
+    },
+  },
+
 ];
 
 async function runEvents() {

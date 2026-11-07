@@ -10,6 +10,7 @@ await p.click('.modeCard >> nth=0'); await p.waitForTimeout(200); await p.screen
 await p.click('.ofCard:has-text("조조")'); await p.waitForTimeout(400);
 await p.screenshot({ path: SH + tag + '_intro.png' });
 await p.click('#modalLayer .btn.pri'); await p.waitForTimeout(300);
+for (let i = 0; i < 6; i++) { await p.waitForTimeout(250); const m = await p.$('#modalLayer.on footer .btn.pri'); if (!m) break; await m.click(); }
 await p.screenshot({ path: SH + tag + '_game.png' });
 // 개간
 await p.click('.cmd:has-text("개간")'); await p.waitForTimeout(200);
@@ -24,7 +25,7 @@ console.log('허창', await p.evaluate(() => facName(G.cities[CITY_BY_NAME['허�
 // 소패 공격 → 전투 화면
 await p.evaluate(() => { UI.sel = CITY_BY_NAME['진류']; for (const o of G.officers) o.acted = false; G.cities[CITY_BY_NAME['진류']].troops = 20000; UI.refresh(); });
 await p.click('.cmd:has-text("출진")'); await p.waitForTimeout(200);
-await p.click('.pickList .offRow:has-text("소패")'); await p.click('#modalLayer footer .btn.pri'); await p.waitForTimeout(200);
+await p.click('.pickList .offRow:has-text("낙양")'); await p.click('#modalLayer footer .btn.pri'); await p.waitForTimeout(200);
 await p.click('#modalLayer footer .btn.red'); await p.waitForTimeout(1300);
 await p.click('#modalLayer footer .btn.pri'); await p.waitForTimeout(1500);
 await p.screenshot({ path: SH + tag + '_battle.png' });
@@ -40,7 +41,7 @@ await p.click('#btop .topBtn:has-text("자동 전투")');
 for (let i = 0; i < 120; i++) { await p.waitForTimeout(500); const m = await p.evaluate(() => $('#modalLayer').classList.contains('on')); if (m) { const t = await p.textContent('#modalLayer'); if (/일기토/.test(t) && await p.$('#modalLayer footer .btn')) { await p.screenshot({ path: SH + tag + '_duel.png' }); } const btn = await p.$('#modalLayer footer .btn.pri') || await p.$('#modalLayer footer .btn'); if (btn) await btn.click(); } if (await p.evaluate(() => !$('#scrGame').hidden && !$('#modalLayer').classList.contains('on'))) break; }
 await p.waitForTimeout(300);
 await p.screenshot({ path: SH + tag + '_after.png' });
-console.log('소패', await p.evaluate(() => facName(G.cities[CITY_BY_NAME['소패']].f)), await p.evaluate(() => G.log.slice(0, 4).map(l => l.text).join(' / ')));
+console.log('소패', await p.evaluate(() => facName(G.cities[CITY_BY_NAME["낙양"]].f)), await p.evaluate(() => G.log.slice(0, 4).map(l => l.text).join(' / ')));
 // 다음 달
 await p.click('#bEnd'); for (let i = 0; i < 60; i++) { await p.waitForTimeout(300); const m = await p.$('#modalLayer.on footer .btn'); if (m) await m.click(); if (await p.evaluate(() => !BUSY)) break; }
 await p.screenshot({ path: SH + tag + '_next.png' });

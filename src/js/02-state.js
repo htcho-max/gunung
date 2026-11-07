@@ -26,7 +26,7 @@ const DIFF = () => DIFFS[G && G.diff != null ? G.diff : 1];
 const TROOP_MUL = { dz: 1.7, ys: 1.25, ysh: 1.2, cc: .9, lb: .7, kr: .8, gd: 1, md: 1.1, sj: 1, lbi: 1.05, ly: 1.05, tq: 1, gz: 1.15, hf: 1.15 };
 
 function newGame(opts = {}) {
-  const g = { ver: 1, year: START_YEAR, month: 1, factions: [], cities: [], officers: [], log: [], rel: {}, ally: {}, player: -1, diff: opts.diff ?? 1, ev: {}, ap: 3, seen: {}, over: false, pgold: 0, stats: { battles: 0, wins: 0 } };
+  const g = { ver: 1, year: START_YEAR, month: 1, factions: [], cities: [], officers: [], log: [], rel: {}, ally: {}, player: -1, diff: opts.diff ?? 1, hist: opts.hist ?? true, focus: [], ev: {}, ap: 3, seen: {}, over: false, pgold: 0, stats: { battles: 0, wins: 0 } };
   const fIdx = {};
   FACTION_DEFS.forEach(([key, name, ruler, color], i) => { fIdx[key] = i; g.factions.push({ id: i, key, name, color, ruler: -1, alive: true, capital: -1 }); });
   CITY_DEFS.forEach(([name, han, x, y, own, s], i) => {
@@ -45,7 +45,8 @@ function newGame(opts = {}) {
     const [name, born, lead, war, int, pol, cha, fk, city, die, tag] = line.split(',');
     const b = +born;
     const hist = +die;
-    const life = hist - b >= 55 ? hist : b + 58 + ri(0, 16);
+    let life = hist - b >= 55 ? hist : b + 58 + ri(0, 16);
+    if (g.hist) life = Math.max(hist + ri(0, 1), EVENT_DEATH[name] || 0); // 역사 속 몰년, 사건으로 죽는 인물은 사건이 먼저
     const o = {
       id: i, name, born: b, die: life, lead: +lead, war: +war, int: +int, pol: +pol, cha: +cha,
       f: fk ? fIdx[fk] : -1, city: CITY_BY_NAME[city], loy: 80, merit: 0, fame: Math.round((+lead + +war + +int + +pol + +cha) / 5),

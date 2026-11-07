@@ -23,9 +23,9 @@ function startPlaying(isNew) {
 }
 
 const Setup = {
-  mode: null, tab: 'all', stats: null, diff: +(store('gunung.diff') ?? 1),
+  mode: null, tab: 'all', stats: null, diff: +(store('gunung.diff') ?? 1), hist: store('gunung.hist') !== '0',
   open() {
-    newGame({ diff: this.diff }); // 고르기용 상태
+    newGame({ diff: this.diff, hist: this.hist }); // 고르기용 상태
     showScreen('scrSetup');
     this.renderModes();
   },
@@ -36,7 +36,9 @@ const Setup = {
       el('p', { class: 'muted', style: 'margin:0;max-width:65ch' }, '열네 제후와 수많은 재야 인물이 있습니다. 누구로 난세를 살아갈지 고르세요.'),
       el('div', { style: 'display:flex;flex-direction:column;gap:6px' },
         el('div', { class: 'tabs', role: 'radiogroup', 'aria-label': '난이도' }, DIFFS.map((d, i) => el('button', { class: 'tab' + (this.diff === i ? ' on' : ''), role: 'radio', 'aria-checked': this.diff === i ? 'true' : 'false', onclick: () => { this.diff = i; G.diff = i; store('gunung.diff', String(i)); this.renderModes(); } }, d.name))),
-        el('div', { class: 'muted', style: 'font-size:13px' }, DIFFS[this.diff].desc)),
+        el('div', { class: 'muted', style: 'font-size:13px' }, DIFFS[this.diff].desc),
+        el('div', { class: 'tabs', role: 'radiogroup', 'aria-label': '역사 흐름', style: 'margin-top:6px' }, [[true, '역사를 따라'], [false, '자유롭게']].map(([v, n]) => el('button', { class: 'tab' + (this.hist === v ? ' on' : ''), role: 'radio', 'aria-checked': this.hist === v ? 'true' : 'false', onclick: () => { this.hist = v; store('gunung.hist', v ? '1' : '0'); this.open(); } }, n))),
+        el('div', { class: 'muted', style: 'font-size:13px' }, this.hist ? '제후들은 역사에서 다투던 지역 안에서 주로 싸우고, 인물은 역사 속 해에 세상을 떠나며, 큰 사건이 역사대로 일어납니다. 내가 고른 인물만은 오래 삽니다.' : '세력권과 역사 속 몰년 없이, 사건 조건만 맞으면 일어납니다.')),
       el('div', { class: 'modeCards' },
         card('ruler', '군주로 시작', '세력 하나를 맡아 모든 성을 다스립니다. 고전적인 방식.'),
         card('officer', '장수로 시작', '군주 밑의 장수나 재야 인물이 되어 출세하거나 떠돌거나 독립합니다.'),
@@ -71,7 +73,7 @@ const Setup = {
   },
   openPick(successor) { showScreen('scrSetup'); this.tab = 'all'; this.mode = 'officer'; this.renderPick(true); },
   continueAs(id) { G.player = id; G.ap = 3; G.over = false; G.pgold = 100; startPlaying(false); UI.toast(`${G.officers[id].name}의 이야기를 이어 갑니다`); },
-  start(id) { G.player = id; G.pgold = 100; saveGame('auto'); startPlaying(true); },
+  start(id) { G.player = id; G.pgold = 100; const po = G.officers[id]; po.die = Math.max(po.die, po.born + 66); saveGame('auto'); startPlaying(true); },
   roll() {
     const s = {}; let tot = 0;
     for (const k of ['lead', 'war', 'int', 'pol', 'cha']) { s[k] = ri(35, 85); tot += s[k]; }

@@ -177,7 +177,8 @@ function succession(f, old) {
   const cands = factionOfficers(f);
   if (!cands.length) { destroyFaction(f, `${F.name}군은 이어받을 사람이 없어 무너졌습니다`); return null; }
   cands.sort((a, b) => ((b.tag && b.tag === old.tag) - (a.tag && a.tag === old.tag)) * 1000 + (b.merit / 10 + b.cha + b.lead) - (a.merit / 10 + a.cha + a.lead));
-  const n = cands[0];
+  const heir = HIST() && HEIRS[old.name] ? cands.find(o => o.name === HEIRS[old.name]) : null;
+  const n = heir || cands[0];
   F.ruler = n.id; n.loy = 100; F.name = n.name; F.capital = n.city;
   logMsg(`${iga(n.name)} ${old.name}의 뒤를 이어 군주가 되었습니다`, 'big');
   // 충성이 낮은 장수는 흩어지기도

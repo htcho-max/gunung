@@ -263,6 +263,10 @@ input[type=text]:focus,select:focus{outline:2px solid var(--brass);outline-offse
 #blog div{background:linear-gradient(90deg,rgba(20,10,5,.88),rgba(20,10,5,.6));border-left:2px solid var(--brass2);padding:3px 9px;border-radius:0 5px 5px 0;font-size:13px;animation:fadeLog 7s forwards;}
 #blog .good{color:#bfe8d3;border-left-color:var(--jade);} #blog .bad{color:#f1b8a6;border-left-color:var(--cinnabar);} #blog .big{color:var(--brass3);border-left-color:var(--brass3);}
 @keyframes fadeLog{0%,80%{opacity:1}100%{opacity:0}}
+.duelStage{width:100%;aspect-ratio:640/220;max-width:100%;border-radius:8px;box-shadow:inset 0 0 0 1px rgba(214,173,85,.4),0 4px 14px rgba(0,0,0,.5);display:block;}
+.duel .side .dpt{width:48px;height:56px;border-radius:5px;box-shadow:0 0 0 2px var(--brass2);}
+.duel .side{align-items:stretch!important;}
+.duel .side > b{text-align:center;font-size:12px;color:var(--muted);font-weight:400;}
 .duel{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;}
 .duel .side{display:flex;flex-direction:column;align-items:center;gap:6px;}
 .duel .side img{width:100px;height:117px;border-radius:6px;box-shadow:0 0 0 2px var(--brass2),0 6px 16px rgba(0,0,0,.5);}
@@ -359,7 +363,7 @@ input[type=text]:focus,select:focus{outline:2px solid var(--brass);outline-offse
 <script>
 // ---- 00-util.js
 // ===== 공용 도구 =====
-const VERSION = '0.3.0';
+const VERSION = '0.4.0';
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -710,7 +714,7 @@ const DIFF = () => DIFFS[G && G.diff != null ? G.diff : 1];
 const TROOP_MUL = { dz: 1.7, ys: 1.25, ysh: 1.2, cc: .9, lb: .7, kr: .8, gd: 1, md: 1.1, sj: 1, lbi: 1.05, ly: 1.05, tq: 1, gz: 1.15, hf: 1.15 };
 
 function newGame(opts = {}) {
-  const g = { ver: 1, year: START_YEAR, month: 1, factions: [], cities: [], officers: [], log: [], rel: {}, ally: {}, player: -1, diff: opts.diff ?? 1, ev: {}, ap: 3, seen: {}, over: false, pgold: 0, stats: { battles: 0, wins: 0 } };
+  const g = { ver: 1, year: START_YEAR, month: 1, factions: [], cities: [], officers: [], log: [], rel: {}, ally: {}, player: -1, diff: opts.diff ?? 1, hist: opts.hist ?? true, focus: [], ev: {}, ap: 3, seen: {}, over: false, pgold: 0, stats: { battles: 0, wins: 0 } };
   const fIdx = {};
   FACTION_DEFS.forEach(([key, name, ruler, color], i) => { fIdx[key] = i; g.factions.push({ id: i, key, name, color, ruler: -1, alive: true, capital: -1 }); });
   CITY_DEFS.forEach(([name, han, x, y, own, s], i) => {
@@ -729,7 +733,8 @@ function newGame(opts = {}) {
     const [name, born, lead, war, int, pol, cha, fk, city, die, tag] = line.split(',');
     const b = +born;
     const hist = +die;
-    const life = hist - b >= 55 ? hist : b + 58 + ri(0, 16);
+    let life = hist - b >= 55 ? hist : b + 58 + ri(0, 16);
+    if (g.hist) life = Math.max(hist + ri(0, 1), EVENT_DEATH[name] || 0); // 역사 속 몰년, 사건으로 죽는 인물은 사건이 먼저
     const o = {
       id: i, name, born: b, die: life, lead: +lead, war: +war, int: +int, pol: +pol, cha: +cha,
       f: fk ? fIdx[fk] : -1, city: CITY_BY_NAME[city], loy: 80, merit: 0, fame: Math.round((+lead + +war + +int + +pol + +cha) / 5),
@@ -842,7 +847,44 @@ function saveMeta(slot) { try { return JSON.parse(store(SAVE_KEY + slot + '.meta
 
 // ---- 03-portrait.js
 // ===== 초상화 (코드로 그림) =====
+// 얼굴형·눈·눈썹·코·입·수염·머리·관/투구·옷을 조합하고, 이름난 인물은 고유한 모습을 덧씌움
 const PORTRAIT_CACHE = {};
+// 고유 모습: face(round|square|long|oval) skin eye(phoenix|round|narrow|kind|fierce) brow(thick|bushy|thin|knit)
+//   beard(none|thin|goatee|full|long|curly|stubble) beardCol hat(...) body(armor|robe|white|lamellar) robeCol extra[]
+const PORTRAIT_SPECIAL = {
+  관우: { skin: '#b5473a', eye: 'phoenix', brow: 'thick', beard: 'long', hat: 'greenScarf', body: 'robe', robeCol: '#2f6b46' },
+  장비: { skin: '#a27a58', face: 'round', eye: 'round', brow: 'bushy', beard: 'curly', hat: 'helmet', body: 'armor' },
+  유비: { eye: 'kind', brow: 'thin', beard: 'goatee', extra: ['bigEars'] },
+  조조: { eye: 'narrow', brow: 'thin', beard: 'thin', face: 'oval' },
+  여포: { face: 'oval', eye: 'fierce', brow: 'knit', beard: 'none', hat: 'pheasant', body: 'armor', young: true },
+  제갈량: { face: 'long', eye: 'kind', brow: 'thin', beard: 'goatee', hat: 'silkScarf', body: 'white', extra: ['fan'] },
+  손권: { eye: 'round', beard: 'full', beardCol: '#6a3a6e', extra: ['greenEyes'] },
+  손견: { face: 'square', eye: 'fierce', beard: 'full', hat: 'redBand', body: 'armor' },
+  손책: { face: 'oval', eye: 'fierce', beard: 'none', hat: 'redBand', body: 'armor', young: true },
+  동탁: { face: 'round', skin: '#d9a77d', eye: 'narrow', brow: 'bushy', beard: 'full', extra: ['fat'] },
+  황충: { beard: 'long', beardCol: '#e8e4dc', hairCol: '#e8e4dc', hat: 'helmet', body: 'armor' },
+  조운: { face: 'oval', eye: 'phoenix', beard: 'none', hat: 'silverHelm', body: 'white', young: true },
+  마초: { face: 'oval', eye: 'fierce', beard: 'none', hat: 'lionHelm', body: 'white', young: true },
+  하후돈: { eye: 'fierce', beard: 'full', hat: 'helmet', body: 'armor', extra: ['eyepatch'] },
+  전위: { face: 'square', skin: '#a8805e', eye: 'round', brow: 'bushy', beard: 'stubble', hat: 'band', body: 'armor', extra: ['fat'] },
+  허저: { face: 'round', eye: 'round', brow: 'thick', beard: 'stubble', hat: 'topknot', body: 'armor', extra: ['fat'] },
+  주유: { face: 'oval', eye: 'phoenix', brow: 'thin', beard: 'none', hat: 'scholar', body: 'robe', young: true },
+  사마의: { face: 'long', eye: 'narrow', brow: 'knit', beard: 'goatee' },
+  원소: { eye: 'phoenix', brow: 'thin', beard: 'thin' },
+  원술: { face: 'round', eye: 'narrow', beard: 'thin', extra: ['fat'] },
+  맹획: { skin: '#8a6040', face: 'square', eye: 'round', brow: 'bushy', beard: 'curly', hat: 'feathers', body: 'lamellar', extra: ['earring'] },
+  육손: { face: 'oval', eye: 'kind', beard: 'none', hat: 'scholar', young: true },
+  여몽: { face: 'square', eye: 'fierce', beard: 'thin', hat: 'helmet', body: 'armor' },
+  감녕: { eye: 'fierce', beard: 'stubble', hat: 'feathers', body: 'lamellar', extra: ['bell'] },
+  태사자: { eye: 'fierce', beard: 'thin', hat: 'helmet', body: 'armor' },
+  장료: { face: 'long', eye: 'fierce', beard: 'goatee', hat: 'helmet', body: 'armor' },
+  가후: { face: 'long', eye: 'narrow', brow: 'knit', beard: 'goatee' },
+  곽가: { face: 'oval', eye: 'kind', beard: 'thin', young: true },
+  순욱: { face: 'oval', eye: 'kind', brow: 'thin', beard: 'thin' },
+  방통: { face: 'round', skin: '#c99a70', eye: 'round', brow: 'bushy', beard: 'stubble', hat: 'scholar' },
+  강유: { face: 'oval', eye: 'phoenix', beard: 'thin', hat: 'helmet', body: 'armor', young: true },
+};
+const SKINS = ['#ecc8a2', '#e2b98f', '#d6a87e', '#e8bf96', '#cc9b72', '#deb48a'];
 function portraitKind(o) {
   if (o.st === 'on' && isRuler(o)) return 'ruler';
   if (o.war >= o.int + 8 || o.war >= 85) return 'warrior';
@@ -853,93 +895,267 @@ function portraitURL(o) {
   const kind = portraitKind(o);
   const a = G ? age(o) : 30;
   const ab = a < 24 ? 0 : a < 45 ? 1 : a < 60 ? 2 : 3;
-  const key = o.name + '|' + kind + '|' + ab + '|' + (o.f >= 0 && G ? G.factions[o.f].color : '');
+  const patch = o.name === '하후돈' && G && G.year >= 198;
+  const key = o.name + '|' + kind + '|' + ab + '|' + (o.f >= 0 && G ? G.factions[o.f].color : '') + '|' + patch;
   if (PORTRAIT_CACHE[key]) return PORTRAIT_CACHE[key];
   const cv = document.createElement('canvas'); cv.width = 120; cv.height = 140;
-  drawPortrait(cv.getContext('2d'), o, kind, ab);
+  drawPortrait(cv.getContext('2d'), o, kind, ab, patch);
   return PORTRAIT_CACHE[key] = cv.toDataURL();
 }
-function drawPortrait(x, o, kind, ab) {
+function drawPortrait(x, o, kind, ab, patch) {
   const R = mulberry(hashStr(o.name) + 7);
-  const W = 120, H = 140;
+  const pick2 = arr => arr[Math.floor(R() * arr.length)];
+  const sp = PORTRAIT_SPECIAL[o.name] || {};
+  const W = 120, H = 140, cx = 60;
   const col = o.f >= 0 && G ? G.factions[o.f].color : '#7d7666';
-  // 배경: 비단 느낌의 세로 그라데이션
+  // 특징 정하기
+  const face = sp.face || pick2(['oval', 'oval', 'square', 'round', 'long']);
+  const skin = sp.skin || pick2(SKINS);
+  const eye = sp.eye || (o.war >= 85 ? pick2(['fierce', 'round', 'phoenix']) : o.int >= 85 ? pick2(['narrow', 'phoenix', 'kind']) : pick2(['round', 'kind', 'narrow', 'phoenix', 'fierce']));
+  const brow = sp.brow || (o.war >= 85 ? pick2(['thick', 'bushy', 'knit']) : pick2(['thin', 'thick', 'knit', 'thin']));
+  const young = sp.young || ab === 0;
+  const beard = sp.beard || (young ? pick2(['none', 'none', 'stubble']) : pick2(['thin', 'goatee', 'full', 'long', 'thin', 'stubble']));
+  const greyHair = ab >= 3 ? '#d9d5cc' : ab === 2 ? pick2(['#4a423b', '#6b645c']) : pick2(['#16110d', '#231a13', '#2b2018']);
+  const hairCol = sp.hairCol || greyHair;
+  const beardCol = sp.beardCol || hairCol;
+  let hat = sp.hat;
+  if (!hat) {
+    if (kind === 'ruler') hat = 'crown';
+    else if (kind === 'warrior') hat = pick2(['helmet', 'helmet', 'band', 'topknot', 'silverHelm']);
+    else if (kind === 'scholar') hat = pick2(['scholar', 'scholar', 'silkScarf', 'tallCap']);
+    else hat = o.st === 'ronin' ? pick2(['scarf', 'topknot', 'straw']) : pick2(['scarf', 'topknot', 'tallCap']);
+  }
+  if (kind === 'ruler' && !['crown'].includes(hat) && !sp.hat) hat = 'crown';
+  if (kind === 'ruler' && sp.hat && !['redBand', 'greenScarf'].includes(sp.hat)) hat = 'crown';
+  const body = sp.body || (kind === 'warrior' ? pick2(['armor', 'armor', 'lamellar']) : kind === 'ruler' ? 'royal' : 'robe');
+  const extra = new Set(sp.extra || []);
+  if (patch) extra.add('eyepatch'); else extra.delete('eyepatch');
+  const fat = extra.has('fat');
+
+  // ── 배경: 세력색 비단 + 상서로운 구름
   const bg = x.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, '#2b3a40'); bg.addColorStop(1, '#15201f');
+  bg.addColorStop(0, shade(col, -55)); bg.addColorStop(1, '#0e1618');
   x.fillStyle = bg; x.fillRect(0, 0, W, H);
-  x.globalAlpha = .18; x.fillStyle = col; x.beginPath(); x.arc(60, 58, 54, 0, 7); x.fill(); x.globalAlpha = 1;
-  // 피부
-  let skin = ['#e8c39e', '#ddb28a', '#d2a37a', '#e3bb95', '#c99a70'][Math.floor(R() * 5)];
-  if (o.name === '관우') skin = '#b6463a';
-  if (o.name === '장비') skin = '#9c7656';
-  if (o.name === '맹획') skin = '#8e6a48';
-  const dark = shade(skin, -28);
-  // 옷/갑옷
-  const robe = kind === 'warrior' ? '#4a4d52' : shade(col, -20);
-  x.fillStyle = robe;
-  x.beginPath(); x.moveTo(8, H); x.quadraticCurveTo(14, 104, 40, 98); x.lineTo(80, 98); x.quadraticCurveTo(106, 104, 112, H); x.closePath(); x.fill();
-  if (kind === 'warrior') { // 비늘 갑옷
-    x.strokeStyle = 'rgba(255,255,255,.18)'; x.lineWidth = 1;
-    for (let yy = 104; yy < H; yy += 7) for (let xx = 14 + ((yy / 7) % 2) * 4; xx < 108; xx += 8) { x.beginPath(); x.arc(xx, yy, 4, 0, Math.PI); x.stroke(); }
-    x.fillStyle = col; x.fillRect(48, 98, 24, 6);
-  } else { // 옷깃
-    x.fillStyle = '#efe6d2'; x.beginPath(); x.moveTo(44, 98); x.lineTo(60, 126); x.lineTo(76, 98); x.lineTo(70, 98); x.lineTo(60, 116); x.lineTo(50, 98); x.fill();
+  x.globalAlpha = .13; x.strokeStyle = shade(col, 60); x.lineWidth = 2;
+  for (let i = 0; i < 4; i++) { const yy = 20 + i * 30, xx = (i % 2) * 50 + 10; for (let k = 0; k < 3; k++) { x.beginPath(); x.arc(xx + k * 14, yy, 7, Math.PI, 0); x.stroke(); } }
+  x.globalAlpha = 1;
+  const halo = x.createRadialGradient(cx, 58, 10, cx, 58, 62); halo.addColorStop(0, 'rgba(255,240,210,.18)'); halo.addColorStop(1, 'rgba(255,240,210,0)');
+  x.fillStyle = halo; x.fillRect(0, 0, W, H);
+
+  // 인물은 조금 줄여 아래로 (관·깃털이 잘리지 않게)
+  x.save(); x.translate(cx * .12, 18); x.scale(.88, .88);
+  // ── 몸과 옷
+  const sw = fat ? 56 : 50;
+  const robeCol = sp.robeCol || (body === 'white' ? '#d8d6cc' : body === 'royal' ? shade(col, -10) : shade(col, -25));
+  if (body === 'armor' || body === 'lamellar') {
+    x.fillStyle = body === 'lamellar' ? '#6b5a44' : '#4b4f55';
+    x.beginPath(); x.moveTo(cx - sw - 4, H); x.quadraticCurveTo(cx - sw, 104, cx - 20, 100); x.lineTo(cx + 20, 100); x.quadraticCurveTo(cx + sw, 104, cx + sw + 4, H); x.fill();
+    x.strokeStyle = 'rgba(255,255,255,.16)'; x.lineWidth = 1;
+    for (let yy = 106; yy < H; yy += 6) for (let xx = cx - sw + ((yy / 6) % 2) * 4; xx < cx + sw; xx += 8) { x.beginPath(); x.arc(xx, yy, 4, 0, Math.PI); x.stroke(); }
+    // 어깨 짐승 머리 장식
+    for (const s of [-1, 1]) {
+      const px = cx + s * (sw - 10), py = 110;
+      x.fillStyle = '#a88a3e'; x.beginPath(); x.ellipse(px, py, 13, 9, s * .3, 0, 7); x.fill();
+      x.fillStyle = '#5a4416'; x.beginPath(); x.arc(px - 3 * s, py - 1, 1.8, 0, 7); x.arc(px + 3 * s, py - 1, 1.8, 0, 7); x.fill();
+    }
+    x.fillStyle = col; x.fillRect(cx - 22, 100, 44, 5);
+    x.fillStyle = shade(col, -30); x.beginPath(); x.moveTo(cx - 14, 100); x.lineTo(cx, 116); x.lineTo(cx + 14, 100); x.fill();
+  } else {
+    const g = x.createLinearGradient(cx - sw, 0, cx + sw, 0); g.addColorStop(0, shade(robeCol, 20)); g.addColorStop(1, shade(robeCol, -30));
+    x.fillStyle = g;
+    x.beginPath(); x.moveTo(cx - sw - 4, H); x.quadraticCurveTo(cx - sw + 2, 104, cx - 20, 98); x.lineTo(cx + 20, 98); x.quadraticCurveTo(cx + sw - 2, 104, cx + sw + 4, H); x.fill();
+    // 겹친 옷깃
+    x.fillStyle = body === 'white' ? '#9fb5c8' : '#efe6d2';
+    x.beginPath(); x.moveTo(cx - 20, 98); x.lineTo(cx + 6, 132); x.lineTo(cx + 12, 126); x.lineTo(cx - 12, 98); x.fill();
+    x.beginPath(); x.moveTo(cx + 20, 98); x.lineTo(cx - 4, 128); x.lineTo(cx - 10, 122); x.lineTo(cx + 12, 98); x.fill();
+    if (body === 'royal') { x.strokeStyle = '#e8c56f'; x.lineWidth = 2; x.beginPath(); x.moveTo(cx - 20, 98); x.lineTo(cx + 6, 132); x.moveTo(cx + 20, 98); x.lineTo(cx - 4, 128); x.stroke(); }
   }
   // 목
-  x.fillStyle = dark; x.fillRect(51, 84, 18, 16);
-  // 얼굴
-  const fw = 30 + R() * 5, fh = 38 + R() * 4;
-  x.fillStyle = skin; x.beginPath(); x.ellipse(60, 60, fw, fh, 0, 0, 7); x.fill();
+  x.fillStyle = shade(skin, -35); x.fillRect(cx - 9, 84, 18, 17);
+
+  // ── 얼굴
+  const fw = (face === 'round' ? 33 : face === 'square' ? 32 : face === 'long' ? 27 : 29) + (fat ? 4 : 0) + R() * 2;
+  const fh = (face === 'long' ? 42 : face === 'round' ? 36 : 39) + R() * 2;
+  const fy = 60;
+  const faceShape = () => {
+    x.beginPath();
+    if (face === 'square') { x.moveTo(cx - fw, fy - fh * .6); x.quadraticCurveTo(cx - fw, fy - fh, cx, fy - fh); x.quadraticCurveTo(cx + fw, fy - fh, cx + fw, fy - fh * .6); x.lineTo(cx + fw * .95, fy + fh * .45); x.quadraticCurveTo(cx + fw * .7, fy + fh, cx, fy + fh); x.quadraticCurveTo(cx - fw * .7, fy + fh, cx - fw * .95, fy + fh * .45); x.closePath(); }
+    else x.ellipse(cx, fy, fw, fh, 0, 0, 7);
+  };
   // 귀
-  x.beginPath(); x.ellipse(60 - fw + 1, 62, 5, 8, 0, 0, 7); x.ellipse(60 + fw - 1, 62, 5, 8, 0, 0, 7); x.fill();
-  // 눈썹: 무력이 높으면 치켜올림
-  const fierce = (o.war - 50) / 50; // -1~1
-  x.strokeStyle = ab === 3 ? '#cfcac0' : '#1e1712'; x.lineWidth = 3.5; x.lineCap = 'round';
-  x.beginPath(); x.moveTo(42, 50 + fierce * 2); x.lineTo(54, 48 - fierce * 3); x.moveTo(78, 50 + fierce * 2); x.lineTo(66, 48 - fierce * 3); x.stroke();
-  // 눈
-  x.fillStyle = '#1b1410';
-  const ey = 56, eh = 2 + R() * 1.5;
-  x.beginPath(); x.ellipse(48, ey, 5, eh, -fierce * .15, 0, 7); x.ellipse(72, ey, 5, eh, fierce * .15, 0, 7); x.fill();
-  if (o.int >= 85) { x.fillStyle = 'rgba(255,255,255,.7)'; x.fillRect(49, ey - 1, 1.5, 1.5); x.fillRect(73, ey - 1, 1.5, 1.5); }
-  // 코·입
-  x.strokeStyle = dark; x.lineWidth = 2;
-  x.beginPath(); x.moveTo(60, 58); x.lineTo(57, 70); x.lineTo(62, 71); x.stroke();
-  x.beginPath(); x.moveTo(53, 80); x.quadraticCurveTo(60, 82 + (o.cha - 60) / 20, 67, 80); x.stroke();
-  // 주름
-  if (ab >= 2) { x.strokeStyle = 'rgba(60,30,20,.35)'; x.lineWidth = 1.2; x.beginPath(); x.moveTo(44, 40); x.lineTo(56, 39); x.moveTo(64, 39); x.lineTo(76, 40); x.moveTo(41, 64); x.lineTo(45, 70); x.moveTo(79, 64); x.lineTo(75, 70); x.stroke(); }
-  // 수염
-  const hairC = ab === 3 ? '#d8d4ca' : ab === 2 ? '#5a5048' : '#1d1611';
-  x.fillStyle = hairC; x.strokeStyle = hairC;
-  const beard = ab === 0 ? 0 : (o.name === '관우' ? 3 : o.name === '장비' ? 4 : 1 + Math.floor(R() * 3));
-  if (beard >= 1) { x.lineWidth = 3; x.beginPath(); x.moveTo(50, 76); x.quadraticCurveTo(60, 72, 70, 76); x.stroke(); }
-  if (beard === 2) { x.beginPath(); x.moveTo(55, 84); x.lineTo(60, 98); x.lineTo(65, 84); x.fill(); }
-  if (beard === 3) { x.beginPath(); x.moveTo(46, 80); x.quadraticCurveTo(48, 120, 60, 132); x.quadraticCurveTo(72, 120, 74, 80); x.quadraticCurveTo(60, 90, 46, 80); x.fill(); }
-  if (beard === 4) { for (let i = 0; i < 26; i++) { const a = Math.PI * (.15 + .7 * i / 25); x.lineWidth = 2; x.beginPath(); x.moveTo(60 + Math.cos(a) * 24, 70 + Math.sin(a) * 14); x.lineTo(60 + Math.cos(a) * 33, 74 + Math.sin(a) * 26); x.stroke(); } }
-  // 머리·관
-  x.fillStyle = hairC;
-  x.beginPath(); x.ellipse(60, 32, fw + 2, 16, 0, Math.PI, 0); x.fill();
-  if (kind === 'ruler') { // 면류관
-    x.fillStyle = '#1a1a1a'; x.fillRect(36, 10, 48, 18);
-    x.fillStyle = '#c9a24a'; x.fillRect(26, 6, 68, 6);
-    x.strokeStyle = '#d9c38a'; x.lineWidth = 1;
-    for (let i = 0; i < 7; i++) { const xx = 30 + i * 10; x.beginPath(); x.moveTo(xx, 12); x.lineTo(xx, 26); x.stroke(); x.fillStyle = '#e6d7a8'; x.beginPath(); x.arc(xx, 27, 1.8, 0, 7); x.fill(); }
-  } else if (kind === 'warrior') { // 투구
-    x.fillStyle = '#6a6e74'; x.beginPath(); x.ellipse(60, 30, fw + 5, 22, 0, Math.PI, 0); x.fill();
-    x.fillStyle = '#585b60'; x.fillRect(60 - fw - 5, 28, (fw + 5) * 2, 6);
-    x.fillStyle = col; x.beginPath(); x.moveTo(60, 2); x.lineTo(56, 12); x.lineTo(64, 12); x.fill();
-    if (o.name === '여포') { x.strokeStyle = '#d9a43a'; x.lineWidth = 3; x.beginPath(); x.moveTo(52, 10); x.quadraticCurveTo(20, -10, 4, 30); x.moveTo(68, 10); x.quadraticCurveTo(100, -10, 116, 30); x.stroke(); }
-  } else if (kind === 'scholar') { // 관(冠)
-    x.fillStyle = '#181818'; x.beginPath(); x.moveTo(44, 26); x.lineTo(48, 6); x.lineTo(72, 6); x.lineTo(76, 26); x.fill();
-    x.fillStyle = '#2a2a2a'; x.fillRect(40, 22, 40, 6);
-  } else { // 두건
-    x.fillStyle = o.st === 'ronin' ? '#5a6a5e' : shade(col, -35);
-    x.beginPath(); x.ellipse(60, 28, fw + 3, 18, 0, Math.PI, 0); x.fill();
-    x.fillRect(60 - fw - 3, 26, (fw + 3) * 2, 6);
+  const earR = extra.has('bigEars') ? 9 : 6;
+  x.fillStyle = shade(skin, -10);
+  for (const s of [-1, 1]) { x.beginPath(); x.ellipse(cx + s * (fw - 1), fy + 4, earR * .7, earR * 1.35 + (extra.has('bigEars') ? 4 : 0), 0, 0, 7); x.fill(); }
+  if (extra.has('earring')) { x.strokeStyle = '#e8c56f'; x.lineWidth = 2; x.beginPath(); x.arc(cx - fw + 1, fy + 18, 4, 0, 7); x.stroke(); }
+  const sg = x.createRadialGradient(cx - fw * .35, fy - fh * .4, 4, cx, fy, fw * 1.4);
+  sg.addColorStop(0, shade(skin, 18)); sg.addColorStop(.6, skin); sg.addColorStop(1, shade(skin, -32));
+  x.fillStyle = sg; faceShape(); x.fill();
+  // 볼
+  x.fillStyle = 'rgba(210,100,80,.16)'; for (const s of [-1, 1]) { x.beginPath(); x.ellipse(cx + s * fw * .55, fy + 10, 7, 4, 0, 0, 7); x.fill(); }
+
+  // ── 눈썹
+  const fierce = eye === 'fierce' ? 1 : eye === 'kind' ? -.6 : (o.war - 60) / 60;
+  const ey = fy - 3;
+  x.strokeStyle = hairCol; x.fillStyle = hairCol; x.lineCap = 'round';
+  for (const s of [-1, 1]) {
+    const ox = cx + s * 12, inner = ox - s * 7, outer = ox + s * 8;
+    const yi = ey - 9 + fierce * 2.5, yo = ey - 11 - fierce * 2 - (brow === 'knit' ? -1 : 0);
+    if (brow === 'bushy') { x.beginPath(); x.moveTo(inner, yi + 2); x.quadraticCurveTo(ox, yi - 7, outer, yo); x.lineTo(outer, yo + 4); x.quadraticCurveTo(ox, yi - 2, inner, yi + 4); x.fill(); }
+    else { x.lineWidth = brow === 'thick' ? 4 : brow === 'knit' ? 3.2 : 2.2; x.beginPath(); x.moveTo(inner, yi); x.quadraticCurveTo(ox, yo - 2, outer, yo); x.stroke(); }
+    if (brow === 'knit') { x.lineWidth = 1; x.strokeStyle = 'rgba(80,40,25,.5)'; x.beginPath(); x.moveTo(cx - 2, ey - 9); x.lineTo(cx - 1, ey - 5); x.moveTo(cx + 2, ey - 9); x.lineTo(cx + 1, ey - 5); x.stroke(); x.strokeStyle = hairCol; }
   }
-  // 테두리
-  x.strokeStyle = 'rgba(201,162,74,.6)'; x.lineWidth = 2; x.strokeRect(1, 1, W - 2, H - 2);
+  // ── 눈
+  for (const s of [-1, 1]) {
+    const ox = cx + s * 12;
+    if (s === -1 && extra.has('eyepatch')) continue;
+    const w = eye === 'round' ? 5.5 : eye === 'narrow' ? 6.5 : 6, h = eye === 'round' ? 3.6 : eye === 'narrow' ? 1.6 : eye === 'phoenix' ? 2.2 : 2.8;
+    const tilt = (eye === 'phoenix' || eye === 'fierce' ? .28 : eye === 'kind' ? -.15 : 0) * -s;
+    x.save(); x.translate(ox, ey); x.rotate(tilt);
+    x.fillStyle = '#f4eee2'; x.beginPath(); x.ellipse(0, 0, w, h, 0, 0, 7); x.fill();
+    x.fillStyle = extra.has('greenEyes') ? '#3f7a52' : '#2a1a10'; x.beginPath(); x.arc(s * .5, .2, Math.min(h, 2.6) + .3, 0, 7); x.fill();
+    x.fillStyle = '#0c0806'; x.beginPath(); x.arc(s * .5, .2, 1.1, 0, 7); x.fill();
+    x.fillStyle = 'rgba(255,255,255,.85)'; x.beginPath(); x.arc(s * .5 - .8, -.6, .7, 0, 7); x.fill();
+    x.strokeStyle = '#1c120c'; x.lineWidth = 1.6; x.beginPath(); x.ellipse(0, 0, w, h, 0, Math.PI * 1.05, Math.PI * 1.95); x.stroke();
+    if (eye === 'phoenix') { x.beginPath(); x.moveTo(w * .7 * -s * -1, -h * .5); x.lineTo(w * 1.25 * s, -h * 1.2); x.stroke(); }
+    x.restore();
+  }
+  if (extra.has('eyepatch')) {
+    x.fillStyle = '#1a1410'; x.beginPath(); x.ellipse(cx - 12, ey, 7, 5.5, 0, 0, 7); x.fill();
+    x.strokeStyle = '#1a1410'; x.lineWidth = 1.8; x.beginPath(); x.moveTo(cx - 19, ey - 2); x.lineTo(cx - fw + 2, ey - 12); x.moveTo(cx - 5, ey - 3); x.lineTo(cx + fw - 2, ey - 14); x.stroke();
+  }
+  // ── 코
+  x.strokeStyle = shade(skin, -55); x.lineWidth = 1.7;
+  const nb = R();
+  x.beginPath(); x.moveTo(cx - 1, ey + 2); x.quadraticCurveTo(cx - 4 - nb * 2, ey + 11, cx - 4, ey + 14); x.quadraticCurveTo(cx, ey + 16, cx + 4, ey + 14); x.stroke();
+  x.fillStyle = 'rgba(255,240,220,.35)'; x.beginPath(); x.ellipse(cx + 1, ey + 8, 1.4, 4, 0, 0, 7); x.fill();
+  // ── 입
+  const my = fy + 22;
+  x.strokeStyle = '#7a3a2a'; x.lineWidth = 1.8;
+  const smile = (o.cha - 60) / 25 - (eye === 'fierce' ? 1 : 0);
+  x.beginPath(); x.moveTo(cx - 7, my); x.quadraticCurveTo(cx, my + smile * 1.6 + 1, cx + 7, my); x.stroke();
+  x.fillStyle = 'rgba(160,70,55,.45)'; x.beginPath(); x.ellipse(cx, my + 2.5, 4, 1.4, 0, 0, 7); x.fill();
+  // ── 주름
+  if (ab >= 2) { x.strokeStyle = 'rgba(90,45,30,.35)'; x.lineWidth = 1.1; x.beginPath(); x.moveTo(cx - 10, fy - fh * .72); x.lineTo(cx + 10, fy - fh * .72); x.moveTo(cx - 9, fy - fh * .62); x.lineTo(cx + 9, fy - fh * .62); x.moveTo(cx - 13, my - 6); x.lineTo(cx - 10, my + 2); x.moveTo(cx + 13, my - 6); x.lineTo(cx + 10, my + 2); x.stroke(); }
+
+  // ── 수염
+  x.fillStyle = beardCol; x.strokeStyle = beardCol;
+  const stache = () => { x.lineWidth = 3; x.beginPath(); x.moveTo(cx - 10, my - 2); x.quadraticCurveTo(cx - 4, my - 5, cx, my - 3); x.quadraticCurveTo(cx + 4, my - 5, cx + 10, my - 2); x.stroke(); };
+  if (beard === 'stubble') { x.fillStyle = 'rgba(40,30,25,.22)'; x.beginPath(); x.ellipse(cx, my + 4, fw * .75, 14, 0, 0, Math.PI); x.fill(); }
+  if (beard === 'thin') { stache(); x.lineWidth = 1.6; x.beginPath(); x.moveTo(cx - 10, my - 2); x.quadraticCurveTo(cx - 14, my + 4, cx - 13, my + 9); x.moveTo(cx + 10, my - 2); x.quadraticCurveTo(cx + 14, my + 4, cx + 13, my + 9); x.stroke(); }
+  if (beard === 'goatee') { stache(); x.beginPath(); x.moveTo(cx - 5, my + 5); x.quadraticCurveTo(cx, my + 22, cx + 1, my + 26); x.quadraticCurveTo(cx + 2, my + 20, cx + 5, my + 5); x.fill(); }
+  if (beard === 'full') { stache(); x.beginPath(); x.moveTo(cx - fw * .9, fy + 4); x.quadraticCurveTo(cx - fw * .9, my + 18, cx, my + 22); x.quadraticCurveTo(cx + fw * .9, my + 18, cx + fw * .9, fy + 4); x.quadraticCurveTo(cx + fw * .6, my + 6, cx + 8, my + 4); x.lineTo(cx - 8, my + 4); x.quadraticCurveTo(cx - fw * .6, my + 6, cx - fw * .9, fy + 4); x.fill(); }
+  if (beard === 'long') {
+    stache();
+    const g = x.createLinearGradient(0, my, 0, H); g.addColorStop(0, beardCol); g.addColorStop(1, shade(beardCol.startsWith('#') ? beardCol : '#222222', 25));
+    x.fillStyle = g; x.beginPath(); x.moveTo(cx - fw * .8, fy + 8); x.quadraticCurveTo(cx - 20, H - 4, cx, H + 6); x.quadraticCurveTo(cx + 20, H - 4, cx + fw * .8, fy + 8); x.quadraticCurveTo(cx + 10, my + 6, cx, my + 5); x.quadraticCurveTo(cx - 10, my + 6, cx - fw * .8, fy + 8); x.fill();
+    x.strokeStyle = 'rgba(255,255,255,.12)'; x.lineWidth = 1; for (let k = -2; k <= 2; k++) { x.beginPath(); x.moveTo(cx + k * 5, my + 8); x.quadraticCurveTo(cx + k * 6, my + 30, cx + k * 3, H); x.stroke(); }
+  }
+  if (beard === 'curly') { stache(); for (let i = 0; i < 34; i++) { const a = Math.PI * (.08 + .84 * i / 33); x.lineWidth = 2.2; x.beginPath(); x.moveTo(cx + Math.cos(a) * fw * .75, fy + 8 + Math.sin(a) * 12); x.quadraticCurveTo(cx + Math.cos(a) * fw * 1.05, fy + 14 + Math.sin(a) * 22, cx + Math.cos(a + .08) * fw * 1.1, fy + 20 + Math.sin(a) * 28); x.stroke(); } }
+
+  // ── 머리와 모자
+  x.fillStyle = hairCol;
+  const hairCap = () => { x.beginPath(); x.ellipse(cx, fy - fh * .55, fw + 2, fh * .55, 0, Math.PI, 0); x.fill(); };
+  const gold = '#d9b25a';
+  switch (hat) {
+    case 'crown': {
+      hairCap();
+      x.fillStyle = '#1a1612'; x.beginPath(); x.moveTo(cx - 16, fy - fh + 4); x.lineTo(cx - 12, fy - fh - 18); x.lineTo(cx + 12, fy - fh - 18); x.lineTo(cx + 16, fy - fh + 4); x.fill();
+      const g = x.createLinearGradient(0, fy - fh - 24, 0, fy - fh - 14); g.addColorStop(0, '#f6dc93'); g.addColorStop(1, '#a37a2c');
+      x.fillStyle = g; x.fillRect(cx - 30, fy - fh - 24, 60, 7);
+      x.strokeStyle = '#e6d7a8'; x.lineWidth = 1;
+      for (let i = 0; i < 7; i++) { const xx = cx - 26 + i * 8.6; x.beginPath(); x.moveTo(xx, fy - fh - 17); x.lineTo(xx, fy - fh - 4); x.stroke(); x.fillStyle = i % 2 ? '#c94a30' : '#e6d7a8'; x.beginPath(); x.arc(xx, fy - fh - 3, 1.8, 0, 7); x.fill(); }
+      x.fillStyle = gold; x.fillRect(cx - 3, fy - fh - 30, 6, 7);
+      break;
+    }
+    case 'helmet': case 'silverHelm': case 'lionHelm': {
+      const base = hat === 'helmet' ? '#5d636b' : '#c9ccd2', dk = shade(base, -40);
+      const g = x.createLinearGradient(cx - fw, 0, cx + fw, 0); g.addColorStop(0, shade(base, 30)); g.addColorStop(1, dk);
+      x.fillStyle = g; x.beginPath(); x.ellipse(cx, fy - fh * .48, fw + 6, fh * .62, 0, Math.PI, 0); x.fill();
+      x.fillRect(cx - fw - 6, fy - fh * .5, 10, 30); x.fillRect(cx + fw - 4, fy - fh * .5, 10, 30);
+      x.fillStyle = gold; x.fillRect(cx - fw - 6, fy - fh * .52, (fw + 6) * 2, 5);
+      x.fillStyle = col; x.beginPath(); x.moveTo(cx, fy - fh - 20); x.quadraticCurveTo(cx - 7, fy - fh - 8, cx - 4, fy - fh); x.lineTo(cx + 4, fy - fh); x.quadraticCurveTo(cx + 7, fy - fh - 8, cx, fy - fh - 20); x.fill();
+      if (hat === 'lionHelm') { x.fillStyle = gold; x.beginPath(); x.ellipse(cx, fy - fh * .7, 10, 7, 0, 0, 7); x.fill(); x.fillStyle = '#5a4416'; x.beginPath(); x.arc(cx - 4, fy - fh * .72, 1.5, 0, 7); x.arc(cx + 4, fy - fh * .72, 1.5, 0, 7); x.fill(); }
+      break;
+    }
+    case 'pheasant': {
+      hairCap();
+      const g = x.createLinearGradient(0, fy - fh - 14, 0, fy - fh + 6); g.addColorStop(0, '#f6dc93'); g.addColorStop(1, '#8a5a2a');
+      x.fillStyle = g; x.beginPath(); x.moveTo(cx - 22, fy - fh + 6); x.quadraticCurveTo(cx, fy - fh - 22, cx + 22, fy - fh + 6); x.closePath(); x.fill();
+      x.fillStyle = '#7a3a8a'; x.beginPath(); x.arc(cx, fy - fh - 6, 4, 0, 7); x.fill();
+      for (const s of [-1, 1]) {
+        x.strokeStyle = '#c47a2a'; x.lineWidth = 3.5; x.beginPath(); x.moveTo(cx + s * 8, fy - fh - 4); x.bezierCurveTo(cx + s * 30, fy - fh - 50, cx + s * 60, fy - fh - 30, cx + s * 64, fy - fh + 30); x.stroke();
+        x.strokeStyle = '#3a2410'; x.lineWidth = 1; x.setLineDash([2, 4]); x.stroke(); x.setLineDash([]);
+      }
+      break;
+    }
+    case 'redBand': case 'greenScarf': case 'band': {
+      hairCap();
+      x.fillStyle = hairCol; x.beginPath(); x.ellipse(cx, fy - fh - 4, 9, 7, 0, 0, 7); x.fill();
+      const bc = hat === 'redBand' ? '#c0392b' : hat === 'greenScarf' ? '#2f6b46' : shade(col, -10);
+      if (hat === 'greenScarf') { x.fillStyle = bc; x.beginPath(); x.ellipse(cx, fy - fh * .62, fw + 4, fh * .58, 0, Math.PI, 0); x.fill(); x.beginPath(); x.ellipse(cx, fy - fh - 4, 11, 9, 0, 0, 7); x.fill(); }
+      x.fillStyle = bc; x.fillRect(cx - fw - 2, fy - fh * .62, (fw + 2) * 2, 7);
+      x.beginPath(); x.moveTo(cx + fw - 2, fy - fh * .58); x.quadraticCurveTo(cx + fw + 14, fy - fh * .4, cx + fw + 10, fy - 4); x.lineTo(cx + fw + 5, fy - 6); x.quadraticCurveTo(cx + fw + 7, fy - fh * .4, cx + fw - 4, fy - fh * .5); x.fill();
+      break;
+    }
+    case 'scholar': case 'tallCap': {
+      hairCap();
+      x.fillStyle = '#16120e';
+      if (hat === 'scholar') { x.beginPath(); x.moveTo(cx - 15, fy - fh + 2); x.lineTo(cx - 11, fy - fh - 22); x.lineTo(cx + 11, fy - fh - 22); x.lineTo(cx + 15, fy - fh + 2); x.fill(); x.fillStyle = '#2a241c'; x.fillRect(cx - 19, fy - fh - 3, 38, 6); x.strokeStyle = gold; x.lineWidth = 1.3; x.beginPath(); x.moveTo(cx - 24, fy - fh - 12); x.lineTo(cx + 24, fy - fh - 12); x.stroke(); }
+      else { x.beginPath(); x.moveTo(cx - 10, fy - fh + 2); x.lineTo(cx - 8, fy - fh - 30); x.quadraticCurveTo(cx, fy - fh - 36, cx + 8, fy - fh - 30); x.lineTo(cx + 10, fy - fh + 2); x.fill(); }
+      break;
+    }
+    case 'silkScarf': {
+      hairCap();
+      x.fillStyle = '#36597a'; x.beginPath(); x.moveTo(cx - fw - 3, fy - fh * .45); x.quadraticCurveTo(cx - fw, fy - fh - 18, cx, fy - fh - 16); x.quadraticCurveTo(cx + fw, fy - fh - 18, cx + fw + 3, fy - fh * .45); x.closePath(); x.fill();
+      x.strokeStyle = 'rgba(255,255,255,.25)'; x.lineWidth = 1; for (let k = -2; k <= 2; k++) { x.beginPath(); x.moveTo(cx + k * 8, fy - fh - 14); x.lineTo(cx + k * 11, fy - fh * .5); x.stroke(); }
+      x.fillStyle = '#36597a'; x.beginPath(); x.moveTo(cx + fw, fy - fh * .5); x.quadraticCurveTo(cx + fw + 12, fy - 10, cx + fw + 6, fy + 20); x.lineTo(cx + fw + 1, fy + 14); x.quadraticCurveTo(cx + fw + 5, fy - 10, cx + fw - 4, fy - fh * .4); x.fill();
+      break;
+    }
+    case 'scarf': {
+      x.fillStyle = o.st === 'ronin' ? '#5a6a5e' : shade(col, -35);
+      x.beginPath(); x.ellipse(cx, fy - fh * .5, fw + 4, fh * .62, 0, Math.PI, 0); x.fill();
+      x.fillRect(cx - fw - 4, fy - fh * .52, (fw + 4) * 2, 6);
+      x.beginPath(); x.moveTo(cx + fw - 6, fy - fh * .45); x.lineTo(cx + fw + 10, fy - 4); x.lineTo(cx + fw + 3, fy - 2); x.closePath(); x.fill();
+      break;
+    }
+    case 'straw': {
+      hairCap();
+      x.fillStyle = '#c9a868'; x.beginPath(); x.moveTo(cx - fw - 18, fy - fh * .5); x.quadraticCurveTo(cx, fy - fh - 30, cx + fw + 18, fy - fh * .5); x.closePath(); x.fill();
+      x.strokeStyle = 'rgba(90,60,20,.45)'; x.lineWidth = 1; for (let k = -4; k <= 4; k++) { x.beginPath(); x.moveTo(cx, fy - fh - 14); x.lineTo(cx + k * 12, fy - fh * .5); x.stroke(); }
+      break;
+    }
+    case 'feathers': {
+      hairCap();
+      x.fillStyle = '#8a3a1c'; x.fillRect(cx - fw - 2, fy - fh * .6, (fw + 2) * 2, 7);
+      const fc = ['#c94a30', '#e8c56f', '#3f7a52', '#e8c56f', '#c94a30'];
+      fc.forEach((c2, i) => { x.fillStyle = c2; x.save(); x.translate(cx - 16 + i * 8, fy - fh * .6); x.rotate((i - 2) * .22); x.beginPath(); x.ellipse(0, -14, 3.2, 14, 0, 0, 7); x.fill(); x.restore(); });
+      break;
+    }
+    case 'topknot': default: {
+      hairCap();
+      x.beginPath(); x.ellipse(cx, fy - fh - 5, 9, 8, 0, 0, 7); x.fill();
+      x.fillStyle = gold; x.fillRect(cx - 14, fy - fh - 6, 28, 3);
+    }
+  }
+  // ── 소품
+  if (extra.has('fan')) {
+    x.save(); x.translate(cx + 34, 128); x.rotate(-.35);
+    for (let k = -4; k <= 4; k++) { x.fillStyle = k % 2 ? '#f2efe6' : '#dcd8cc'; x.beginPath(); x.moveTo(0, 0); x.lineTo(k * 5 - 3, -36); x.lineTo(k * 5 + 3, -36); x.closePath(); x.fill(); }
+    x.fillStyle = '#6a4a2a'; x.fillRect(-2, 0, 4, 14); x.restore();
+  }
+  if (extra.has('bell')) { x.fillStyle = '#e8c56f'; x.beginPath(); x.arc(cx + 30, 112, 4, 0, 7); x.fill(); }
+  x.restore();
+  // 아래쪽이 비지 않도록 옷자락을 마저 채움
+  x.fillStyle = body === 'armor' || body === 'lamellar' ? (body === 'lamellar' ? '#6b5a44' : '#4b4f55') : (sp.robeCol || (body === 'white' ? '#d8d6cc' : shade(col, -25)));
+  x.fillRect(cx * .12 + (cx - sw - 4) * .88, 18 + 140 * .88 - 1, (sw * 2 + 8) * .88, H);
+  // ── 가장자리 그늘과 테두리
+  const vg = x.createRadialGradient(cx, 64, 40, cx, 70, 90); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.45)');
+  x.fillStyle = vg; x.fillRect(0, 0, W, H);
+  x.strokeStyle = 'rgba(214,173,85,.75)'; x.lineWidth = 2; x.strokeRect(1, 1, W - 2, H - 2);
+  x.strokeStyle = 'rgba(214,173,85,.3)'; x.lineWidth = 1; x.strokeRect(4.5, 4.5, W - 9, H - 9);
 }
 function shade(hex, amt) {
+  if (!hex || hex[0] !== '#') return hex;
   const n = parseInt(hex.slice(1), 16);
   const r = clamp((n >> 16) + amt, 0, 255), g = clamp((n >> 8 & 255) + amt, 0, 255), b = clamp((n & 255) + amt, 0, 255);
   return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
@@ -1126,7 +1342,8 @@ function succession(f, old) {
   const cands = factionOfficers(f);
   if (!cands.length) { destroyFaction(f, `${F.name}군은 이어받을 사람이 없어 무너졌습니다`); return null; }
   cands.sort((a, b) => ((b.tag && b.tag === old.tag) - (a.tag && a.tag === old.tag)) * 1000 + (b.merit / 10 + b.cha + b.lead) - (a.merit / 10 + a.cha + a.lead));
-  const n = cands[0];
+  const heir = HIST() && HEIRS[old.name] ? cands.find(o => o.name === HEIRS[old.name]) : null;
+  const n = heir || cands[0];
   F.ruler = n.id; n.loy = 100; F.name = n.name; F.capital = n.city;
   logMsg(`${iga(n.name)} ${old.name}의 뒤를 이어 군주가 되었습니다`, 'big');
   // 충성이 낮은 장수는 흩어지기도
@@ -1381,7 +1598,7 @@ function aiPlanAttacks(F) {
       if (t.f === pf && graceForPlayer) continue;
       const tOffs = t.f >= 0 ? officersIn(t.id, t.f) : [];
       if (t.f < 0 || !tOffs.length) {
-        if (c.troops >= 5000 && offs.length >= 2) { const s = 2 + t.size; if (s > bestS) { bestS = s; bestT = t; } }
+        if (c.troops >= 5000 && offs.length >= 2 && histEmptyOK(F, t)) { const s = 2 + t.size; if (s > bestS) { bestS = s; bestT = t; } }
         continue;
       }
       const top = [...offs].sort((a, b) => (b.lead + b.war) - (a.lead + a.war)).slice(0, 5);
@@ -1391,7 +1608,7 @@ function aiPlanAttacks(F) {
       const tEff = Math.min(t.troops, tOffs.slice(0, 5).reduce((a, o) => a + troopCap(o), 0));
       const thPow = tEff * thQ * (.6 + t.train / 250) * (1.15 + Math.min(.5, t.wall / 2000));
       const ratio = myPow / Math.max(1, thPow);
-      const need = Math.max(.95, DIFF().base / aggr - Math.min(.35, (F.idle || 0) * .015)) + (t.f === pf ? DIFF().vsP : 0);
+      const need = Math.max(.95, DIFF().base / aggr - Math.min(.35, (F.idle || 0) * .015)) + (t.f === pf ? DIFF().vsP : 0) + histNeed(F, t);
       if (ratio > need && c.food > c.troops * .3) { const s = ratio * (1 + t.size / 5) + (getRel(F.id, t.f) < 30 ? .3 : 0); if (s > bestS) { bestS = s; bestT = t; } }
     }
     if (!bestT) continue;
@@ -1427,11 +1644,13 @@ function aiLogistics(F) {
   const grace = mIdx() <= DIFF().grace;
   let tgt = F.target != null ? G.cities[F.target] : null;
   const bad = t => !t || t.f === F.id || isAlly(F.id, t.f) || !ADJ[t.id].some(i => G.cities[i].f === F.id) || (grace && t.f === pf);
-  if (bad(tgt) || chance(.04)) {
+  const fT = focusTargets(F.id);
+  if (bad(tgt) || chance(.04) || (fT.length && tgt && !fT.includes(tgt.f) && chance(.3))) {
     let best = null, bs = 1e18;
     for (const c of G.cities.filter(x => x.f === F.id)) for (const i of ADJ[c.id]) {
       const t = G.cities[i]; if (t.f === F.id || isAlly(F.id, t.f) || (grace && t.f === pf)) continue;
-      const s = (t.f < 0 ? 0 : t.troops * (1.15 + t.wall / 2000)) - t.size * 1500 + rand() * 3000;
+      if (t.f < 0 && !histEmptyOK(F, t)) continue;
+      const s = (t.f < 0 ? 0 : t.troops * (1.15 + t.wall / 2000)) - t.size * 1500 + rand() * 3000 + histTargetBias(F, t);
       if (s < bs) { bs = s; best = t; }
     }
     F.target = best ? best.id : null; tgt = best;
@@ -1478,6 +1697,95 @@ function aiOfficersDrift() {
     if (o.id === G.player) continue;
     if (o.st === 'ronin' && chance(.12)) { o.city = pick(ADJ[o.city]); o.found = false; }
     if (o.st === 'on' && !isRuler(o) && o.loy < 35 && chance(.06)) { logMsg(`${eun(o.name)} ${facName(o.f)}군을 떠났습니다`); leaveToRonin(o); }
+  }
+}
+
+// ---- 06b-history.js
+// ===== 역사 흐름 장치 (설정에서 '역사를 따라'일 때) =====
+// 1) 세력권: 세력마다 역사에서 다투던 지역. 그 밖으로는 초반에 잘 나가지 않음
+// 2) 숙원(focus): 사건이 정해 주는 '이 세력을 쳐라'. 세력권 제한을 풀고 공격 문턱을 낮춤
+// 3) 후계자: 역사 속 후계자가 살아 있으면 그가 뒤를 이음
+// 4) 천하의 견제: 한 세력이 너무 커지면 이웃이 연합함
+// 5) 역사 속 몰년: 사건으로 죽는 인물은 사건이 먼저 오도록 미뤄 둠
+const HIST = () => !G || G.hist !== false;
+
+const SPHERES = Object.fromEntries(Object.entries({
+  dz: '장안 홍농 낙양 안정',
+  md: '무위 천수 안정 장안 한중',
+  ly: '성도 자동 강주 건녕 한중',
+  hf: '업 진양 남피',
+  ys: '업 남피 진양 평원 계 북평 복양 북해',
+  gz: '계 북평 평원 남피 양평',
+  gd: '양평 북평',
+  lb: '평원 북해 소패 하비 여남 신야',
+  kr: '북해 평원',
+  cc: '진류 복양 허창 여남 소패 하비 완 낙양',
+  tq: '하비 소패 북해 수춘',
+  ysh: '완 여남 수춘 여강 신야 허창',
+  lbi: '양양 강릉 강하 장사 무릉 영릉 계양 신야',
+  sj: '장사 계양 영릉 무릉 강하 시상 여강 건업 오 회계 남해',
+}).map(([k, v]) => [k, new Set(v.split(' '))]));
+
+// 역사 속 후계자
+const HEIRS = { 유언: '유장', 손견: '손책', 손책: '손권', 원소: '원담', 조조: '조비', 마등: '마초', 공손도: '공손강', 공손찬: '공손속', 동탁: '이각', 유표: '채모' };
+// 사건으로 죽는 인물: 자연사를 이 해까지 미룸
+const EVENT_DEATH = { 동탁: 194, 손견: 194, 도겸: 196, 왕윤: 194, 손책: 202, 한복: 193 };
+
+function inSphere(F, t) { const sp = SPHERES[F.key]; return !sp || sp.has(t.name); }
+function sphereLoose(F) {
+  if (F && F.key === 'dz' && !G.ev.chain && !G.ev.dong_death) return 9; // 동탁은 살아 있는 동안 관중을 지킴
+  return G.year < 192 ? 9 : G.year < 196 ? .8 : G.year < 202 ? .4 : G.year < 208 ? .15 : 0;
+}
+
+// 숙원
+function addFocus(f, t, months, why) {
+  if (f < 0 || t < 0 || f === t) return;
+  G.focus = (G.focus || []).filter(x => !(x.f === f && x.t === t));
+  G.focus.push({ f, t, until: mIdx() + months });
+  if (why) logMsg(why, 'war');
+}
+function hasFocus(f, t) { return t >= 0 && (G.focus || []).some(x => x.f === f && x.t === t && x.until > mIdx() && G.factions[t]?.alive); }
+function focusTargets(f) { return (G.focus || []).filter(x => x.f === f && x.until > mIdx() && G.factions[x.t]?.alive).map(x => x.t); }
+
+// 공격 문턱에 더할 값 (양수면 덜 공격)
+function histNeed(F, t) {
+  if (!HIST()) return 0;
+  if (t.f >= 0 && hasFocus(F.id, t.f)) return -.3;
+  return inSphere(F, t) ? 0 : sphereLoose(F);
+}
+// 빈 땅을 차지해도 되는가 (초반엔 자기 지역만)
+function histEmptyOK(F, t) { return !HIST() || inSphere(F, t) || G.year >= 193; }
+// 병력 모을 목표 고르기: 점수(낮을수록 좋음)에 더할 값
+function histTargetBias(F, t) {
+  if (!HIST()) return 0;
+  if (t.f >= 0 && hasFocus(F.id, t.f)) return -12000;
+  return inSphere(F, t) ? -2000 : Math.min(3, sphereLoose(F)) * 20000;
+}
+
+function makeAllyFor(a, b, months) { if (a < 0 || b < 0 || a === b) return; G.ally[relKey(a, b)] = mIdx() + months; }
+
+// 천하의 견제: 해마다 1월에 확인
+async function checkHegemon() {
+  if (!HIST() || G.year >= 206) return;
+  const total = G.cities.length, pf = me() && me().st === 'on' ? me().f : -2;
+  G.heg = G.heg || {};
+  for (const F of G.factions) {
+    if (!F.alive || F.id === pf) continue;
+    const n = citiesOf(F.id).length;
+    if (n < total * .3 || (G.heg[F.id] && mIdx() - G.heg[F.id] < 48)) continue;
+    G.heg[F.id] = mIdx();
+    const nb = new Set(); citiesOf(F.id).forEach(c => ADJ[c.id].forEach(i => { const f = G.cities[i].f; if (f >= 0 && f !== F.id) nb.add(f); }));
+    const members = [...nb].filter(f => G.factions[f].alive);
+    if (members.length < 2 && !members.includes(pf)) continue;
+    const ai = members.filter(f => f !== pf);
+    for (const a of ai) { for (const b of ai) if (a < b) makeAllyFor(a, b, 24); addFocus(a, F.id, 24); if (isAlly(a, F.id)) delete G.ally[relKey(a, F.id)]; addRel(a, F.id, -20); }
+    const lines = [[null, `${F.name}군이 천하의 ${Math.round(n / total * 100)}%를 손에 넣자, 이웃 제후들이 두려움에 떨기 시작했다.`],
+      [null, `${ai.map(f => G.factions[f].name).join('·')}의 사자들이 오가며 ${F.name}군을 함께 치기로 맹세한다.`]];
+    let ch = 'no';
+    if (members.includes(pf) && isRuler(me())) ch = await scene({ title: `반${F.name} 연합`, involved: true, lines: [...lines, [null, '우리에게도 연합에 들어오라는 사자가 왔다.']], options: [{ k: 'join', label: '연합에 들어간다 (2년 동맹)' }, { k: 'no', label: '들어가지 않는다' }] });
+    else await scene({ title: `반${F.name} 연합`, involved: members.includes(pf), lines });
+    if (ch === 'join') for (const a of ai) makeAllyFor(a, pf, 24);
+    logMsg(`반${F.name} 연합이 맺어졌습니다 (${ai.map(f => G.factions[f].name).join('·')})`, 'big');
   }
 }
 
@@ -2055,6 +2363,7 @@ async function yearlyEvents() {
   }
   checkFactions();
   assignGovs();
+  await checkHegemon();
 }
 
 async function afterMonthChecks() {
@@ -2199,7 +2508,7 @@ const EVENTS = [
   // ── 손견, 현산에서 지다
   {
     id: 'sunjian_death',
-    cond: () => { const s = rulerNamed('손견'); const lb = G.factions.find(f => f.key === 'lbi' && f.alive); return s && lb && mIdx() >= 16 && mIdx() <= 40 && facAdj(s.f, lb.id) && chance(.2); },
+    cond: () => { const s = rulerNamed('손견'); const lb = G.factions.find(f => f.key === 'lbi' && f.alive); return s && lb && mIdx() >= 16 && mIdx() <= 40 && (facAdj(s.f, lb.id) || (HIST() && mIdx() >= 24)) && chance(HIST() ? .2 + Math.max(0, mIdx() - 16) * .06 : .2); },
     async run() {
       const s = rulerNamed('손견'), hz = byName('황조'), lb = G.factions.find(f => f.key === 'lbi');
       const lines = [
@@ -2281,6 +2590,7 @@ const EVENTS = [
       ], options: isP(lb) ? [{ k: 'take', label: '서주를 받는다' }, { k: 'no', label: '끝내 사양한다' }] : null });
       if (ch === 'no') { lb.fame += 10; killOfficer(t, `${eun(t.name)} 병으로 세상을 떠났습니다`); logMsg('유비가 서주를 사양했습니다', 'big'); return; }
       mergeFaction(from, to);
+      for (const x of G.focus || []) if (x.t === from) x.t = to;
       killOfficer(t, null);
       lb.fame += 8;
       logMsg(`${eun(t.name)} 세상을 떠나며 서주를 유비에게 넘겼습니다`, 'big');
@@ -2333,6 +2643,7 @@ const EVENTS = [
     async run() {
       const c = rulerNamed('조조'), y = rulerNamed('원소'), hy = byName('허유');
       delete G.ally[relKey(c.f, y.f)]; G.rel[relKey(c.f, y.f)] = 0;
+      addFocus(c.f, y.f, 30); addFocus(y.f, c.f, 30);
       const lines = [
         [null, '하북을 손에 넣은 원소가 대군을 일으켜 남쪽으로 내려온다. 조조는 관도에서 이를 막는다.'],
         [y, '조조 따위가 천자를 끼고 거들먹거리는구나. 단숨에 짓밟아 주마!'],
@@ -2413,6 +2724,160 @@ const EVENTS = [
       logMsg(`${eun(z.name)} 삼고초려 끝에 유비를 섬기게 되었습니다 (천하삼분지계)`, 'big');
     },
   },
+// ── 반동탁 연합: 시작할 때 동맹 1년, 동탁을 함께 침
+  {
+    id: 'coalition',
+    cond: () => mIdx() <= 3 && !!rulerNamed('동탁') && !!rulerNamed('원소'),
+    async run() {
+      const d = rulerNamed('동탁'), y = rulerNamed('원소'), c = byName('조조');
+      const keys = ['ys', 'cc', 'sj', 'ysh', 'hf', 'kr', 'gz', 'tq'];
+      const mem = G.factions.filter(f => f.alive && keys.includes(f.key)).map(f => f.id);
+      for (const a of mem) { for (const b of mem) if (a < b) makeAllyFor(a, b, 12); addFocus(a, d.f, 12); addRel(a, d.f, -30); }
+      await scene({ title: '반동탁 연합', involved: mem.includes(me()?.f) || onIn(me(), d.f), lines: [
+        [null, '동관에 격문이 나붙었다. 역적 동탁을 치자는 조조의 거짓 조서에 열여덟 제후가 호응한다.'],
+        [onIn(c, c?.f) ? c : null, '천하의 제후들이여, 함께 역적을 쳐 한실을 바로 세웁시다!', '격문을 띄운 이는 진류의 조조였다.'],
+        [y, '사세삼공의 이름을 걸고, 이 원본초가 맹주를 맡겠소.'],
+        [null, `${mem.map(f => G.factions[f].name).join('·')}의 군이 동맹을 맺었다 (1년). 동탁은 사수관과 호뢰관에서 이를 막는다.`],
+      ] });
+      logMsg('반동탁 연합이 결성되었습니다 (맹주 원소, 1년 동맹)', 'big');
+    },
+  },
+
+  // ── 원소, 기주를 얻다
+  {
+    id: 'jizhou',
+    cond: () => { const y = rulerNamed('원소'), H = G.factions.find(f => f.key === 'hf' && f.alive); return y && H && mIdx() >= 16 && !isP(G.officers[H.ruler]) && facAdj(y.f, H.id); },
+    async run() {
+      const y = rulerNamed('원소'), H = G.factions.find(f => f.key === 'hf' && f.alive), h = G.officers[H.ruler], fg = byName('봉기'), from = H.id;
+      await scene({ title: '기주 양도', involved: isP(y) || onIn(me(), from) || onIn(me(), y.f), lines: [
+        [onIn(fg, y.f) ? fg : null, '공손찬을 꾀어 기주를 치게 하면 한복은 겁을 먹고 주공께 기주를 바칠 것입니다.', '원소의 모사들은 공손찬을 부추겨 한복을 겁주었다.'],
+        [h, h.name === '한복' ? '나는 본래 원씨의 옛 관리였소. 재주도 원본초만 못하니 기주를 그에게 맡기겠소.' : '기주를 지킬 힘이 없으니, 원본초 공께 의탁하겠소.'],
+        [null, '저수와 심배 같은 기주의 인재들이 원소 아래로 들어갔다. 하북의 패자가 태어나는 순간이었다.'],
+      ] });
+      mergeFaction(from, y.f);
+      if (HIST()) for (const c of citiesOf(y.f)) { c.troops = Math.min(troopMax(c), c.troops + 2500); c.gold += 400; }
+      logMsg('한복이 기주를 원소에게 넘겼습니다', 'big');
+    },
+  },
+
+  // ── (역사를 따라) 연환계가 어긋나도 동탁은 192년에 쓰러짐
+  {
+    id: 'dong_death',
+    cond: () => HIST() && mIdx() >= 31 && !!rulerNamed('동탁') && !isP(rulerNamed('동탁')) && !isP(byName('여포')),
+    async run() {
+      const d = rulerNamed('동탁'), wy = byName('왕윤');
+      G.ev.chain = true;
+      await scene({ title: '동탁의 최후', involved: onIn(me(), d.f), lines: [
+        [onIn(wy, d.f) ? wy : null, '역적의 명은 오늘로 끝이다.', '사도 왕윤이 은밀히 무사들을 모았다.'],
+        [null, '입궐하던 동탁은 궁문 앞에서 숨어 있던 무사들의 창에 찔려 쓰러졌다. 장안의 백성들은 그의 배꼽에 심지를 꽂아 불을 밝혔다고 한다.'],
+      ] });
+      killOfficer(d, `${eun(d.name)} 장안에서 암살당했습니다`);
+    },
+  },
+
+  // ── 조숭 피살: 조조가 도겸을 원수로 삼다
+  {
+    id: 'cao_song',
+    cond: () => { const c = rulerNamed('조조'), t = rulerNamed('도겸'); return c && t && G.year >= 193 && G.month >= 6; },
+    async run() {
+      const c = rulerNamed('조조'), t = rulerNamed('도겸');
+      const ch = await scene({ title: '조숭 피살', involved: isP(c) || isP(t) || onIn(me(), c.f) || onIn(me(), t.f), lines: [
+        [null, '낭야에서 피난하던 조조의 아버지 조숭 일가가 서주를 지나다 도겸의 부하 장개에게 몰살당했다.'],
+        [c, '도겸, 이 원수는 서주 땅을 피로 씻어서라도 갚겠다!'],
+      ], options: isP(c) ? [{ k: 'war', label: '서주를 친다 (도겸군을 숙적으로)' }, { k: 'calm', label: '분을 삭이고 때를 기다린다' }] : null });
+      if (ch === 'calm') { c.fame += 5; return; }
+      delete G.ally[relKey(c.f, t.f)]; G.rel[relKey(c.f, t.f)] = 0;
+      addFocus(c.f, t.f, 24, '조조가 아버지의 원수를 갚으려 서주를 노립니다');
+    },
+  },
+
+  // ── 이각·곽사의 난
+  {
+    id: 'li_guo',
+    cond: () => { const F = G.factions.find(f => f.key === 'dz' && f.alive); if (!F || G.year < 195) return false; const r = G.officers[F.ruler]; const other = r.name === '이각' ? byName('곽사') : r.name === '곽사' ? byName('이각') : null; return !!other && onIn(other, F.id) && citiesOf(F.id).length >= 2 && !isP(other); },
+    async run() {
+      const F = G.factions.find(f => f.key === 'dz' && f.alive), r = G.officers[F.ruler];
+      const other = r.name === '이각' ? byName('곽사') : byName('이각');
+      await scene({ title: '이각·곽사의 난', involved: onIn(me(), F.id), lines: [
+        [null, '동탁이 죽은 뒤 장안을 차지한 이각과 곽사는 서로를 의심하기 시작했다.'],
+        [other, `${r.name}, 네가 천자를 끼고 홀로 권세를 누리려 하는구나!`],
+        [null, '장안 거리에서 두 사람의 군사가 맞붙었고, 그 틈에 천자는 낙양으로 몸을 피했다.'],
+      ] });
+      let c = G.cities.filter(x => x.f === F.id && x.id !== r.city).sort((a, b) => b.troops - a.troops)[0];
+      if (!c) return;
+      const oc = G.cities[other.city]; if (oc.gov === other.id) oc.gov = -1; other.city = c.id;
+      const NF = splitOff(other, c, F.id, []);
+      addFocus(NF.id, F.id, 24); addFocus(F.id, NF.id, 24);
+      logMsg(`${eun(other.name)} ${r.name}와 갈라서서 ${c.name}에서 따로 섰습니다`, 'big');
+    },
+  },
+
+  // ── 원술 칭제
+  {
+    id: 'yuan_emperor',
+    cond: () => !!rulerNamed('원술') && G.year >= 197,
+    async run() {
+      const y = rulerNamed('원술'), F = G.factions[y.f];
+      const ch = await scene({ title: '원술 칭제', involved: isP(y) || onIn(me(), y.f) || G.cities.some(c => c.f === me()?.f && ADJ[c.id].some(i => G.cities[i].f === y.f)), lines: [
+        [null, '수춘에서 원술이 스스로 황제라 일컫고 나라 이름을 중(仲)이라 했다.'],
+        [y, '한의 운은 다했다. 옥새와 하늘의 뜻이 내게 있으니, 짐이 천명을 받는다!'],
+        [null, '천하의 제후들이 한목소리로 원술을 역적이라 꾸짖었다.'],
+      ], options: isP(y) ? [{ k: 'yes', label: '황제를 칭한다 (금 3,000, 모두가 적이 됨)' }, { k: 'no', label: '아직 때가 아니다' }] : null });
+      if (ch === 'no') return;
+      const cap = G.cities[y.city]; if (cap.f === y.f) cap.gold += 3000;
+      for (const f of G.factions) if (f.alive && f.id !== y.f) { delete G.ally[relKey(f.id, y.f)]; addRel(f.id, y.f, -40); if (facAdj(f.id, y.f)) addFocus(f.id, y.f, 24); }
+      for (const o of factionOfficers(y.f)) if (!isRuler(o) && !(o.tag && o.tag === y.tag)) o.loy = Math.max(0, o.loy - 12);
+      y.fame -= 10;
+      logMsg('원술이 황제를 칭했습니다. 천하가 그를 역적이라 부릅니다', 'big');
+    },
+  },
+
+  // ── 하비성: 조조가 여포를 노림
+  {
+    id: 'xiapi',
+    cond: () => { const c = rulerNamed('조조'), l = rulerNamed('여포'); return c && l && G.year >= 197 && G.month >= 9 && facAdj(c.f, l.f); },
+    async run() {
+      const c = rulerNamed('조조'), l = rulerNamed('여포'), cg = byName('진궁');
+      await scene({ title: '하비 공방', involved: isP(c) || isP(l) || onIn(me(), c.f) || onIn(me(), l.f), lines: [
+        [c, '여포는 승냥이 같은 자다. 지금 없애지 않으면 뒷날 큰 화가 된다.'],
+        [onIn(cg, l.f) ? cg : null, '장군, 성 밖에 진을 쳐 기각지세를 이루소서. 성 안에만 있으면 굶어 죽습니다.', '여포의 모사들은 성 밖으로 나가 싸우자고 간했지만 여포는 듣지 않았다.'],
+        [l, '내게는 적토마와 방천화극이 있다. 무엇이 두려우랴!'],
+      ] });
+      delete G.ally[relKey(c.f, l.f)];
+      addFocus(c.f, l.f, 24, '조조가 여포를 치러 나섭니다');
+    },
+  },
+
+  // ── 역경: 원소가 공손찬을 몰아붙임
+  {
+    id: 'yijing',
+    cond: () => { const y = rulerNamed('원소'), g = rulerNamed('공손찬'); return y && g && G.year >= 198 && facAdj(y.f, g.f); },
+    async run() {
+      const y = rulerNamed('원소'), g = rulerNamed('공손찬');
+      await scene({ title: '역경루', involved: isP(y) || isP(g) || onIn(me(), y.f) || onIn(me(), g.f), lines: [
+        [g, '역경에 높은 누각을 쌓고 곡식 삼백만 섬을 쌓아 두었다. 천하가 어지러워도 여기서 버티면 그만이다.'],
+        [null, '공손찬이 성에 틀어박히자 원소는 땅굴을 파서 누각을 무너뜨리기로 했다.'],
+      ] });
+      addFocus(y.f, g.f, 30, '원소가 공손찬을 끝장내려 합니다');
+      if (HIST()) for (const c of citiesOf(y.f).filter(c => ADJ[c.id].some(i => G.cities[i].f === g.f))) { c.troops = Math.min(troopMax(c), c.troops + 6000); c.train = Math.max(c.train, 75); }
+      for (const c of citiesOf(g.f)) c.wall = Math.min(c.wallMax, c.wall + 150);
+    },
+  },
+
+  // ── 손책의 죽음
+  {
+    id: 'sun_ce_death',
+    cond: () => { const s = rulerNamed('손책'); return HIST() && s && !isP(s) && G.year >= 200 && G.month >= 4; },
+    async run() {
+      const s = rulerNamed('손책'), q = byName('손권');
+      await scene({ title: '소패왕의 죽음', involved: onIn(me(), s.f), lines: [
+        [null, '사냥을 나간 손책이 허공의 식객들이 쏜 화살에 얼굴을 맞았다.'],
+        [s, `중원의 군사를 이끌고 천하와 다투는 일은 네가 나만 못하다. 그러나 어진 이를 들어 강동을 지키는 일은 내가 너만 못하다. ${onIn(q, s.f) ? '중모야, 강동을 부탁한다.' : ''}`],
+      ] });
+      killOfficer(s, `${eun(s.name)} 자객의 화살에 맞은 상처로 세상을 떠났습니다 (향년 ${age(s)}세)`);
+    },
+  },
+
 ];
 
 async function runEvents() {
@@ -3534,42 +3999,152 @@ const BattleUI = {
     SFX.play('duel');
     return new Promise(res => {
       const layer = $('#modalLayer');
-      let hp = [100, 100], round = 0;
+      let hp = [100, 100], round = 0, busy = false, over = false;
       const bars = [el('i', { style: 'width:100%' }), el('i', { style: 'width:100%' })];
-      const side = (o, i) => el('div', { class: 'side' }, portraitImg(o), el('div', { class: 'disp', style: 'font-size:20px' }, o.name), el('div', { class: 'muted num', style: 'font-size:13px' }, `무력 ${o.war}`), el('div', { class: 'hp' }, bars[i]));
+      const hpTxt = [el('b', { class: 'num' }, '100'), el('b', { class: 'num' }, '100')];
+      const side = (o, i) => el('div', { class: 'side' }, el('div', { style: 'display:flex;align-items:center;gap:8px' }, portraitImg(o, 'dpt'), el('div', {}, el('div', { class: 'disp', style: 'font-size:20px' }, o.name), el('div', { class: 'muted num', style: 'font-size:12px' }, `무력 ${o.war}`))), el('div', { class: 'hp' }, bars[i]), hpTxt[i]);
+      const stage = el('canvas', { class: 'duelStage', width: 640, height: 220 });
       const logBox = el('div', { class: 'duelLog' });
       const btns = el('footer', {});
-      const box = el('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true' },
-        el('header', {}, el('h4', {}, '일기토')),
-        el('div', { class: 'body' }, el('div', { class: 'duel' }, side(A, 0), el('div', { class: 'vs' }, '對'), side(D, 1)), logBox), btns);
+      const box = el('div', { class: 'modal wide', role: 'dialog', 'aria-modal': 'true' },
+        el('header', {}, el('h4', {}, '일기토'), el('span', { class: 'muted num', id: 'duelRound', style: 'font-size:13px' }, '')),
+        el('div', { class: 'body' }, stage, el('div', { class: 'duel' }, side(A, 0), el('div', { class: 'vs' }, '對'), side(D, 1)), logBox), btns);
       layer.innerHTML = ''; layer.append(box); layer.classList.add('on');
-      const close = () => { layer.classList.remove('on'); layer.innerHTML = ''; res(); };
-      const finish = (how, winner) => {
+      // ── 무대
+      const sx = stage.getContext('2d');
+      const dpr = Math.min(2, devicePixelRatio || 1); stage.width = 640 * dpr; stage.height = 220 * dpr; sx.scale(dpr, dpr);
+      const imgs = [A, D].map(o => { const im = new Image(); im.src = portraitURL(o); return im; });
+      const cols = [facColor(B.units[cu.id].side === 0 ? B.attF : B.defF), facColor(tu.side === 0 ? B.attF : B.defF)];
+      const horseCol = o => o.name === '여포' ? '#a8321d' : o.name === '조운' || o.name === '마초' ? '#e8e2d6' : o.name === '장비' ? '#2a2420' : ['#6b4a2e', '#4a3424', '#8a6a48', '#3a2a20'][hashStr(o.name) % 4];
+      const weapon = o => ({ 관우: 'glaive', 장비: 'serpent', 여포: 'halberd', 조운: 'spear', 마초: 'spear', 황충: 'saber', 허저: 'saber', 전위: 'axes' })[o.name] || (o.war >= 80 ? 'spear' : 'saber');
+      const R = [{ x: 120, y: 150, dir: 1, fall: 0, off: 0, flash: 0, guard: 0, turn: 0 }, { x: 520, y: 150, dir: -1, fall: 0, off: 0, flash: 0, guard: 0, turn: 0 }];
+      const fx = []; let shakeT = 0, raf = 0;
+      const drawRider = (i, now) => {
+        const r = R[i], o = [A, D][i];
+        const gal = Math.abs(r.vx || 0) > .5 ? 1 : .25, ph = now / (gal > .5 ? 90 : 300) + i;
+        const bob = Math.sin(ph * 2) * 3 * gal;
+        sx.save(); sx.translate(r.x, r.y + bob); sx.scale(r.dir * (r.turn ? -1 : 1), 1);
+        // 그림자
+        sx.fillStyle = 'rgba(0,0,0,.35)'; sx.beginPath(); sx.ellipse(0, 52 - bob, 52, 8, 0, 0, 7); sx.fill();
+        // 말
+        const hc = horseCol(o);
+        sx.strokeStyle = shade(hc, -40); sx.lineWidth = 6; sx.lineCap = 'round';
+        const leg = (lx, ofs) => { const a = Math.sin(ph + ofs) * .6 * gal; sx.beginPath(); sx.moveTo(lx, 10); sx.lineTo(lx + Math.sin(a) * 18, 30); sx.lineTo(lx + Math.sin(a) * 12 + 4, 50); sx.stroke(); };
+        leg(-26, 0); leg(22, Math.PI);
+        sx.fillStyle = hc; sx.beginPath(); sx.ellipse(0, 4, 40, 17, 0, 0, 7); sx.fill();
+        sx.beginPath(); sx.moveTo(26, -4); sx.quadraticCurveTo(42, -22, 46, -38); sx.lineTo(60, -34); sx.quadraticCurveTo(62, -26, 54, -24); sx.quadraticCurveTo(46, -10, 36, 8); sx.closePath(); sx.fill();
+        sx.fillStyle = shade(hc, -45); sx.beginPath(); sx.moveTo(30, -10); sx.quadraticCurveTo(38, -36, 46, -40); sx.lineTo(42, -28); sx.quadraticCurveTo(36, -14, 34, -4); sx.fill();
+        sx.beginPath(); sx.moveTo(-38, 0); sx.quadraticCurveTo(-60, 4 + Math.sin(ph) * 6, -58, 26); sx.lineTo(-52, 24); sx.quadraticCurveTo(-52, 8, -38, 6); sx.fill();
+        leg(-18, Math.PI * .7); leg(30, Math.PI * 1.6);
+        sx.fillStyle = cols[i]; sx.fillRect(-16, -12, 30, 8);
+        // 기수 (떨어지면 기울어짐)
+        sx.save(); sx.translate(0, -12); sx.rotate(-r.fall * 1.4); sx.translate(-r.fall * 30, r.fall * 30);
+        sx.fillStyle = shade(cols[i], -20); sx.beginPath(); sx.moveTo(-12, 0); sx.lineTo(12, 0); sx.lineTo(10, -34); sx.lineTo(-10, -34); sx.closePath(); sx.fill();
+        sx.fillStyle = '#5d636b'; sx.fillRect(-12, -34, 24, 10);
+        // 무기
+        const sw = (r.swing || 0);
+        sx.save(); sx.translate(8, -26); sx.rotate(-.9 + sw * 1.6 - (r.guard ? .9 : 0));
+        const wp = weapon(o);
+        sx.strokeStyle = '#4a3020'; sx.lineWidth = 3; sx.beginPath(); sx.moveTo(-14, 0); sx.lineTo(wp === 'saber' || wp === 'axes' ? 30 : 64, 0); sx.stroke();
+        sx.fillStyle = '#e6e9ee'; sx.strokeStyle = '#8a9099'; sx.lineWidth = 1;
+        if (wp === 'glaive') { sx.beginPath(); sx.moveTo(60, -2); sx.quadraticCurveTo(84, -16, 92, 2); sx.quadraticCurveTo(80, 4, 62, 4); sx.closePath(); sx.fill(); sx.stroke(); sx.fillStyle = '#2f6b46'; sx.beginPath(); sx.arc(58, 0, 3, 0, 7); sx.fill(); }
+        else if (wp === 'serpent') { sx.beginPath(); sx.moveTo(62, -3); for (let k = 0; k < 5; k++) sx.lineTo(66 + k * 6, k % 2 ? 3 : -3); sx.lineTo(96, 0); sx.lineTo(66, 3); sx.closePath(); sx.fill(); sx.stroke(); }
+        else if (wp === 'halberd') { sx.beginPath(); sx.moveTo(62, -2); sx.lineTo(90, 0); sx.lineTo(62, 2); sx.fill(); sx.beginPath(); sx.moveTo(56, -2); sx.quadraticCurveTo(52, -16, 62, -18); sx.quadraticCurveTo(60, -8, 64, -2); sx.fill(); sx.beginPath(); sx.moveTo(56, 2); sx.quadraticCurveTo(52, 16, 62, 18); sx.quadraticCurveTo(60, 8, 64, 2); sx.fill(); }
+        else if (wp === 'spear') { sx.beginPath(); sx.moveTo(62, -3); sx.lineTo(82, 0); sx.lineTo(62, 3); sx.closePath(); sx.fill(); sx.stroke(); sx.fillStyle = '#c94a30'; sx.beginPath(); sx.moveTo(60, 0); sx.lineTo(54, 8); sx.lineTo(57, 0); sx.fill(); }
+        else if (wp === 'axes') { sx.beginPath(); sx.moveTo(26, -2); sx.quadraticCurveTo(36, -14, 40, 0); sx.quadraticCurveTo(36, 14, 26, 2); sx.fill(); sx.stroke(); }
+        else { sx.beginPath(); sx.moveTo(28, -3); sx.quadraticCurveTo(56, -6, 62, 0); sx.lineTo(28, 3); sx.closePath(); sx.fill(); sx.stroke(); }
+        sx.restore();
+        if (r.guard) { sx.strokeStyle = `rgba(160,210,255,${.5 + Math.sin(now / 80) * .3})`; sx.lineWidth = 3; sx.beginPath(); sx.arc(14, -30, 26, -1.2, 1.2); sx.stroke(); }
+        // 머리 = 초상
+        const im = imgs[i];
+        sx.save(); sx.translate(0, -48); sx.scale(r.dir * (r.turn ? -1 : 1), 1);
+        sx.beginPath(); sx.arc(0, 0, 16, 0, 7); sx.closePath(); sx.save(); sx.clip();
+        if (im.complete && im.naturalWidth) sx.drawImage(im, 14, 6, 92, 92, -16, -16, 32, 32); else { sx.fillStyle = '#d6a87e'; sx.fill(); }
+        sx.restore(); sx.strokeStyle = cols[i]; sx.lineWidth = 2.5; sx.stroke();
+        sx.restore();
+        sx.restore();
+        if (r.flash > 0) { sx.fillStyle = `rgba(255,80,50,${r.flash})`; sx.beginPath(); sx.arc(0, -30, 40, 0, 7); sx.fill(); }
+        sx.restore();
+      };
+      const loop = now => {
+        raf = requestAnimationFrame(loop);
+        sx.save();
+        if (now - shakeT < 220) sx.translate((Math.random() - .5) * 8, (Math.random() - .5) * 6);
+        // 들판
+        const sky = sx.createLinearGradient(0, 0, 0, 220); sky.addColorStop(0, '#3a4a50'); sky.addColorStop(.55, '#6a6650'); sky.addColorStop(.56, '#7d8550'); sky.addColorStop(1, '#4a5a30');
+        sx.fillStyle = sky; sx.fillRect(-10, -10, 660, 240);
+        sx.fillStyle = 'rgba(30,40,40,.45)'; sx.beginPath(); sx.moveTo(0, 122); for (let k = 0; k <= 16; k++) sx.lineTo(k * 40, 100 + Math.sin(k * 1.7) * 14); sx.lineTo(640, 122); sx.fill();
+        sx.fillStyle = 'rgba(200,170,110,.08)'; for (let k = 0; k < 6; k++) { sx.beginPath(); sx.ellipse(((now / 40 + k * 130) % 760) - 60, 190 + (k % 3) * 8, 30, 4, 0, 0, 7); sx.fill(); }
+        // 깃발 두 개
+        for (const [fxp, c2] of [[30, cols[0]], [610, cols[1]]]) { sx.strokeStyle = '#2a1a0a'; sx.lineWidth = 2; sx.beginPath(); sx.moveTo(fxp, 200); sx.lineTo(fxp, 120); sx.stroke(); sx.fillStyle = c2; sx.beginPath(); sx.moveTo(fxp, 122); for (let k = 1; k <= 5; k++) sx.lineTo(fxp + k * 5 * (fxp < 300 ? 1 : -1), 122 + Math.sin(now / 200 + k) * 2); sx.lineTo(fxp + 25 * (fxp < 300 ? 1 : -1), 146); sx.lineTo(fxp, 146); sx.fill(); }
+        for (const i of [0, 1]) { const r = R[i]; r.flash = Math.max(0, r.flash - .04); drawRider(i, now); }
+        // 불꽃과 숫자
+        for (let k = fx.length - 1; k >= 0; k--) {
+          const f = fx[k], t = (now - f.t0) / f.dur; if (t > 1) { fx.splice(k, 1); continue; }
+          if (f.kind === 'spark') { for (let j = 0; j < 14; j++) { const a = j * .45 + f.t0, rr = 8 + t * 60; sx.fillStyle = `rgba(255,${200 + j * 3},120,${1 - t})`; sx.beginPath(); sx.arc(f.x + Math.cos(a) * rr, f.y + Math.sin(a) * rr * .7, 2.2, 0, 7); sx.fill(); } sx.fillStyle = `rgba(255,255,230,${(1 - t) * .8})`; sx.beginPath(); sx.arc(f.x, f.y, 16 * (1 - t) + 4, 0, 7); sx.fill(); }
+          if (f.kind === 'num') { sx.font = "bold 26px 'Song Myung',serif"; sx.textAlign = 'center'; sx.lineWidth = 5; sx.strokeStyle = 'rgba(30,8,4,.9)'; sx.globalAlpha = 1 - t * t; sx.strokeText(f.text, f.x, f.y - t * 40); sx.fillStyle = f.col; sx.fillText(f.text, f.x, f.y - t * 40); sx.globalAlpha = 1; }
+          if (f.kind === 'word') { sx.font = "40px 'Song Myung',serif"; sx.textAlign = 'center'; sx.globalAlpha = Math.min(1, (1 - t) * 3); sx.lineWidth = 6; sx.strokeStyle = 'rgba(30,8,4,.9)'; sx.strokeText(f.text, 320, 70); sx.fillStyle = '#f3d991'; sx.fillText(f.text, 320, 70); sx.globalAlpha = 1; }
+        }
+        sx.restore();
+      };
+      raf = requestAnimationFrame(loop);
+      const tween = (ms, fn) => new Promise(r => { const t0 = performance.now(); const tick = () => { const t = Math.min(1, (performance.now() - t0) / ms); fn(t); if (t < 1) requestAnimationFrame(tick); else r(); }; tick(); });
+      const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const play = async (acts, r) => {
+        if (still) return;
+        // 달려 나가 맞부딪힘
+        const atk = acts.map(a => a === 'atk' || a === 'power');
+        R[0].guard = acts[0] === 'guard'; R[1].guard = acts[1] === 'guard';
+        const fled = r.fled;
+        if (fled >= 0) {
+          const f = R[fled]; f.turn = 1;
+          await tween(700, t => { f.vx = 1; f.x += f.dir * -9; });
+          f.vx = 0; return;
+        }
+        const x0 = [R[0].x, R[1].x];
+        await tween(320, t => { const e = t * t; R[0].vx = 1; R[1].vx = 1; R[0].x = x0[0] + (290 - 60 - x0[0]) * e; R[1].x = x0[1] + (350 + 60 - x0[1]) * e; R[0].swing = atk[0] ? t : 0; R[1].swing = atk[1] ? t : 0; });
+        SFX.play('clash'); fx.push({ kind: 'spark', x: 320, y: 112, t0: performance.now(), dur: 450 });
+        if (acts.includes('power')) shakeT = performance.now();
+        for (const i of [0, 1]) if (r.dmg[i] > 0) { R[i].flash = .7; fx.push({ kind: 'num', text: '−' + r.dmg[i], col: '#ffb09a', x: i ? 420 : 220, y: 80, t0: performance.now() + 60, dur: 900 }); if (r.dmg[i] >= 25) shakeT = performance.now(); }
+        await tween(160, t => { R[0].swing = atk[0] ? 1 - t : 0; R[1].swing = atk[1] ? 1 - t : 0; });
+        await tween(380, t => { R[0].x = 230 + (120 - 230) * t; R[1].x = 410 + (520 - 410) * t; R[0].vx = R[1].vx = t < .9 ? 1 : 0; });
+        R[0].vx = R[1].vx = 0; R[0].guard = R[1].guard = false;
+      };
+      const close = () => { cancelAnimationFrame(raf); layer.classList.remove('on'); layer.innerHTML = ''; res(); };
+      const finish = async (how, winner) => {
+        over = true;
+        if (how === 'ko' && !still) { const l = R[1 - winner]; fx.push({ kind: 'word', text: `${[A, D][winner].name} 승리!`, t0: performance.now(), dur: 2400 }); await tween(600, t => { l.fall = t; }); SFX.play('win'); }
+        if (how === 'draw') fx.push({ kind: 'word', text: '승부 없음', t0: performance.now(), dur: 2000 });
         if (how === 'draw') duelFinish(B, cu, tu, 'draw');
         else if (how === 'fled') duelFinish(B, winner === 0 ? cu : tu, winner === 0 ? tu : cu, 'fled');
         else duelFinish(B, winner === 0 ? cu : tu, winner === 0 ? tu : cu, 'ko');
-        btns.innerHTML = ''; let closed = false; const cl = () => { if (!closed) { closed = true; close(); } }; btns.append(el('button', { class: 'btn pri', onclick: cl }, '전장으로')); if (myIdx < 0) setTimeout(cl, 1600);
+        btns.innerHTML = ''; let closed = false; const cl = () => { if (!closed) { closed = true; close(); } }; btns.append(el('button', { class: 'btn pri', onclick: cl }, '전장으로')); if (myIdx < 0) setTimeout(cl, 1800);
         btns.querySelector('button').focus();
       };
-      const step = act => {
-        round++;
+      const step = async act => {
+        if (busy || over) return; busy = true; round++;
+        $('#duelRound') && ($('#duelRound').textContent = `${round}합`);
+        btns.querySelectorAll('button').forEach(b => b.disabled = true);
         const acts = [myIdx === 0 ? act : duelAI(A, D, hp[0], hp[1]), myIdx === 1 ? act : duelAI(D, A, hp[1], hp[0])];
         const r = duelRound(A, D, hp, acts);
+        await play(acts, r);
         logBox.innerHTML = ''; r.text.forEach(t => logBox.append(el('div', {}, t)));
-        if (r.dmg[0] + r.dmg[1] > 0) SFX.play('clash');
+        busy = false;
         if (r.fled >= 0) { logBox.append(el('div', { style: 'color:var(--brass)' }, '일기토가 끝났다')); return finish('fled', 1 - r.fled); }
         hp[0] = Math.max(0, hp[0] - r.dmg[0]); hp[1] = Math.max(0, hp[1] - r.dmg[1]);
-        bars[0].style.width = hp[0] + '%'; bars[1].style.width = hp[1] + '%';
-        if (hp[0] <= 0 || hp[1] <= 0) { const w = hp[0] > hp[1] ? 0 : 1; logBox.append(el('div', { style: 'color:var(--brass)' }, `${[A, D][w].name}의 승리!`)); SFX.play('win'); return finish('ko', w); }
+        bars[0].style.width = hp[0] + '%'; bars[1].style.width = hp[1] + '%'; hpTxt[0].textContent = hp[0]; hpTxt[1].textContent = hp[1];
+        if (hp[0] <= 0 || hp[1] <= 0) { const w = hp[0] > hp[1] ? 0 : 1; logBox.append(el('div', { style: 'color:var(--brass)' }, `${[A, D][w].name}의 승리!`)); return finish('ko', w); }
         if (round >= 10) { logBox.append(el('div', {}, '날이 저물어 승부를 내지 못했다')); return finish('draw'); }
-        if (myIdx < 0) setTimeout(() => step(null), 650); else drawBtns();
+        if (myIdx < 0) setTimeout(() => step(null), 350); else drawBtns();
       };
       const drawBtns = () => {
         btns.innerHTML = '';
-        for (const [k, l] of Object.entries(DUEL_ACTS)) btns.append(el('button', { class: 'btn' + (k === 'atk' ? ' pri' : ''), onclick: () => step(k) }, l));
+        const ic = { atk: 'sword', power: 'fire', guard: 'order', flee: 'retreat' };
+        for (const [k, l] of Object.entries(DUEL_ACTS)) btns.append(el('button', { class: 'btn' + (k === 'atk' ? ' pri' : k === 'power' ? ' red' : ''), onclick: () => step(k) }, icon(ic[k]), l));
       };
       logBox.append(el('div', {}, `${wa(A.name)} ${iga(D.name)} 말을 몰아 맞선다!`));
-      if (myIdx < 0) setTimeout(() => step(null), 700); else drawBtns();
+      fx.push({ kind: 'word', text: '일기토!', t0: performance.now(), dur: 1400 });
+      if (myIdx < 0) setTimeout(() => step(null), 900); else drawBtns();
     });
   },
 
@@ -3948,9 +4523,9 @@ function startPlaying(isNew) {
 }
 
 const Setup = {
-  mode: null, tab: 'all', stats: null, diff: +(store('gunung.diff') ?? 1),
+  mode: null, tab: 'all', stats: null, diff: +(store('gunung.diff') ?? 1), hist: store('gunung.hist') !== '0',
   open() {
-    newGame({ diff: this.diff }); // 고르기용 상태
+    newGame({ diff: this.diff, hist: this.hist }); // 고르기용 상태
     showScreen('scrSetup');
     this.renderModes();
   },
@@ -3961,7 +4536,9 @@ const Setup = {
       el('p', { class: 'muted', style: 'margin:0;max-width:65ch' }, '열네 제후와 수많은 재야 인물이 있습니다. 누구로 난세를 살아갈지 고르세요.'),
       el('div', { style: 'display:flex;flex-direction:column;gap:6px' },
         el('div', { class: 'tabs', role: 'radiogroup', 'aria-label': '난이도' }, DIFFS.map((d, i) => el('button', { class: 'tab' + (this.diff === i ? ' on' : ''), role: 'radio', 'aria-checked': this.diff === i ? 'true' : 'false', onclick: () => { this.diff = i; G.diff = i; store('gunung.diff', String(i)); this.renderModes(); } }, d.name))),
-        el('div', { class: 'muted', style: 'font-size:13px' }, DIFFS[this.diff].desc)),
+        el('div', { class: 'muted', style: 'font-size:13px' }, DIFFS[this.diff].desc),
+        el('div', { class: 'tabs', role: 'radiogroup', 'aria-label': '역사 흐름', style: 'margin-top:6px' }, [[true, '역사를 따라'], [false, '자유롭게']].map(([v, n]) => el('button', { class: 'tab' + (this.hist === v ? ' on' : ''), role: 'radio', 'aria-checked': this.hist === v ? 'true' : 'false', onclick: () => { this.hist = v; store('gunung.hist', v ? '1' : '0'); this.open(); } }, n))),
+        el('div', { class: 'muted', style: 'font-size:13px' }, this.hist ? '제후들은 역사에서 다투던 지역 안에서 주로 싸우고, 인물은 역사 속 해에 세상을 떠나며, 큰 사건이 역사대로 일어납니다. 내가 고른 인물만은 오래 삽니다.' : '세력권과 역사 속 몰년 없이, 사건 조건만 맞으면 일어납니다.')),
       el('div', { class: 'modeCards' },
         card('ruler', '군주로 시작', '세력 하나를 맡아 모든 성을 다스립니다. 고전적인 방식.'),
         card('officer', '장수로 시작', '군주 밑의 장수나 재야 인물이 되어 출세하거나 떠돌거나 독립합니다.'),
@@ -3996,7 +4573,7 @@ const Setup = {
   },
   openPick(successor) { showScreen('scrSetup'); this.tab = 'all'; this.mode = 'officer'; this.renderPick(true); },
   continueAs(id) { G.player = id; G.ap = 3; G.over = false; G.pgold = 100; startPlaying(false); UI.toast(`${G.officers[id].name}의 이야기를 이어 갑니다`); },
-  start(id) { G.player = id; G.pgold = 100; saveGame('auto'); startPlaying(true); },
+  start(id) { G.player = id; G.pgold = 100; const po = G.officers[id]; po.die = Math.max(po.die, po.born + 66); saveGame('auto'); startPlaying(true); },
   roll() {
     const s = {}; let tot = 0;
     for (const k of ['lead', 'war', 'int', 'pol', 'cha']) { s[k] = ri(35, 85); tot += s[k]; }

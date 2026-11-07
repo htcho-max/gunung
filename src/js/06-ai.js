@@ -54,7 +54,7 @@ function aiPlanAttacks(F) {
       if (t.f === pf && graceForPlayer) continue;
       const tOffs = t.f >= 0 ? officersIn(t.id, t.f) : [];
       if (t.f < 0 || !tOffs.length) {
-        if (c.troops >= 5000 && offs.length >= 2) { const s = 2 + t.size; if (s > bestS) { bestS = s; bestT = t; } }
+        if (c.troops >= 5000 && offs.length >= 2 && histEmptyOK(F, t)) { const s = 2 + t.size; if (s > bestS) { bestS = s; bestT = t; } }
         continue;
       }
       const top = [...offs].sort((a, b) => (b.lead + b.war) - (a.lead + a.war)).slice(0, 5);
@@ -64,7 +64,7 @@ function aiPlanAttacks(F) {
       const tEff = Math.min(t.troops, tOffs.slice(0, 5).reduce((a, o) => a + troopCap(o), 0));
       const thPow = tEff * thQ * (.6 + t.train / 250) * (1.15 + Math.min(.5, t.wall / 2000));
       const ratio = myPow / Math.max(1, thPow);
-      const need = Math.max(.95, DIFF().base / aggr - Math.min(.35, (F.idle || 0) * .015)) + (t.f === pf ? DIFF().vsP : 0);
+      const need = Math.max(.95, DIFF().base / aggr - Math.min(.35, (F.idle || 0) * .015)) + (t.f === pf ? DIFF().vsP : 0) + histNeed(F, t);
       if (ratio > need && c.food > c.troops * .3) { const s = ratio * (1 + t.size / 5) + (getRel(F.id, t.f) < 30 ? .3 : 0); if (s > bestS) { bestS = s; bestT = t; } }
     }
     if (!bestT) continue;
@@ -100,11 +100,13 @@ function aiLogistics(F) {
   const grace = mIdx() <= DIFF().grace;
   let tgt = F.target != null ? G.cities[F.target] : null;
   const bad = t => !t || t.f === F.id || isAlly(F.id, t.f) || !ADJ[t.id].some(i => G.cities[i].f === F.id) || (grace && t.f === pf);
-  if (bad(tgt) || chance(.04)) {
+  const fT = focusTargets(F.id);
+  if (bad(tgt) || chance(.04) || (fT.length && tgt && !fT.includes(tgt.f) && chance(.3))) {
     let best = null, bs = 1e18;
     for (const c of G.cities.filter(x => x.f === F.id)) for (const i of ADJ[c.id]) {
       const t = G.cities[i]; if (t.f === F.id || isAlly(F.id, t.f) || (grace && t.f === pf)) continue;
-      const s = (t.f < 0 ? 0 : t.troops * (1.15 + t.wall / 2000)) - t.size * 1500 + rand() * 3000;
+      if (t.f < 0 && !histEmptyOK(F, t)) continue;
+      const s = (t.f < 0 ? 0 : t.troops * (1.15 + t.wall / 2000)) - t.size * 1500 + rand() * 3000 + histTargetBias(F, t);
       if (s < bs) { bs = s; best = t; }
     }
     F.target = best ? best.id : null; tgt = best;

@@ -158,6 +158,7 @@ async function yearlyEvents() {
   }
   checkFactions();
   assignGovs();
+  await checkHegemon();
 }
 
 async function afterMonthChecks() {
