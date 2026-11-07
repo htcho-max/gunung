@@ -13,7 +13,7 @@ const UI = {
       const done = k => { layer.classList.remove('on'); layer.innerHTML = ''; this.modalOpen = false; document.removeEventListener('keydown', onKey); res(k); };
       const onKey = e => { if (e.key === 'Escape' && cancel) done(cancel); if (e.key === 'Enter' && buttons.length === 1 && !e.target.matches('input')) done(buttons[0].k); };
       const box = el('div', { class: 'modal' + (wide ? ' wide' : ''), role: 'dialog', 'aria-modal': 'true' },
-        el('header', {}, el('h4', {}, title || ''), cancel ? el('button', { class: 'btn sm ghost', onclick: () => done(cancel), 'aria-label': '닫기' }, '✕') : null),
+        el('header', {}, el('h4', {}, title || ''), cancel ? el('button', { class: 'btn sm ghost', onclick: () => done(cancel), 'aria-label': '닫기' }, icon('close')) : null),
         el('div', { class: 'body' },
           (text || portrait) ? el('div', { class: 'msg' }, portrait ? portraitImg(portrait) : null, text ? el('div', {}, text) : null) : null,
           body || null),
@@ -43,16 +43,22 @@ const UI = {
   renderTop() {
     const P = me(), r = role();
     const top = $('#top'); top.innerHTML = '';
-    top.append(el('div', { class: 'date' }, `${G.year}년 ${G.month}월`), el('span', { class: 'muted', style: 'font-size:13px' }, SEASON(G.month)));
-    if (P) top.append(el('button', { class: 'who btn ghost sm', onclick: () => this.officerInfo(P) }, portraitImg(P, ''), el('span', { class: 'disp', style: 'font-size:18px' }, P.name), el('span', { class: 'r' }, rankName(P))));
+    const sIdx = G.month <= 2 || G.month === 12 ? 4 : G.month <= 5 ? 1 : G.month <= 8 ? 2 : 3;
+    top.append(el('div', { class: 'datePlaque', title: SEASON(G.month) }, el('b', {}, `${G.year}년 ${G.month}월`), el('small', {}, eraName(G.year))),
+      el('span', { class: 'season s' + sIdx, title: SEASON(G.month) }, SEASON(G.month)[0]));
+    if (P) top.append(el('button', { class: 'who', onclick: () => this.officerInfo(P), 'aria-label': `${P.name} 정보` }, portraitImg(P, ''), el('span', { class: 'disp nmTxt', style: 'font-size:18px' }, P.name), el('span', { class: 'rank' }, rankName(P))));
+    const chip = (cls, ic, label, val) => el('span', { class: 'chip ' + cls, title: label }, icon(ic), val);
+    const chips = el('div', { class: 'chips' });
     if (P && P.st === 'on') {
       const F = G.factions[P.f], cs = citiesOf(P.f);
-      top.append(el('span', { class: 'res' }, el('span', { class: 'dot', style: `background:${F.color};margin-right:4px` }), `${F.name}군 · 성 `, el('b', {}, cs.length), ' · 장수 ', el('b', {}, factionOfficers(P.f).length), ' · 병력 ', el('b', {}, fmt(cs.reduce((a, c) => a + c.troops, 0)))));
-    } else if (P) top.append(el('span', { class: 'res' }, '명성 ', el('b', {}, P.fame), ' · 소지금 ', el('b', {}, fmt(G.pgold))));
-    top.append(el('span', { class: 'sp' }));
-    top.append(el('button', { class: 'btn sm', onclick: () => this.factionList() }, '세력'));
-    top.append(el('button', { class: 'btn sm', onclick: () => this.officerList() }, '인물'));
-    top.append(el('button', { class: 'btn sm', onclick: () => this.menu() }, '메뉴'));
+      chips.append(el('span', { class: 'chip', title: '세력' }, el('span', { class: 'dot', style: `background:${F.color}` }), `${F.name}군`),
+        chip('c', 'wall', '성', cs.length), chip('p', 'people', '장수', factionOfficers(P.f).length),
+        chip('t', 'troops', '병력', fmt(cs.reduce((a, c) => a + c.troops, 0))), chip('g', 'gold', '금', fmt(cs.reduce((a, c) => a + c.gold, 0))), chip('f', 'food', '쌀', fmt(cs.reduce((a, c) => a + c.food, 0))));
+      if (r !== 'ruler') chips.append(chip('s', 'merit', '공적', P.merit));
+    } else if (P) chips.append(chip('s', 'fame', '명성', P.fame), chip('g', 'gold', '소지금', fmt(G.pgold)));
+    top.append(chips, el('span', { class: 'sp' }));
+    const tb = (ic, label, fn) => el('button', { class: 'topBtn', onclick: fn, 'aria-label': label }, icon(ic), el('span', {}, label));
+    top.append(tb('flag', '세력', () => this.factionList()), tb('people', '인물', () => this.officerList()), tb('menu', '메뉴', () => this.menu()));
   },
   renderSide() {
     const side = $('#side'), c = G.cities[this.sel], P = me(), r = role();
@@ -60,20 +66,32 @@ const UI = {
     side.innerHTML = '';
     // 도시 정보
     const gov = c.gov >= 0 ? G.officers[c.gov] : null;
-    const head = el('div', { class: 'pane' },
-      el('h3', {}, c.name, el('small', {}, c.han), el('span', { class: 'dot', style: `background:${facColor(c.f)};margin-left:auto` }), el('small', {}, c.f >= 0 ? `${facName(c.f)}군` : '빈 땅')),
-      gov ? el('div', { class: 'muted', style: 'font-size:13px' }, `태수 ${gov.name}${c.deleg ? ' · 위임 중' : ''}`) : null);
     const known = c.f >= 0 && P && P.st === 'on' && (c.f === P.f || isAlly(c.f, P.f) || ADJ[c.id].some(i => G.cities[i].f === P.f));
     const vis = known || (P && P.city === c.id) || (P && P.st === 'on' && c.f === P.f);
     const v = (x) => vis ? fmt(x) : '?';
-    head.append(el('div', { class: 'kv' },
-      kvi('인구', v(c.pop)), kvi('금', v(c.gold)), kvi('쌀', v(c.food)),
-      kvi('병사', vis ? `${fmt(c.troops)}` : '?'), kvi('훈련', vis ? c.train : '?'), kvi('치안', vis ? c.order : '?'),
-      kvi('농업', vis ? `${c.agri}/${c.agriMax}` : '?'), kvi('상업', vis ? `${c.comm}/${c.commMax}` : '?'), kvi('성벽', vis ? `${c.wall}/${c.wallMax}` : '?')));
+    const fc = facColor(c.f);
+    const isCap = c.f >= 0 && G.officers[G.factions[c.f].ruler]?.city === c.id;
+    const head = el('div', { class: 'cityHead', style: `--fc:${fc}` },
+      el('div', { class: 'cityName' },
+        el('div', { class: 'banner' }, c.f >= 0 ? G.factions[c.f].name[0] : '空'),
+        el('div', { style: 'min-width:0' },
+          el('h3', {}, c.name, el('span', { class: 'han' }, c.han)),
+          el('div', { class: 'sub' }, el('span', { class: 'stars', title: `규모 ${c.size}` }, '★'.repeat(c.size) + '☆'.repeat(5 - c.size)),
+            el('span', {}, c.f >= 0 ? `${facName(c.f)}군${isCap ? ' 본거지' : ''}` : '주인 없는 땅'),
+            gov ? el('span', {}, `· 태수 ${gov.name}${c.deleg ? ' (위임)' : ''}`) : null))));
+    const big = (ic, col, label, val) => el('div', { class: 'bigStat', title: label }, el('span', { style: `color:${col}` }, icon(ic)), el('b', {}, val), el('span', {}, label));
+    head.append(el('div', { class: 'bigStats' },
+      big('pop', 'var(--sky)', '인구', vis ? (c.pop >= 10000 ? (c.pop / 10000).toFixed(1) + '만' : fmt(c.pop)) : '?'),
+      big('gold', 'var(--brass3)', '금', v(c.gold)), big('food', '#e6c88a', '쌀', v(c.food)), big('troops', '#ef8a6c', '병사', v(c.troops))));
+    const gauge = (ic, label, val, max, cls) => el('div', { class: 'gauge' }, icon(ic), el('span', {}, label), el('b', {}, vis ? (max === 100 ? val : `${val}/${max}`) : '?'), el('div', { class: 'bar ' + (cls || '') }, el('i', { style: `width:${vis ? clamp(val / max * 100, 0, 100) : 0}%` })));
+    head.append(el('div', { class: 'gauges' },
+      gauge('agri', '농업', c.agri, c.agriMax, 'jade'), gauge('comm', '상업', c.comm, c.commMax),
+      gauge('wall', '성벽', c.wall, c.wallMax, 'sky'), gauge('order', '치안', c.order, 100, 'jade'),
+      gauge('train', '훈련', c.train, 100, 'red'), gauge('troops', '병사 한도', c.troops, troopMax(c), 'red')));
     side.append(head);
     // 명령
     if (playerControls(c)) side.append(this.cmdPane(c));
-    else if (r === 'ruler' && c.f === P.f && c.deleg) side.append(el('div', { class: 'pane' }, el('div', { class: 'muted' }, '이 성은 태수에게 맡겨 두었습니다.'), el('button', { class: 'btn', onclick: () => { c.deleg = false; this.refresh(); } }, '위임 거두기')));
+    else if (r === 'ruler' && c.f === P.f && c.deleg) side.append(el('div', { class: 'pane' }, el('div', { class: 'secTitle' }, '위임'), el('div', { class: 'hint' }, '이 성은 태수에게 맡겨 두었습니다. 태수가 알아서 내정과 출진을 합니다.'), el('button', { class: 'btn', onclick: () => { c.deleg = false; this.refresh(); } }, icon('deleg'), '위임 거두기')));
     // 개인 행동
     if (P && (r === 'officer' || r === 'ronin' || r === 'gov')) side.append(this.personalPane(c));
     // 장수 목록
@@ -83,12 +101,12 @@ const UI = {
       const list = el('div', { class: 'offList' });
       for (const o of offs.sort((a, b) => (b.id === c.gov) - (a.id === c.gov) || b.merit - a.merit)) list.append(this.offRow(o, vis));
       for (const o of ron) list.append(this.offRow(o, true));
-      side.append(el('div', { class: 'pane' }, el('div', { class: 'muted', style: 'font-size:13px' }, `장수 ${offs.length}명${ron.length ? ` · 재야 ${ron.length}명` : ''}`), list));
+      side.append(el('div', { class: 'pane' }, el('div', { class: 'secTitle' }, '장수', el('span', { class: 'r' }, `${offs.length}명${ron.length ? ` · 재야 ${ron.length}명` : ''}`)), list));
     }
     // 소식
     const lg = el('div', { class: 'log' }, G.log.slice(0, 40).map(l => el('div', {}, el('span', { class: 't' }, l.t), el('span', { class: l.kind }, l.text))));
-    side.append(el('div', { class: 'pane' }, el('div', { class: 'muted', style: 'font-size:13px' }, '소식'), lg));
-    side.append(el('div', { class: 'endTurn' }, el('button', { class: 'btn pri', id: 'bEnd', onclick: () => endMonth() }, '다음 달로 ▸')));
+    side.append(el('div', { class: 'pane' }, el('div', { class: 'secTitle' }, '천하 소식'), lg));
+    side.append(el('div', { class: 'endTurn' }, el('button', { class: 'btn pri', id: 'bEnd', onclick: () => endMonth() }, icon('next'), '다음 달로')));
     side.scrollTop = scroll;
   },
   offRow(o, vis) {
@@ -98,23 +116,25 @@ const UI = {
     else if (isRuler(o)) tags.push(el('span', { class: 'tag g' }, '군주'));
     else if (G.cities[o.city].gov === o.id) tags.push(el('span', { class: 'tag g' }, '태수'));
     if (o.id === G.player) tags.push(el('span', { class: 'tag g' }, '나'));
+    const st = (k, lab) => el('span', { class: 'st ' + (o[k] >= 88 ? 'hi' : o[k] >= 70 ? 'mid' : 'lo') }, el('em', {}, lab), o[k]);
     return el('button', { class: 'offRow' + (o.acted && P && o.f === P.f && o.st === 'on' ? ' acted' : ''), onclick: () => this.officerInfo(o) },
       portraitImg(o, ''), el('span', { class: 'n disp' }, o.name), tags,
-      el('span', { class: 's' }, vis ? [el('span', {}, `통${o.lead}`), el('span', {}, `무${o.war}`), el('span', {}, `지${o.int}`)] : '…'));
+      el('span', { class: 's' }, vis ? [st('lead', '통'), st('war', '무'), st('int', '지')] : '…'));
   },
 
   // ===== 성 명령 (군주·태수) =====
   cmdPane(c) {
     const r = role();
     const free = officersIn(c.id, c.f).filter(o => !o.acted);
-    const B = (label, fn, dis) => el('button', { class: 'btn', disabled: dis || !free.length, onclick: fn }, label);
-    const g = el('div', { class: 'cmdGrid' },
-      B('개간', () => this.cmdDev(c, 'agri')), B('상업', () => this.cmdDev(c, 'comm')), B('치안', () => this.cmdDev(c, 'order')), B('성벽', () => this.cmdDev(c, 'wall')),
-      B('징병', () => this.cmdDraft(c)), B('훈련', () => this.cmdSimple(c, 'train')), B('탐색', () => this.cmdSimple(c, 'search')), B('등용', () => this.cmdHire(c)),
-      B('포상', () => this.cmdReward(c)), B('이동', () => this.cmdMove(c)), B('수송', () => this.cmdTransport(c)), B('출진', () => this.cmdAttack(c)),
-      r === 'ruler' ? B('외교', () => this.cmdDiplo(c)) : null, B('계략', () => this.cmdPlot(c)),
-      r === 'ruler' && c.gov !== me().id ? el('button', { class: 'btn', onclick: () => { c.deleg = true; this.toast(`${c.name}을 태수에게 맡겼습니다`); this.refresh(); } }, '위임') : null);
-    return el('div', { class: 'pane' }, el('div', { class: 'muted', style: 'font-size:13px' }, `명령 — 이번 달 쓸 수 있는 장수 ${free.length}명`), g);
+    const B = (ic, label, fn, sub, dis) => el('button', { class: 'cmd', disabled: dis || !free.length, onclick: fn, title: label }, icon(ic), el('span', {}, label), sub ? el('small', {}, sub) : null);
+    const row = (g, lab, ...btns) => el('div', { class: 'cmdRow ' + g }, el('div', { class: 'lab' }, lab), ...btns.map(b => b || el('span')));
+    const g = el('div', { class: 'cmdGroups' },
+      row('g-nae', '내정', B('agri', '개간', () => this.cmdDev(c, 'agri'), `금 ${COST.agri}`), B('comm', '상업', () => this.cmdDev(c, 'comm'), `금 ${COST.comm}`), B('order', '치안', () => this.cmdDev(c, 'order'), `금 ${COST.order}`), B('wall', '성벽', () => this.cmdDev(c, 'wall'), `금 ${COST.wall}`)),
+      row('g-mil', '군사', B('draft', '징병', () => this.cmdDraft(c)), B('train', '훈련', () => this.cmdSimple(c, 'train')), B('transport', '수송', () => this.cmdTransport(c)), B('attack', '출진', () => this.cmdAttack(c))),
+      row('g-in', '인사', B('search', '탐색', () => this.cmdSimple(c, 'search')), B('hire', '등용', () => this.cmdHire(c)), B('reward', '포상', () => this.cmdReward(c), '금 100'), B('move', '이동', () => this.cmdMove(c))),
+      row('g-ce', '책략', r === 'ruler' ? B('diplo', '외교', () => this.cmdDiplo(c)) : null, B('plot', '계략', () => this.cmdPlot(c)),
+        r === 'ruler' && c.gov !== me().id ? el('button', { class: 'cmd', onclick: () => { c.deleg = true; this.toast(`${c.name}을 태수에게 맡겼습니다`); this.refresh(); }, title: '위임' }, icon('deleg'), el('span', {}, '위임')) : null, null));
+    return el('div', { class: 'pane' }, el('div', { class: 'secTitle' }, '명령', el('span', { class: 'r' }, `쓸 수 있는 장수 ${free.length}명`)), g);
   },
   async pickOfficer(c, { title, stat, filter, note }) {
     const offs = officersIn(c.id, c.f).filter(o => !o.acted && (!filter || filter(o)));
@@ -321,24 +341,24 @@ const UI = {
     const ap = G.ap;
     const dots = el('span', { class: 'apDots', 'aria-label': `행동력 ${ap}` }, [0, 1, 2].map(i => el('i', { class: i < ap ? '' : 'off' })));
     const here = P.city === c.id;
-    const B = (label, fn, dis) => el('button', { class: 'btn', disabled: dis || ap <= 0 || !here, onclick: fn }, label);
-    const g = el('div', { class: 'cmdGrid' });
-    if (r !== 'gov') g.append(B('단련', () => this.pTrain()));
-    if (r === 'officer') g.append(B('근무', () => this.pWork()));
-    if (r !== 'gov') g.append(B('탐색', () => this.pSearch()));
-    g.append(B('친교', () => this.pBond()));
-    if (r !== 'gov') g.append(B('이동', () => this.pMove()));
+    const B = (ic, label, fn, dis) => el('button', { class: 'cmd', disabled: dis || ap <= 0 || !here, onclick: fn, title: label }, icon(ic), el('span', {}, label));
+    const g = el('div', { class: 'cmdGrid g-in' });
+    if (r !== 'gov') g.append(B('train2', '단련', () => this.pTrain()));
+    if (r === 'officer') g.append(B('work', '근무', () => this.pWork()));
+    if (r !== 'gov') g.append(B('search', '탐색', () => this.pSearch()));
+    g.append(B('bond', '친교', () => this.pBond()));
+    if (r !== 'gov') g.append(B('move', '이동', () => this.pMove()));
     if (r === 'ronin') {
-      g.append(B('사관', () => this.pServe(), G.cities[P.city].f < 0));
-      g.append(B('거병', () => this.pRise(), G.cities[P.city].f >= 0));
+      g.append(B('serve', '사관', () => this.pServe(), G.cities[P.city].f < 0));
+      g.append(B('rise', '거병', () => this.pRise(), G.cities[P.city].f >= 0));
     }
-    if (r === 'officer' || r === 'gov') g.append(el('button', { class: 'btn', disabled: !here, onclick: () => this.pResign() }, '하야'));
-    if (r === 'gov') g.append(el('button', { class: 'btn', disabled: !here, onclick: () => this.pRebel() }, '독립'));
+    if (r === 'officer' || r === 'gov') g.append(el('button', { class: 'cmd', disabled: !here, onclick: () => this.pResign(), title: '하야' }, icon('resign'), el('span', {}, '하야')));
+    if (r === 'gov') g.append(el('button', { class: 'cmd', disabled: !here, onclick: () => this.pRebel(), title: '독립' }, icon('rebel'), el('span', {}, '독립')));
     const pane = el('div', { class: 'pane' },
-      el('div', { style: 'display:flex;align-items:center;gap:8px;font-size:13px' }, el('span', { class: 'muted' }, r === 'gov' ? '내 일' : '내 행동'), r !== 'gov' ? dots : null, el('span', { class: 'muted', style: 'margin-left:auto' }, `소지금 ${fmt(G.pgold)} · 명성 ${P.fame}${P.st === 'on' ? ` · 공적 ${P.merit}` : ''}`)),
-      here ? g : el('div', { class: 'muted', style: 'font-size:13px' }, `지금 ${G.cities[P.city].name}에 있습니다. 그 성을 눌러 행동하세요.`));
-    if (r === 'officer') pane.append(el('div', { class: 'muted', style: 'font-size:12px' }, '공을 쌓으면 태수로 임명될 수 있습니다. 출진은 태수가 정하고, 뽑히면 직접 부대를 이끕니다.'));
-    if (r === 'ronin') pane.append(el('div', { class: 'muted', style: 'font-size:12px' }, '빈 땅에서는 거병해 군주가 될 수 있고, 남의 성에서는 사관을 청할 수 있습니다. 친교로 사귄 재야 인물은 거병할 때 함께합니다.'));
+      el('div', { class: 'secTitle' }, r === 'gov' ? '나의 일' : '나의 행동', r !== 'gov' ? dots : null, el('span', { class: 'r' }, `소지금 ${fmt(G.pgold)} · 명성 ${P.fame}${P.st === 'on' ? ` · 공적 ${P.merit}` : ''}`)),
+      here ? g : el('div', { class: 'hint' }, `지금 ${G.cities[P.city].name}에 있습니다. 그 성을 눌러 행동하세요.`));
+    if (r === 'officer') pane.append(el('div', { class: 'hint' }, '공을 쌓으면 태수로 임명될 수 있습니다. 출진은 태수가 정하고, 뽑히면 직접 부대를 이끕니다.'));
+    if (r === 'ronin') pane.append(el('div', { class: 'hint' }, '빈 땅에서는 거병해 군주가 될 수 있고, 남의 성에서는 사관을 청할 수 있습니다. 친교로 사귄 재야 인물은 거병할 때 함께합니다.'));
     return pane;
   },
   useAP() { G.ap = Math.max(0, G.ap - 1); },
@@ -452,7 +472,7 @@ const UI = {
   // ===== 정보 창 =====
   officerInfo(o) {
     const P = me();
-    const st = ['lead', 'war', 'int', 'pol', 'cha'].map(s => el('div', { style: 'display:grid;grid-template-columns:40px 30px 1fr;gap:8px;align-items:center;font-size:13px' }, el('span', { class: 'muted' }, STAT_NAMES[s]), el('b', { class: 'num' }, o[s]), el('div', { class: 'bar' }, el('i', { style: `width:${o[s]}%` }))));
+    const st = ['lead', 'war', 'int', 'pol', 'cha'].map((s, i) => el('div', { class: 'statLine' }, el('span', { class: 'muted' }, STAT_NAMES[s]), el('b', { class: 'num', style: o[s] >= 88 ? 'color:var(--brass3)' : '' }, o[s]), el('div', { class: 'bar ' + ['red', 'red', 'sky', 'jade', ''][i] }, el('i', { style: `width:${o[s]}%` }))));
     const info = [
       `${age(o)}세 · ${o.st === 'ronin' ? '재야' : o.st === 'on' ? `${facName(o.f)}군 ${rankName(o)}` : o.st === 'dead' ? '세상을 떠남' : ''}`,
       o.st === 'on' && !isRuler(o) ? `충성 ${o.loy}` : '',

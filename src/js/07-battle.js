@@ -142,6 +142,7 @@ function doAttack(B, a, d) {
     cdmg = Math.round(estDamage(B, d, a, ranged) * .45 * (.85 + rand() * .3) * (d.type === 'arc' && !ranged ? .6 : 1));
     a.troops -= cdmg; a.morale = clamp(a.morale - Math.round(cdmg / Math.max(1, a.troops + cdmg) * 30), 0, 100);
   }
+  if (B.onFx) B.onFx({ kind: ranged ? 'arrow' : 'slash', from: a.at, to: d.at, big: !ranged && dmg > 350 });
   bfx(B, d.at, '−' + fmt(dmg), '#ffd2c2'); if (cdmg) bfx(B, a.at, '−' + fmt(cdmg), '#ffd2c2', 200);
   SFX.play(ranged ? 'arrow' : 'clash');
   checkRout(B, d, a); checkRout(B, a, d);
@@ -153,6 +154,7 @@ function checkRout(B, u, by) {
   routUnit(B, u, by, u.troops <= 0 ? '전멸' : '궤주');
 }
 function routUnit(B, u, by, why) {
+  if (B.onFx) B.onFx({ kind: 'smoke', at: u.at });
   u.alive = false; u.troops = Math.max(0, u.troops);
   const o = bOff(u);
   const adjE = enemiesOf(B, u).filter(e => hexDist(e.at, u.at) === 1).length;
@@ -192,11 +194,12 @@ function doTactic(B, u, kind, target) {
   if (!chance(p)) { bmsg(B, `${o.name}의 ${kind === 'fire' ? '화계가' : '혼란 계략이'} 간파당했다`); bfx(B, target, '실패', '#ddd'); SFX.play('miss'); return false; }
   if (kind === 'fire') {
     B.tiles[target].fire = B.tiles[target].t === 'forest' ? 3 : 2;
+    if (B.onFx) B.onFx({ kind: 'burst', at: target });
     const t = unitAt(B, target); if (t) burn(B, t);
     bmsg(B, `${o.name}의 화계! 불길이 치솟는다`, 'good'); SFX.play('fire');
   } else {
     const t = unitAt(B, target); t.conf = 1 + (chance(.4) ? 1 : 0);
-    bmsg(B, `${o.name}의 계략에 ${bOff(t).name} 부대가 혼란에 빠졌다`, 'good'); bfx(B, target, '혼란', '#e8d06a'); SFX.play('confuse');
+    bmsg(B, `${o.name}의 계략에 ${bOff(t).name} 부대가 혼란에 빠졌다`, 'good'); bfx(B, target, '혼란', '#e8d06a'); if (B.onFx) B.onFx({ kind: 'swirl', at: target }); SFX.play('confuse');
   }
   bOff(u).merit += 6;
   return true;

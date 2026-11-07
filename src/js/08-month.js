@@ -31,6 +31,7 @@ async function endMonth() {
     monthlyEconomy();
     await monthlyEvents();
     G.month++;
+    MapView.monthBanner();
     if (G.month > 12) { G.month = 1; G.year++; await yearlyEvents(); }
     await runEvents();
     for (const o of G.officers) o.acted = false;
@@ -51,9 +52,10 @@ function aiLogisticsDeleg() {
 
 // 전쟁 하나를 처리 (플레이어가 끼면 직접 지휘)
 async function runWar(from, to, army, food) {
-  const defF = to.f;
+  const defF = to.f, attF = from.f;
+  await MapView.march(from.id, to.id, attF);
   const B = launchAttack(from, to, army, food);
-  if (!B) { UI.refresh(); return; }
+  if (!B) { MapView.flash(to.id, '입성', facColor(attF)); UI.refresh(); return; }
   const P = me();
   const pIn = P && P.st === 'on' && B.units.some(u => u.oid === P.id);
   const pDefends = P && P.st === 'on' && P.f === defF && defF >= 0 && (playerControls(to) || (P.city === to.id));
@@ -71,6 +73,7 @@ async function runWar(from, to, army, food) {
     runBattleHeadless(B);
   }
   applyBattle(B);
+  MapView.flash(to.id, B.result.win === 0 ? '함락' : '격퇴', facColor(B.result.win === 0 ? attF : defF));
   await resolveCaptives(B);
   if (P && B.playerSide != null) {
     const won = B.result.win === B.playerSide;

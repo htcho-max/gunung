@@ -11,16 +11,16 @@ await p.click('button:has-text("이 인물로 시작")'); await p.waitForTimeout
 await p.click('#modalLayer .btn.pri'); await p.waitForTimeout(300);
 await p.screenshot({ path: SH + 'm_game.png' });
 // 탐색 → 친교 → 이동
-await p.click('.cmdGrid .btn:has-text("탐색")'); await p.waitForTimeout(300);
+await p.click('.cmd:has-text("탐색")'); await p.waitForTimeout(300);
 if (await p.$('#modalLayer.on')) await p.click('#modalLayer .btn.pri');
-await p.click('.cmdGrid .btn:has-text("친교")'); await p.waitForTimeout(300);
+await p.click('.cmd:has-text("친교")'); await p.waitForTimeout(300);
 if (await p.$('#modalLayer.on .pickList .offRow')) { await p.click('#modalLayer .pickList .offRow >> nth=0'); await p.click('#modalLayer footer .btn.pri'); }
 await p.waitForTimeout(200);
 await p.screenshot({ path: SH + 'm_after.png' });
 console.log(await p.evaluate(() => `${me().name} ${role()} ap=${G.ap} bond=${JSON.stringify(me().bond)} pgold=${G.pgold}`));
 // 거병 (허창은 빈 땅)
 await p.evaluate(() => { G.ap = 3; UI.refresh(); });
-await p.click('.cmdGrid .btn:has-text("거병")'); await p.waitForTimeout(200);
+await p.click('.cmd:has-text("거병")'); await p.waitForTimeout(200);
 await p.click('#modalLayer footer .btn.pri'); await p.waitForTimeout(300);
 await p.click('#modalLayer footer .btn.pri'); await p.waitForTimeout(300);
 console.log(await p.evaluate(() => `${me().name} ${role()} ${facName(me().f)} 병사 ${G.cities[me().city].troops}`));

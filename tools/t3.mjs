@@ -3,7 +3,7 @@ import { chromium } from 'playwright';
 const who = process.argv[2] || '관우', months = +(process.argv[3] || 24);
 const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1280, height: 800 } });
 const errs = []; p.on('pageerror', e => errs.push(e.stack)); p.on('console', m => { if (m.type() === 'error' && !/Failed to load/.test(m.text())) errs.push(m.text()); });
-await p.goto('file:///home/claude/gunung/dist/index.html');
+await p.goto('file:///home/claude/gunung/dist/index.html'); await p.evaluate(() => window.__fast = true);
 await p.evaluate(who => {
   Setup.open(); Setup.start(G.officers.find(x => x.name === who).id);
   UI.modal = async o => (o.buttons.find(b => b.cls === 'pri') || o.buttons[0]).k;

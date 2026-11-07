@@ -50,7 +50,7 @@ const Setup = {
       const grid = el('div', { class: 'ofGrid' });
       for (const F of G.factions.filter(f => f.alive)) {
         const r = G.officers[F.ruler], cs = citiesOf(F.id), offs = factionOfficers(F.id);
-        grid.append(el('button', { class: 'ofCard', onclick: () => this.start(r.id) }, portraitImg(r), el('div', { style: 'min-width:0' },
+        grid.append(el('button', { class: 'ofCard', style: `box-shadow:inset 4px 0 0 ${F.color}`, onclick: () => this.start(r.id) }, portraitImg(r), el('div', { style: 'min-width:0' },
           el('div', { style: 'display:flex;align-items:center;gap:6px' }, el('span', { class: 'dot', style: `background:${F.color}` }), el('span', { class: 'nm' }, r.name)),
           el('div', { class: 'muted', style: 'font-size:12px' }, `${cs.map(c => c.name).join('·')} · 장수 ${offs.length} · 병력 ${fmt(cs.reduce((a, c) => a + c.troops, 0))}`),
           el('div', { class: 'stats5' }, statSpans(r)))));
@@ -138,24 +138,54 @@ function showHelp() {
     el('p', { class: 'muted', style: 'margin:0' }, '매달 초 자동 저장됩니다. 메뉴에서 세 칸에 따로 저장할 수 있습니다. 인물과 사건은 역사·연의를 바탕으로 했고, 능력치는 이 게임에서 새로 매겼습니다.')) });
 }
 
+let TITLE = null;
 function drawTitleBg() {
   const cv = $('#titleBg'), r = cv.getBoundingClientRect(); if (!r.width) return;
   const d = Math.min(2, devicePixelRatio || 1); cv.width = r.width * d; cv.height = r.height * d;
-  const x = cv.getContext('2d'); x.scale(d, d);
   const W = r.width, H = r.height;
-  const sky = x.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, '#1d2c33'); sky.addColorStop(.6, '#2b3a3c'); sky.addColorStop(1, '#121b20');
+  // 움직이지 않는 산과 해는 한 번만 그림
+  const st = document.createElement('canvas'); st.width = cv.width; st.height = cv.height;
+  const x = st.getContext('2d'); x.scale(d, d);
+  const sky = x.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, '#16242a'); sky.addColorStop(.55, '#2d3b3b'); sky.addColorStop(1, '#0e1417');
   x.fillStyle = sky; x.fillRect(0, 0, W, H);
-  x.fillStyle = 'rgba(196,71,47,.85)'; x.beginPath(); x.arc(W * .72, H * .3, Math.min(W, H) * .09, 0, 7); x.fill();
+  const sr = Math.min(W, H) * .1, sg = x.createRadialGradient(W * .72, H * .3, sr * .2, W * .72, H * .3, sr * 2.6);
+  sg.addColorStop(0, 'rgba(230,110,70,.35)'); sg.addColorStop(1, 'rgba(230,110,70,0)'); x.fillStyle = sg; x.fillRect(0, 0, W, H);
+  x.fillStyle = '#c94a30'; x.beginPath(); x.arc(W * .72, H * .3, sr, 0, 7); x.fill();
   const R = mulberry(5);
-  const layers = [['rgba(60,78,80,.7)', .55, 60], ['rgba(40,55,58,.85)', .66, 80], ['rgba(24,34,38,.95)', .78, 110]];
+  const layers = [['rgba(62,80,82,.75)', .55, 60], ['rgba(40,55,58,.88)', .66, 80], ['rgba(22,32,36,.97)', .8, 110]];
   for (const [col, base, amp] of layers) {
     x.fillStyle = col; x.beginPath(); x.moveTo(0, H);
     let y = H * base;
     for (let px = 0; px <= W + 20; px += 20) { y = clamp(y + (R() - .5) * amp * .6, H * base - amp, H * base + amp * .4); x.lineTo(px, y - Math.abs(Math.sin(px / (90 + amp))) * amp); }
     x.lineTo(W, H); x.fill();
   }
+  TITLE = { cv, st, W, H, d, mist: Array.from({ length: 7 }, (_, i) => ({ y: H * (.45 + i * .07), x: R() * W, w: W * (.4 + R() * .4), v: .08 + R() * .15 })) };
+  if (!TITLE.raf) titleLoop();
+}
+function titleLoop() {
+  if (!TITLE) return;
+  TITLE.raf = requestAnimationFrame(titleLoop);
+  if ($('#scrTitle').hidden || document.hidden) return;
+  const { cv, st, W, H, d } = TITLE, now = performance.now();
+  const x = cv.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0); x.drawImage(st, 0, 0); x.setTransform(d, 0, 0, d, 0, 0);
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // 안개
+  for (const m of TITLE.mist) {
+    if (!still) { m.x += m.v; if (m.x > W) m.x = -m.w; }
+    const g = x.createRadialGradient(m.x + m.w / 2, m.y, 10, m.x + m.w / 2, m.y, m.w / 2);
+    g.addColorStop(0, 'rgba(200,210,205,.10)'); g.addColorStop(1, 'rgba(200,210,205,0)');
+    x.fillStyle = g; x.beginPath(); x.ellipse(m.x + m.w / 2, m.y, m.w / 2, 26, 0, 0, 7); x.fill();
+  }
   // 깃발 행렬
-  for (let i = 0; i < 26; i++) { const px = W * .08 + i * W * .033, py = H * .86 + Math.sin(i) * 4; x.strokeStyle = 'rgba(10,14,16,.9)'; x.lineWidth = 1.5; x.beginPath(); x.moveTo(px, py); x.lineTo(px, py - 34); x.stroke(); x.fillStyle = i % 5 === 0 ? 'rgba(196,71,47,.9)' : 'rgba(10,14,16,.9)'; x.fillRect(px, py - 34, 10, 14); }
+  for (let i = 0; i < 26; i++) {
+    const px = W * .08 + i * W * .033, py = H * .86 + Math.sin(i) * 4, ph = still ? 0 : now / 280 + i * .7;
+    x.strokeStyle = 'rgba(10,14,16,.95)'; x.lineWidth = 1.5; x.beginPath(); x.moveTo(px, py); x.lineTo(px, py - 36); x.stroke();
+    x.fillStyle = i % 5 === 0 ? 'rgba(201,74,48,.95)' : 'rgba(10,14,16,.95)';
+    x.beginPath(); x.moveTo(px, py - 36);
+    for (let k = 1; k <= 4; k++) x.lineTo(px + k * 3, py - 36 + Math.sin(ph + k) * 1.5 * k / 4);
+    for (let k = 4; k >= 0; k--) x.lineTo(px + k * 3, py - 21 + Math.sin(ph + k) * 1.5 * k / 4);
+    x.fill();
+  }
 }
 
 // ===== 시작 =====
