@@ -33,6 +33,8 @@ const BattleUI = {
 
   async run(B) {
     this.B = B; B.interactive = true; this.sel = null; this.mode = 'idle';
+    // 달 넘김 중의 '진행 중' 덮개가 전투 화면 클릭을 막지 않게 잠시 끔
+    const wasBusy = $('#busy').classList.contains('on'); UI.busy(false);
     $('#blog').innerHTML = '';
     this.vfx = []; this.imgs = {}; this.sprites = {}; this.ribbon = null; this.shakeT = 0;
     B.onFx = fx => { this.vfx.push({ ...fx, t0: performance.now() }); if (fx.big) this.shakeT = performance.now(); };
@@ -73,6 +75,7 @@ const BattleUI = {
     await sleep(1800);
     cancelAnimationFrame(this.raf); this.banner = null;
     showScreen('scrGame'); MapView.resize();
+    if (wasBusy) UI.busy(true);
   },
   playerPhase() {
     return new Promise(res => { this.phaseDone = res; this.mode = 'idle'; this.sel = null; this.panel(); this.autoSelect(); });
