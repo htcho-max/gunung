@@ -19,7 +19,8 @@ for (let i = 0; i < 40; i++) {
 const inBattle = await p.evaluate(() => !$('#scrBattle').hidden);
 console.log('battle', inBattle, await p.evaluate(() => `${G.year}.${G.month} ev=${Object.keys(G.ev).slice(-4).join(',')}`));
 if (inBattle) {
-  await p.waitForTimeout(1500); await p.screenshot({ path: SH + 'chibi0.png' });
+  await p.waitForTimeout(800); if (await p.$('#modalLayer.on footer .btn.pri')) { await p.click('#modalLayer footer .btn.pri'); }
+  await p.waitForTimeout(900); await p.screenshot({ path: SH + 'chibi0.png' });
   console.log(await p.evaluate(() => { const B = BattleUI.B; return JSON.stringify({ chained: B.chained, kuyuk: B.kuyuk, wind: B.wind, units: B.units.map(u => bOff(u).name + (u.ally ? '*' : '') + ':' + u.side + ':' + u.troops) }); }));
   // 아군 차례 넘기기 몇 번
   for (let d = 0; d < 3; d++) { await p.evaluate(() => { const B = BattleUI.B; for (const u of B.units) if (u.side === B.playerSide) u.done = true; }); await p.evaluate(() => BattleUI.endPhase && BattleUI.endPhase()); await p.waitForTimeout(4000); }

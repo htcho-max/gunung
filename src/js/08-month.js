@@ -34,6 +34,7 @@ async function endMonth() {
     MapView.monthBanner();
     if (G.month > 12) { G.month = 1; G.year++; await yearlyEvents(); }
     await runEvents();
+    monthlyMission();
     for (const o of G.officers) o.acted = false;
     G.ap = 3;
     assignGovs();
@@ -58,6 +59,7 @@ async function runWar(from, to, army, food, extra = {}) {
   if (!B) { MapView.flash(to.id, '입성', facColor(attF)); UI.refresh(); return; }
   const P = me();
   if (extra.title) B.title = extra.title;
+  gatherReinforce(B, to);
   const pIn = P && P.st === 'on' && B.units.some(u => u.oid === P.id);
   const pDefends = P && P.st === 'on' && P.f === defF && defF >= 0 && (playerControls(to) || (P.city === to.id));
   const pAttacks = P && P.st === 'on' && P.f === B.attF && (playerControls(from) || pIn);
@@ -74,6 +76,7 @@ async function runWar(from, to, army, food, extra = {}) {
     runBattleHeadless(B);
   }
   if (extra.post) extra.post(B);
+  returnAllies(B);
   applyBattle(B);
   MapView.flash(to.id, B.result.win === 0 ? '함락' : '격퇴', facColor(B.result.win === 0 ? attF : defF));
   await resolveCaptives(B);

@@ -84,6 +84,8 @@ function aiPlanAttacks(F) {
       const tr = splitTroops(top, Math.floor(c.troops * .78));
       army = top.map((o, i) => ({ oid: o.id, troops: tr[i], type: autoType(o) })).filter(u => u.troops >= 500);
       if (!army.length) continue;
+      // 성벽이 두꺼우면 가장 약한 부대가 충차를 끔
+      if (army.length >= 3 && bestT.wall >= 380 && chance(.6)) { const w = army.reduce((m, u) => G.officers[u.oid].war < G.officers[m.oid].war ? u : m, army[army.length - 1]); if (w !== army[0] && w.oid !== G.player) w.type = 'ram'; }
     }
     const tot = army.reduce((a, u) => a + u.troops, 0);
     const food = Math.min(c.food, Math.ceil(tot * 32 / 80));
@@ -134,7 +136,7 @@ function aiDiplomacy(F) {
   const neighbors = new Set(); myCities.forEach(c => ADJ[c.id].forEach(i => { const f = G.cities[i].f; if (f >= 0 && f !== F.id) neighbors.add(f); }));
   for (const o of others) {
     if (isAlly(F.id, o.id)) {
-      if (getRel(F.id, o.id) < 25 && chance(.15)) breakAlly(F.id, o.id);
+      if (getRel(F.id, o.id) < 25 && chance(.15) && !(G.marry && G.marry[relKey(F.id, o.id)])) breakAlly(F.id, o.id);
       continue;
     }
     if (!neighbors.has(o.id) && chance(.04)) addRel(F.id, o.id, 3);

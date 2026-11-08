@@ -53,7 +53,7 @@ function cmdTrain(o, c) {
 function cmdSearch(o, c, forPlayer) {
   o.acted = true; o.merit += 8;
   for (const it of hiddenItemsIn(c.id)) {
-    if (chance(.18 + o.int / 500)) {
+    if (chance(.18 + o.int / 500 + (G.items[it.id].rumor ? .3 : 0))) {
       const to = forPlayer === 'self' ? o : (c.f >= 0 ? G.officers[G.factions[c.f].ruler] : o);
       giveItem(it.id, to); G.items[it.id].found = true;
       if (c.f >= 0 && to.f === me()?.f || to.id === G.player) logMsg(`${c.name}에서 ${eul(it.name)} 찾아 ${to.name}에게 바쳤습니다`, 'big');
@@ -76,6 +76,7 @@ function cmdSearch(o, c, forPlayer) {
 function hireChance(o, target, f) {
   const ruler = G.officers[G.factions[f].ruler];
   if (target.st === 'ronin') {
+    if (G.player !== target.id && (isSworn(target, o) || isSworn(target, ruler))) return .95;
     let p = .28 + o.cha / 260 + (25 - affDist(target, ruler)) / 90 + (hasSkill(o, '인덕') ? .12 : 0);
     if (target.tag && target.fk && G.factions.find(x => x.key === target.fk && x.alive && x.id !== f)) p *= .25;
     if (target.tag) { const lord = G.factions.find(x => x.alive && G.officers[x.ruler].tag === target.tag); if (lord && lord.id !== f) p *= .1; }

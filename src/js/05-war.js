@@ -1,5 +1,37 @@
 // ===== 전쟁: 출진·점령·포로 =====
-function autoType(o) { return o.war >= 82 && o.lead >= 70 ? 'cav' : (o.int > o.war + 8 ? 'arc' : 'inf'); }
+function autoType(o) { return o.war >= 82 && o.lead >= 70 ? 'cav' : (o.int > o.war + 8 ? (o.lead >= 74 ? 'xbow' : 'arc') : 'inf'); }
+// 원군: 수비 세력의 이웃 성이나 동맹이 장수 한 명씩 보냄 (최대 둘)
+function gatherReinforce(B, to) {
+  if (B.naval || B.defF < 0) return [];
+  const list = [];
+  for (const i of shuffle([...ADJ[to.id]])) {
+    if (list.length >= 2) break;
+    const c = G.cities[i];
+    if (c.f < 0 || c.id === B.fromId || c.f === B.attF) continue;
+    const own = c.f === B.defF, al = !own && isAlly(c.f, B.defF);
+    if ((!own && !al) || c.troops < 6000 || !chance(own ? .55 : .4)) continue;
+    const o = officersIn(c.id, c.f).filter(x => !x.acted && x.id !== G.player && c.gov !== x.id && !isRuler(x)).sort((a, b) => (b.lead + b.war) - (a.lead + a.war))[0];
+    if (!o) continue;
+    const t = Math.min(troopCap(o), 5000, Math.floor(c.troops * .3 / 100) * 100);
+    if (t < 1000) continue;
+    c.troops -= t; o.acted = true;
+    list.push({ oid: o.id, troops: t, type: autoType(o) === 'cav' ? 'cav' : 'inf', fac: c.f, home: c.id, train: c.train });
+  }
+  if (list.length) addReinforce(B, list, 1);
+  return list;
+}
+// 원군은 싸움이 끝나면 제 성으로 돌아감
+function returnAllies(B) {
+  for (const u of B.units) {
+    if (!u.ally || u.home == null) continue;
+    const back = G.cities[u.home], o = bOff(u);
+    const fl = B.fled[1].findIndex(f => f.oid === u.oid);
+    let t = u.alive ? u.troops : 0;
+    if (fl >= 0) { t += B.fled[1][fl].troops; B.fled[1].splice(fl, 1); }
+    if (back.f === u.fac) back.troops = Math.min(troopMax(back), back.troops + t);
+    if (u.alive) { u.alive = false; if (o.st === 'on') { o.merit += 80; if (B.result && B.result.win === 1) o.fame += 2; } }
+  }
+}
 function troopCap(o) { return 1500 + o.lead * 90; }
 // 부대 나누기: 통솔에 비례, 상한 있음
 function splitTroops(offs, total) {

@@ -43,7 +43,17 @@ const BattleUI = {
     this.updTop(); this.panel();
     cancelAnimationFrame(this.raf); const loop = () => { this.draw(); this.raf = requestAnimationFrame(loop); }; loop();
     SFX.play('drum');
+    for (const m of B.msgs) B.onMsg(m.t, m.k);
     bmsg(B, `${B.title || G.cities[B.cityId].name + ' 공방전'}이 시작되었다! 바람은 ${['동', '북동', '북서', '서', '남서', '남동'][B.wind]}쪽으로 분다`, 'big');
+    // 진형 고르기
+    const myCmd = B.playerSide != null && B.units.find(u => u.side === B.playerSide && u.cmd && u.alive);
+    if (myCmd && B.ctrl && B.ctrl(myCmd) && !B.auto) {
+      const av = formsFor(bOff(myCmd));
+      const k = await UI.choose({ title: '진형', portrait: bOff(myCmd), text: `총대장 ${bOff(myCmd).name}(통솔 ${bOff(myCmd).lead})이 펼칠 진형을 고릅니다.`, options: Object.entries(FORMS).sort(([a], [b]) => (b === B.form[B.playerSide]) - (a === B.form[B.playerSide])).map(([k, f]) => ({ k, label: f.name + (k === B.form[B.playerSide] && k !== 'none' ? ' (추천)' : '') + (f.desc ? ' — ' + f.desc : '') + (av.includes(k) ? '' : ` (통솔 ${f.min} 필요)`), disabled: !av.includes(k) })) });
+      if (k && FORMS[k]) B.form[B.playerSide] = k;
+    }
+    for (const sd of [0, 1]) if (B.form[sd] !== 'none') bmsg(B, `${facName(sd === 0 ? B.attF : B.defF)}군이 ${eul(FORMS[B.form[sd]].name)} 펼쳤다`);
+    this.updTop();
     while (!B.over) {
       for (const side of [0, 1]) {
         B.side = side; this.updTop(); this.showRibbon(side);
@@ -51,7 +61,7 @@ const BattleUI = {
         if (mine.length && !B.auto) await this.playerPhase();
         if (battleCheck(B)) break;
         const ai = B.units.filter(u => u.alive && u.side === side && !u.done && !(B.ctrl && B.ctrl(u) && !B.auto));
-        ai.sort((a, b) => (b.type === 'arc') - (a.type === 'arc'));
+        ai.sort((a, b) => canRange(b) - canRange(a));
         for (const u of ai) { if (!u.alive || B.over) continue; await this.aiAct(u); if (battleCheck(B)) break; }
         if (B.over) break;
       }
@@ -316,10 +326,10 @@ const BattleUI = {
     const B = this.B, c = G.cities[B.cityId];
     const top = $('#btop'); top.innerHTML = '';
     const arrow = ['→', '↗', '↖', '←', '↙', '↘'][B.wind];
-    top.append(el('div', { class: 'datePlaque' }, el('b', {}, B.title || `${c.name} 공방전`), el('small', {}, `${B.day}일째 / ${B.maxDay}일 · 바람 ${arrow}`)));
-    const side = (f, food, n) => el('span', { class: 'chip', title: `${facName(f)}군 군량` }, el('span', { class: 'dot', style: `background:${facColor(f)}` }), `${facName(f)} `, el('span', { class: 'muted' }, `병 ${fmt(n)} · 쌀 ${fmt(food)}`));
+    top.append(el('div', { class: 'datePlaque' }, el('b', {}, B.title || `${c.name} 공방전`), el('small', {}, `${B.day}일째 / ${B.maxDay}일 · 바람 ${arrow} · 성벽 ${Math.round(B.wall)}`)));
+    const side = (f, food, n, sd) => el('span', { class: 'chip', title: `${facName(f)}군 · ${formOf(B, sd).desc || '진형 없음'}` }, el('span', { class: 'dot', style: `background:${facColor(f)}` }), `${facName(f)} `, el('span', { class: 'muted' }, `병 ${fmt(n)} · 쌀 ${fmt(food)}${B.form && B.form[sd] !== 'none' ? ' · ' + formOf(B, sd).name : ''}`));
     const tr = sd => B.units.filter(u => u.alive && u.side === sd).reduce((a, u) => a + u.troops, 0);
-    top.append(el('div', { class: 'food' }, side(B.attF, B.food[0], tr(0)), side(B.defF, B.food[1], tr(1))));
+    top.append(el('div', { class: 'food' }, side(B.attF, B.food[0], tr(0), 0), side(B.defF, B.food[1], tr(1), 1)));
     top.append(el('span', { class: 'sp' }));
     const tb = (ic, label, fn, cls = '') => el('button', { class: 'topBtn ' + cls, onclick: fn, 'aria-label': label }, icon(ic), el('span', {}, label));
     top.append(tb('fast', this.fast ? '보통 속도' : '빠르게', () => { this.fast = !this.fast; this.updTop(); }));
@@ -340,7 +350,7 @@ const BattleUI = {
       const o = bOff(u);
       const bar = (v, max, cls) => el('div', { class: 'bar ' + cls }, el('i', { style: `width:${clamp(v / max * 100, 0, 100)}%` }));
       p.append(el('div', { class: 'uinfo' }, portraitImg(o, ''), el('div', { style: 'min-width:0;display:flex;flex-direction:column;gap:3px' },
-        el('div', {}, el('span', { class: 'disp', style: 'font-size:19px' }, o.name), ' ', el('span', { class: 'muted', style: 'font-size:12px' }, `${TYPES[u.type].name}${u.cmd ? ' · 총대장' : ''} · ${facName(u.side === 0 ? B.attF : B.defF)}군${u.conf ? ' · 혼란' : ''} · ${TER[B.tiles[u.at].t].name}`)),
+        el('div', {}, el('span', { class: 'disp', style: 'font-size:19px' }, o.name), ' ', el('span', { class: 'muted', style: 'font-size:12px' }, `${TYPES[u.type].name}${u.cmd ? ' · 총대장' : ''}${u.ally ? ' · 원군' : ''} · ${facName(u.fac ?? (u.side === 0 ? B.attF : B.defF))}군${u.conf ? ' · 혼란' : ''} · ${TER[B.tiles[u.at].t].name}`)),
         el('div', { class: 'ubars' }, el('span', {}, '병사'), bar(u.troops, u.max, u.troops / u.max > .5 ? 'jade' : 'red'), el('b', {}, `${fmt(u.troops)}`), el('span', {}, '사기'), bar(u.morale, 100, ''), el('b', {}, u.morale)),
         el('div', { class: 'muted num', style: 'font-size:12px' }, `통${o.lead} 무${o.war} 지${o.int} · 훈련 ${u.train}${skillsOf(o).length ? ' · 특기 ' + skillsOf(o).join('·') : ''}${(o.items || []).length ? ' · ' + o.items.map(id => ITEM[id].name).join('·') : ''}`))));
     } else p.append(el('div', { class: 'uinfo muted', style: 'font-size:14px' }, this.myTurn() ? '내 부대를 눌러 움직이세요. 파란 칸으로 옮긴 뒤 행동을 고릅니다.' : '상대가 움직이는 중…'));
@@ -352,7 +362,7 @@ const BattleUI = {
       const go = (kind, list) => { this.mode = 'target'; this.tkind = kind; this.targets = list; this.panel(); };
       if (this.mode === 'move') acts.append(A('target', '제자리', () => { this.mode = 'act'; this.panel(); }));
       else {
-        acts.append(A(s.type === 'arc' ? 'bow' : 'sword', s.type === 'arc' ? '사격' : '공격', () => go('attack', at.map(e => e.at)), 'pri', !at.length));
+        acts.append(A(canRange(s) ? (s.type === 'xbow' ? 'xbow' : 'bow') : s.type === 'ram' ? 'ram' : 'sword', canRange(s) ? '사격' : '공격', () => go('attack', at.map(e => e.at)), 'pri', !at.length));
         const ft = tacticTargets(B, s, 'fire'), ct = tacticTargets(B, s, 'confuse');
         if (o.int >= 45) { acts.append(A('fire', '화계', () => go('fire', ft), '', !ft.length)); acts.append(A('confuse', '혼란', () => go('confuse', ct), '', !ct.length)); }
         const dt = enemiesOf(B, s).filter(e => hexDist(e.at, s.at) === 1);
@@ -570,7 +580,7 @@ const BattleUI = {
     // 병종 표지
     const br = rr * .4, bx = px - rr * .78, by = py + rr * .62;
     x.fillStyle = shade(col, -70); x.strokeStyle = '#f3d991'; x.lineWidth = 1.2; x.beginPath(); x.arc(bx, by, br, 0, 7); x.fill(); x.stroke();
-    this.iconAt(x, u.type === 'cav' ? 'horse' : u.type === 'arc' ? 'bow' : 'sword', bx, by, br * 1.25, '#f3d991');
+    this.iconAt(x, { cav: 'horse', arc: 'bow', xbow: 'xbow', ram: 'ram' }[u.type] || 'sword', bx, by, br * 1.25, '#f3d991');
     // 총대장
     if (u.cmd) { x.fillStyle = '#f3d991'; x.strokeStyle = '#5a3f10'; x.lineWidth = 1; star(x, px + rr * .78, py - rr * .72, s * .2); x.fill(); x.stroke(); }
     // 혼란

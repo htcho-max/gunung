@@ -279,18 +279,8 @@ EVENTS.push(
         const aoffs = factionOfficers(ally.f).sort((a, b) => (b.id === G.player) - (a.id === G.player) || (b.lead + b.war) - (a.lead + a.war)).filter(o => !isRuler(o) || o.id === G.player).slice(0, 2);
         for (const o of aoffs) { const t = Math.min(troopCap(o), 3500, Math.max(0, G.cities[o.city].troops - 1000)); if (t >= 800) { G.cities[o.city].troops -= t; allies.push({ oid: o.id, troops: t, type: autoType(o), fac: ally.f, home: o.city, train: G.cities[o.city].train }); } }
       }
-      const post = B => {
-        for (const u of B.units) if (u.ally) {
-          const back = G.cities[allies.find(a => a.oid === u.oid)?.home ?? 0];
-          const fl = B.fled[1].findIndex(f => f.oid === u.oid);
-          let t = u.alive ? u.troops : 0;
-          if (fl >= 0) { t += B.fled[1][fl].troops; B.fled[1].splice(fl, 1); }
-          if (back && back.f === u.fac) back.troops = Math.min(troopMax(back), back.troops + t);
-          if (u.alive) { u.alive = false; const o = bOff(u); if (o.st === 'on') o.merit += 120; }
-        }
-      };
       SFX.play('drum');
-      await runWar(from, to, army, 9000, { naval: { chained, kuyuk, eastWind }, allies, title: '적벽대전', post });
+      await runWar(from, to, army, 9000, { naval: { chained, kuyuk, eastWind }, allies, title: '적벽대전' });
       // 6. 결과
       if (to.f === q.f) {
         const lines = [[null, '불길이 강을 덮고 하늘을 태웠다. 조조의 선단은 잿더미가 되었고 북군은 오림으로 달아났다.']];
