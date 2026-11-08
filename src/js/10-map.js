@@ -318,9 +318,10 @@ const MapView = {
   // ===== 출진·전투 연출 =====
   animOK() { return !$('#scrGame').hidden && !document.hidden && !window.__fast; },
   march(from, to, f, dur = 650) {
-    if (!this.animOK()) return Promise.resolve();
-    this.anims.push({ kind: 'march', from, to, col: facColor(f), t0: performance.now(), dur, hold: 350 });
-    return new Promise(r => setTimeout(r, dur + 250));
+    const sp = +(store('gunung.anim') ?? 1); if (!this.animOK() || sp <= 0) return Promise.resolve();
+    dur = Math.round(dur * sp);
+    this.anims.push({ kind: 'march', from, to, col: facColor(f), t0: performance.now(), dur, hold: 350 * sp });
+    return new Promise(r => setTimeout(r, dur + 250 * sp));
   },
   flash(cid, text, col) { if (!this.animOK()) return; this.anims.push({ kind: 'flash', at: cid, text, col, t0: performance.now(), dur: 1600 }); },
   drawAnim(x, a, now) {

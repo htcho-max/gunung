@@ -108,7 +108,7 @@ function monthlyEconomy() {
     if (o.st !== 'on' || isRuler(o) || o.id === G.player) continue;
     const r = G.officers[G.factions[o.f].ruler];
     if (o.tag && o.tag === r.tag) { o.loy = 100; continue; }
-    const drift = (r.cha - 65) / 40 - affDist(o, r) / 40;
+    const drift = (r.cha - 65) / 40 - affDist(o, r) / 40 + (hasSkill(r, '인덕') ? .6 : 0);
     if (chance(.4)) o.loy = clamp(Math.round(o.loy + drift + (chance(.5) ? 0 : -1)), 0, 100);
   }
   // 플레이어 봉록

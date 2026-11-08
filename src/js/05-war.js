@@ -119,6 +119,7 @@ async function resolveCaptives(B) {
 }
 async function decideCaptive(captorF, o) {
   const ruler = G.officers[G.factions[captorF].ruler];
+  if (o.items && o.items.length) { const names = o.items.map(id => ITEM[id].name); for (const id of [...o.items]) giveItem(id, ruler); logMsg(`${facName(captorF)}군이 ${o.name}에게서 ${names.join('·')}${josa(names[names.length - 1], '을', '를').slice(-1)} 빼앗았습니다`, 'big'); }
   const P = me();
   const playerDecides = P && P.st === 'on' && P.f === captorF && isRuler(P);
   if (o.id === G.player) {
@@ -153,7 +154,7 @@ function captiveHireChance(captorF, o) {
   const ruler = G.officers[G.factions[captorF].ruler];
   const myRuler = o.f >= 0 ? G.officers[G.factions[o.f].ruler] : null;
   if (myRuler && o.tag && o.tag === myRuler.tag) return .02;
-  return clamp(.25 + (100 - o.loy) / 160 + (25 - affDist(o, ruler)) / 80, .05, .85);
+  return clamp(.25 + (100 - o.loy) / 160 + (25 - affDist(o, ruler)) / 80 + (hasSkill(ruler, '인덕') ? .1 : 0), .05, .88);
 }
 function releaseCaptive(o, captorF) {
   const F = o.f >= 0 ? G.factions[o.f] : null;

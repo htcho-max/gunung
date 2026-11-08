@@ -7,7 +7,7 @@ await p.goto('file:///home/claude/gunung/dist/index.html');
 await p.waitForTimeout(300); await p.screenshot({ path: SH + tag + '_title.png' });
 await p.click('#bNew'); await p.waitForTimeout(200);
 await p.click('.modeCard >> nth=0'); await p.waitForTimeout(200); await p.screenshot({ path: SH + tag + '_pick.png' });
-await p.click('.ofCard:has-text("조조")'); await p.waitForTimeout(400);
+await p.click('.ofCard:has(.nm:text-is("조조"))'); await p.waitForTimeout(400);
 await p.screenshot({ path: SH + tag + '_intro.png' });
 await p.click('#modalLayer .btn.pri'); await p.waitForTimeout(300);
 for (let i = 0; i < 6; i++) { await p.waitForTimeout(250); const m = await p.$('#modalLayer.on footer .btn.pri'); if (!m) break; await m.click(); }

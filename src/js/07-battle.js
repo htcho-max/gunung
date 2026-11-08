@@ -88,7 +88,7 @@ function moveCost(B, u, i) {
 }
 // 갈 수 있는 칸: Map(칸 → 남은 이동력)
 function reachable(B, u) {
-  const mp = TYPES[u.type].move;
+  const mp = TYPES[u.type].move + itemMove(bOff(u));
   const best = new Map([[u.at, mp]]);
   const q = [u.at];
   const zoc = new Set(); for (const e of enemiesOf(B, u)) for (const n of hexNb(e.at)) zoc.add(n);
@@ -127,7 +127,14 @@ function estDamage(B, a, d, ranged) {
   if (d.type === 'inf' && a.type === 'cav') m *= .82;
   if (d.type === 'arc' && !ranged) m *= 1.15;
   if (ranged) m *= .72;
-  if (B.tiles[a.at].t === 'river') m *= .85;
+  if (B.tiles[a.at].t === 'river' && !B.naval) m *= .85;
+  const ao = bOff(a), dO = bOff(d);
+  if (a.type === 'cav' && !ranged && hasSkill(ao, '돌격')) m *= 1.2;
+  if (ranged && hasSkill(ao, '궁신')) m *= 1.25;
+  if (B.day <= 3 && hasSkill(ao, '기습')) m *= 1.25;
+  if ((B.naval || B.tiles[a.at].t === 'river') && hasSkill(ao, '수군')) m *= 1.25;
+  if (d.side === 1 && (B.tiles[d.at].t === 'castle' || B.tiles[d.at].t === 'keep') && hasSkill(dO, '수성')) m *= .8;
+  if (B.naval && a.side === B.northSide && !hasSkill(ao, '수군')) m *= .8;
   return Math.min(d.troops, Math.round(a.troops * .1 * m));
 }
 function doAttack(B, a, d) {
@@ -173,10 +180,10 @@ function tacticChance(B, u, kind, target) {
     const tt = B.tiles[target].t; if (tt === 'river' || tt === 'bridge' || B.tiles[target].fire) return 0;
     const occ = unitAt(B, target);
     const di = occ ? bOff(occ).int : 45;
-    let p = .35 + (o.int - di) / 110 + (tt === 'forest' ? .15 : 0) - ((tt === 'castle' || tt === 'keep') ? .2 : 0);
-    return clamp(p, .05, .9);
+    let p = .35 + (o.int - di) / 110 + (tt === 'forest' ? .15 : 0) - ((tt === 'castle' || tt === 'keep') ? .2 : 0) + (hasSkill(o, '신산') ? .12 : 0) + (hasSkill(o, '화신') ? .2 : 0);
+    return clamp(p, .05, .95);
   }
-  if (kind === 'confuse') { const t = unitAt(B, target); if (!t || t.side === u.side) return 0; return clamp(.3 + (o.int - bOff(t).int) / 80, .05, .85); }
+  if (kind === 'confuse') { const t = unitAt(B, target); if (!t || t.side === u.side) return 0; return clamp(.3 + (o.int - bOff(t).int) / 80 + (hasSkill(o, '신산') ? .12 : 0) + (hasSkill(o, '귀모') ? .2 : 0), .05, .92); }
   return 0;
 }
 function tacticTargets(B, u, kind, from = u.at) {
@@ -193,12 +200,12 @@ function doTactic(B, u, kind, target) {
   u.morale = clamp(u.morale, 0, 100);
   if (!chance(p)) { bmsg(B, `${o.name}의 ${kind === 'fire' ? '화계가' : '혼란 계략이'} 간파당했다`); bfx(B, target, '실패', '#ddd'); SFX.play('miss'); return false; }
   if (kind === 'fire') {
-    B.tiles[target].fire = B.tiles[target].t === 'forest' ? 3 : 2;
+    B.tiles[target].fire = (B.tiles[target].t === 'forest' ? 3 : 2) + (hasSkill(o, '화신') ? 1 : 0);
     if (B.onFx) B.onFx({ kind: 'burst', at: target });
     const t = unitAt(B, target); if (t) burn(B, t);
     bmsg(B, `${o.name}의 화계! 불길이 치솟는다`, 'good'); SFX.play('fire');
   } else {
-    const t = unitAt(B, target); t.conf = 1 + (chance(.4) ? 1 : 0);
+    const t = unitAt(B, target); t.conf = 1 + (chance(.4) ? 1 : 0) + (hasSkill(o, '귀모') ? 1 : 0);
     bmsg(B, `${o.name}의 계략에 ${bOff(t).name} 부대가 혼란에 빠졌다`, 'good'); bfx(B, target, '혼란', '#e8d06a'); if (B.onFx) B.onFx({ kind: 'swirl', at: target }); SFX.play('confuse');
   }
   bOff(u).merit += 6;
@@ -238,10 +245,10 @@ function duelRound(A, Bo, hp, act) { // act: [a행동, b행동] → 결과
   for (let s = 0; s < 2; s++) {
     const me = P[s], op = P[1 - s], a = act[s], oa = act[1 - s];
     if (a !== 'atk' && a !== 'power') continue;
-    let hit = clamp(.56 + (me.war - op.war) / 110, .15, .92);
+    let hit = clamp(.56 + (me.war - op.war) / 110 + (hasSkill(me, '무쌍') ? .08 : 0), .15, .94);
     if (a === 'power') hit -= .16;
     if (chance(hit)) {
-      let dmg = 7 + me.war / 8 + ri(0, 6);
+      let dmg = (7 + me.war / 8 + ri(0, 6)) * (hasSkill(me, '무쌍') ? 1.25 : 1);
       if (a === 'power') dmg *= 2.1;
       if (oa === 'guard') dmg *= .4;
       if (open[1 - s]) dmg *= 1.4;
@@ -314,6 +321,7 @@ function endDay(B) {
     B.food[s] -= Math.ceil(tr / 80);
     if (B.food[s] <= 0) { B.food[s] = 0; for (const u of B.units) if (u.alive && u.side === s) { u.morale = clamp(u.morale - 9, 0, 100); checkRout(B, u, null); } if (B.interactive) bmsg(B, `${s === 0 ? '공격군' : '수비군'}의 군량이 바닥났다! 사기가 떨어진다`, 'bad'); }
   }
+  for (const u of B.units) if (u.alive && hasSkill(bOff(u), '위풍')) for (const e of enemiesOf(B, u)) if (hexDist(e.at, u.at) === 1) e.morale = clamp(e.morale - 3, 0, 100);
   for (const u of B.units) { if (u.conf > 0) u.conf--; u.done = false; }
   if (chance(.2)) B.wind = (B.wind + (chance(.5) ? 1 : 5)) % 6;
   B.day++;

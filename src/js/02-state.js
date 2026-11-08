@@ -76,6 +76,7 @@ function newGame(opts = {}) {
   g.factions.forEach(a => g.factions.forEach(b => { if (a.id < b.id) g.rel[a.id + ',' + b.id] = 40 + ri(0, 20); }));
   G = g;
   assignGovs();
+  setupItems(g); g.chron = [];
   return g;
 }
 
@@ -153,6 +154,6 @@ function saveGame(slot) {
 }
 function loadGame(slot) {
   const s = store(SAVE_KEY + slot); if (!s) return false;
-  try { G = JSON.parse(s); return true; } catch (e) { return false; }
+  try { G = JSON.parse(s); if (!G.items) setupItems(G); G.chron = G.chron || []; return true; } catch (e) { return false; }
 }
 function saveMeta(slot) { try { return JSON.parse(store(SAVE_KEY + slot + '.meta') || 'null'); } catch (e) { return null; } }

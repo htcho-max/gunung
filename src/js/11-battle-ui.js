@@ -342,7 +342,7 @@ const BattleUI = {
       p.append(el('div', { class: 'uinfo' }, portraitImg(o, ''), el('div', { style: 'min-width:0;display:flex;flex-direction:column;gap:3px' },
         el('div', {}, el('span', { class: 'disp', style: 'font-size:19px' }, o.name), ' ', el('span', { class: 'muted', style: 'font-size:12px' }, `${TYPES[u.type].name}${u.cmd ? ' · 총대장' : ''} · ${facName(u.side === 0 ? B.attF : B.defF)}군${u.conf ? ' · 혼란' : ''} · ${TER[B.tiles[u.at].t].name}`)),
         el('div', { class: 'ubars' }, el('span', {}, '병사'), bar(u.troops, u.max, u.troops / u.max > .5 ? 'jade' : 'red'), el('b', {}, `${fmt(u.troops)}`), el('span', {}, '사기'), bar(u.morale, 100, ''), el('b', {}, u.morale)),
-        el('div', { class: 'muted num', style: 'font-size:12px' }, `통${o.lead} 무${o.war} 지${o.int} · 훈련 ${u.train}`))));
+        el('div', { class: 'muted num', style: 'font-size:12px' }, `통${o.lead} 무${o.war} 지${o.int} · 훈련 ${u.train}${skillsOf(o).length ? ' · 특기 ' + skillsOf(o).join('·') : ''}${(o.items || []).length ? ' · ' + o.items.map(id => ITEM[id].name).join('·') : ''}`))));
     } else p.append(el('div', { class: 'uinfo muted', style: 'font-size:14px' }, this.myTurn() ? '내 부대를 눌러 움직이세요. 파란 칸으로 옮긴 뒤 행동을 고릅니다.' : '상대가 움직이는 중…'));
     this.info = null;
     const acts = el('div', { class: 'acts' });

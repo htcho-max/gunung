@@ -12,6 +12,11 @@ const scenesOn = () => store('gunung.scenes') !== '0';
 
 // 장면 보여 주기. 당사자가 아니고 장면을 꺼 두었으면 첫 선택지를 돌려줌
 async function scene({ title, lines, options, involved }) {
+  // 연표에 남김 (나중에 다시 보기)
+  G.chron = G.chron || [];
+  const rec = { d: `${G.year}.${G.month}`, title, lines: lines.map(([w, t, a]) => [w ? w.name : null, w ? t : (a || t)]) };
+  const last = G.chron[G.chron.length - 1];
+  if (last && last.title === title && last.d === rec.d) last.lines.push(...rec.lines); else G.chron.push(rec);
   if (!involved && !scenesOn()) return options ? options[0].k : 'ok';
   const body = el('div', { class: 'scene' },
     el('div', { class: 'eyebrow' }, `${G.year}년 ${G.month}월 · 역사 사건`),
@@ -101,7 +106,7 @@ const EVENTS = [
         [onIn(cp, s.f) ? cp : null, '하늘이 주공께 뜻을 보이신 것입니다. 다만 이 일은 결코 새어 나가서는 안 됩니다.', '곁에 있던 장수들이 이 일을 비밀에 부치자고 입을 모은다.'],
       ], options: isP(s) ? [{ k: 'keep', label: '옥새를 몰래 간직한다' }, { k: 'give', label: '조정에 바친다' }] : null });
       if (ch === 'give') { s.fame += 8; for (const f of G.factions) if (f.alive && f.id !== s.f) addRel(s.f, f.id, 5); logMsg('손견이 옥새를 조정에 바쳤습니다', 'big'); return; }
-      s.fame += 15; s.cha = Math.min(100, s.cha + 2);
+      s.fame += 15; giveItem('okse', s);
       G.sealHolder = s.f;
       if (ysh) addRel(s.f, ysh.f, -20);
       logMsg('손견이 낙양의 우물에서 전국옥새를 손에 넣었다는 소문이 돕니다', 'big');
@@ -483,6 +488,12 @@ const EVENTS = [
 
 ];
 
+// 연표 다시 보기
+async function replayChron(rec) {
+  const body = el('div', { class: 'scene' }, el('div', { class: 'eyebrow' }, `${rec.d.replace('.', '년 ')}월 · 연표`),
+    rec.lines.map(([n, text]) => { const who = n ? byName(n) : null; return who ? el('div', { class: 'sline' }, portraitImg(who, ''), el('div', { class: 'say' }, el('b', { class: 'disp' }, who.name), el('p', {}, text))) : el('p', { class: 'nar' }, text); }));
+  await UI.modal({ title: rec.title, body, wide: true, cancel: 'x', buttons: [{ k: 'x', label: '닫기', cls: 'pri' }] });
+}
 async function runEvents() {
   G.ev = G.ev || {};
   for (const ev of EVENTS) {

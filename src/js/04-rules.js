@@ -2,23 +2,24 @@
 const COST = { agri: 50, comm: 50, order: 20, wall: 80, train: 0, search: 0 };
 const DEV_NAME = { agri: '개간', comm: '상업', order: '치안', wall: '성벽' };
 
+function devMul(o, kind) { let m = hasSkill(o, '치정') ? 1.3 : 1; if (kind === 'agri' && hasSkill(o, '둔전')) m *= 1.5; if (kind === 'comm' && hasSkill(o, '상재')) m *= 1.5; if (kind === 'wall' && hasSkill(o, '축성')) m *= 1.5; return m; }
 function cmdDevelop(o, c, kind) {
   if (c.gold < COST[kind]) return { ok: false, msg: '금이 모자랍니다' };
   let gain = 0, msg = '';
   if (kind === 'agri' || kind === 'comm') {
     const max = kind === 'agri' ? c.agriMax : c.commMax;
     if (c[kind] >= max) return { ok: false, msg: '이미 최대치입니다' };
-    gain = Math.round(o.pol / 6 + ri(2, 8 + o.pol / 10));
+    gain = Math.round((o.pol / 6 + ri(2, 8 + o.pol / 10)) * devMul(o, kind));
     c[kind] = Math.min(max, c[kind] + gain);
     msg = `${kind === 'agri' ? '농업' : '상업'} +${gain}`;
   } else if (kind === 'order') {
     if (c.order >= 100) return { ok: false, msg: '치안이 이미 최고입니다' };
-    gain = Math.round(3 + o.war / 20 + o.lead / 25 + ri(0, 4));
+    gain = Math.round((3 + o.war / 20 + o.lead / 25 + ri(0, 4)) * devMul(o, kind));
     c.order = Math.min(100, c.order + gain);
     msg = `치안 +${gain}`;
   } else if (kind === 'wall') {
     if (c.wall >= c.wallMax) return { ok: false, msg: '성벽이 이미 튼튼합니다' };
-    gain = Math.round(o.pol / 5 + o.lead / 10 + ri(4, 14));
+    gain = Math.round((o.pol / 5 + o.lead / 10 + ri(4, 14)) * devMul(o, kind));
     c.wall = Math.min(c.wallMax, c.wall + gain);
     msg = `성벽 +${gain}`;
   }
@@ -44,13 +45,21 @@ function cmdDraft(o, c, n) {
 function cmdTrain(o, c) {
   if (c.troops <= 0) return { ok: false, msg: '훈련할 병사가 없습니다' };
   if (c.train >= 100) return { ok: false, msg: '훈련이 이미 최고입니다' };
-  const gain = Math.round(2 + o.lead / 16 + ri(0, 2) - c.troops / 12000);
+  const gain = Math.round((2 + o.lead / 16 + ri(0, 2) - c.troops / 12000) * (hasSkill(o, '훈련') ? 1.5 : 1));
   c.train = Math.min(100, c.train + Math.max(1, gain));
   o.acted = true; o.merit += 10;
   return { ok: true, msg: `훈련 +${Math.max(1, gain)}` };
 }
 function cmdSearch(o, c, forPlayer) {
   o.acted = true; o.merit += 8;
+  for (const it of hiddenItemsIn(c.id)) {
+    if (chance(.18 + o.int / 500)) {
+      const to = forPlayer === 'self' ? o : (c.f >= 0 ? G.officers[G.factions[c.f].ruler] : o);
+      giveItem(it.id, to); G.items[it.id].found = true;
+      if (c.f >= 0 && to.f === me()?.f || to.id === G.player) logMsg(`${c.name}에서 ${eul(it.name)} 찾아 ${to.name}에게 바쳤습니다`, 'big');
+      return { ok: true, msg: `${eul(it.name)} 찾았습니다!`, item: it, to };
+    }
+  }
   const hidden = roninIn(c.id).filter(r => !r.found);
   for (const r of shuffle(hidden)) {
     if (chance(.35 + o.int / 250 + o.cha / 400)) { r.found = true; return { ok: true, msg: `재야 인물 ${eul(r.name)} 찾았습니다`, found: r }; }
@@ -67,7 +76,7 @@ function cmdSearch(o, c, forPlayer) {
 function hireChance(o, target, f) {
   const ruler = G.officers[G.factions[f].ruler];
   if (target.st === 'ronin') {
-    let p = .28 + o.cha / 260 + (25 - affDist(target, ruler)) / 90;
+    let p = .28 + o.cha / 260 + (25 - affDist(target, ruler)) / 90 + (hasSkill(o, '인덕') ? .12 : 0);
     if (target.tag && target.fk && G.factions.find(x => x.key === target.fk && x.alive && x.id !== f)) p *= .25;
     if (target.tag) { const lord = G.factions.find(x => x.alive && G.officers[x.ruler].tag === target.tag); if (lord && lord.id !== f) p *= .1; }
     if (G.player === target.id) return 0;
@@ -78,7 +87,7 @@ function hireChance(o, target, f) {
   const tr = G.officers[G.factions[target.f].ruler];
   if (target.tag && target.tag === tr.tag) return 0;
   if (target.loy >= 95) return 0;
-  const p = (100 - target.loy) / 100 * (.45 + o.cha / 200) + (25 - affDist(target, ruler)) / 160 - (25 - affDist(target, tr)) / 160;
+  const p = (100 - target.loy) / 100 * (.45 + o.cha / 200) + (25 - affDist(target, ruler)) / 160 - (25 - affDist(target, tr)) / 160 + (hasSkill(o, '인덕') ? .1 : 0);
   return clamp(p, 0, .8);
 }
 function cmdHire(o, c, target) {
@@ -164,6 +173,7 @@ function factionOfficers(f) { return G.officers.filter(o => o.st === 'on' && o.f
 // ===== 죽음·계승·멸망 =====
 function killOfficer(o, why) {
   const wasRuler = isRuler(o);
+  dropItems(o);
   const c = G.cities[o.city];
   if (c && c.gov === o.id) c.gov = -1;
   const f = o.f;
