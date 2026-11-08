@@ -51,12 +51,13 @@ function aiLogisticsDeleg() {
 }
 
 // 전쟁 하나를 처리 (플레이어가 끼면 직접 지휘)
-async function runWar(from, to, army, food) {
+async function runWar(from, to, army, food, extra = {}) {
   const defF = to.f, attF = from.f;
   await MapView.march(from.id, to.id, attF);
-  const B = launchAttack(from, to, army, food);
+  const B = launchAttack(from, to, army, food, extra);
   if (!B) { MapView.flash(to.id, '입성', facColor(attF)); UI.refresh(); return; }
   const P = me();
+  if (extra.title) B.title = extra.title;
   const pIn = P && P.st === 'on' && B.units.some(u => u.oid === P.id);
   const pDefends = P && P.st === 'on' && P.f === defF && defF >= 0 && (playerControls(to) || (P.city === to.id));
   const pAttacks = P && P.st === 'on' && P.f === B.attF && (playerControls(from) || pIn);
@@ -72,6 +73,7 @@ async function runWar(from, to, army, food) {
   } else {
     runBattleHeadless(B);
   }
+  if (extra.post) extra.post(B);
   applyBattle(B);
   MapView.flash(to.id, B.result.win === 0 ? '함락' : '격퇴', facColor(B.result.win === 0 ? attF : defF));
   await resolveCaptives(B);
@@ -80,7 +82,7 @@ async function runWar(from, to, army, food) {
     if (won) SFX.play('win'); else SFX.play('lose');
   }
   if (P && (pIn || pDefends || pAttacks)) {
-    await UI.alert({ title: B.result.win === B.playerSide ? '승리' : '패배', text: `${to.name} 전투 — ${B.result.why}.` });
+    await UI.alert({ title: B.result.win === B.playerSide ? '승리' : '패배', text: `${B.title || to.name + ' 전투'} — ${B.result.why}.` });
   }
   checkFactions();
 }

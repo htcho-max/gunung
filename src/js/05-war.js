@@ -17,7 +17,7 @@ function defendArmy(c) {
 }
 
 // 출진. 빈 성이면 바로 점령, 아니면 전투를 돌려줌
-function launchAttack(from, to, army, food) {
+function launchAttack(from, to, army, food, extra = {}) {
   const attF = from.f;
   const total = army.reduce((a, u) => a + u.troops, 0);
   from.troops -= total; from.food -= food;
@@ -34,7 +34,7 @@ function launchAttack(from, to, army, food) {
     checkFactions();
     return null;
   }
-  const B = makeBattle({ attF, defF: to.f, cityId: to.id, fromId: from.id, att: army, def: defendArmy(to), attFood: food });
+  const B = makeBattle({ attF, defF: to.f, cityId: to.id, fromId: from.id, att: army, def: defendArmy(to), attFood: food, ...extra });
   return B;
 }
 function occupy(c, f, oids, troops, train, food) {

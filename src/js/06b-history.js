@@ -21,17 +21,28 @@ const SPHERES = Object.fromEntries(Object.entries({
   ysh: '완 여남 수춘 여강 신야 허창',
   lbi: '양양 강릉 강하 장사 무릉 영릉 계양 신야',
   sj: '장사 계양 영릉 무릉 강하 시상 여강 건업 오 회계 남해',
+  ...SCEN_EXTRA_SPHERES,
 }).map(([k, v]) => [k, new Set(v.split(' '))]));
 
 // 역사 속 후계자
-const HEIRS = { 유언: '유장', 손견: '손책', 손책: '손권', 원소: '원담', 조조: '조비', 마등: '마초', 공손도: '공손강', 공손찬: '공손속', 동탁: '이각', 유표: '채모' };
+const HEIRS = { 유언: '유장', 손견: '손책', 손책: '손권', 원소: '원상', 조조: '조비', 마등: '마초', 공손도: '공손강', 공손찬: '공손속', 동탁: '이각', 유표: '채모' };
 // 사건으로 죽는 인물: 자연사를 이 해까지 미룸
 const EVENT_DEATH = { 동탁: 194, 손견: 194, 도겸: 196, 왕윤: 194, 손책: 202, 한복: 193 };
 
-function inSphere(F, t) { const sp = SPHERES[F.key]; return !sp || sp.has(t.name); }
+const SJ_LATE = new Set(['장사', '계양', '영릉', '무릉', '강하', '남해']); // 손씨가 형주 남부로 나아간 것은 적벽 뒤
+function inSphere(F, t) { const sp = SPHERES[F.key]; if (F.key === 'sj' && G.year < 209 && SJ_LATE.has(t.name)) return false; return !sp || sp.has(t.name); }
 function sphereLoose(F) {
   if (F && F.key === 'dz' && !G.ev.chain && !G.ev.dong_death) return 9; // 동탁은 살아 있는 동안 관중을 지킴
   return G.year < 192 ? 9 : G.year < 196 ? .8 : G.year < 202 ? .4 : G.year < 208 ? .15 : 0;
+}
+
+// 역사 속 세력 크기: 그해까지 이 정도 성을 넘으면 공격을 망설임
+const HIST_CAP = { sj: [[197, 5], [203, 7], [208, 8], [215, 11]], cc: [[196, 5], [199, 9], [203, 14], [208, 22]], ys: [[199, 9]], md: [[210, 6]], ly: [[214, 5]], lbi: [[208, 9]], dz: [[200, 5]], zl: [[214, 2]] };
+function capPenalty(F) {
+  const tb = HIST_CAP[F.key]; if (!tb) return 0;
+  const row = tb.find(([y]) => G.year <= y); if (!row) return 0;
+  const n = G.cities.filter(c => c.f === F.id).length;
+  return n >= row[1] ? .6 + (n - row[1]) * .35 : 0;
 }
 
 // 숙원
@@ -48,7 +59,7 @@ function focusTargets(f) { return (G.focus || []).filter(x => x.f === f && x.unt
 function histNeed(F, t) {
   if (!HIST()) return 0;
   if (t.f >= 0 && hasFocus(F.id, t.f)) return -.3;
-  return inSphere(F, t) ? 0 : sphereLoose(F);
+  return (inSphere(F, t) ? 0 : sphereLoose(F)) + capPenalty(F);
 }
 // 빈 땅을 차지해도 되는가 (초반엔 자기 지역만)
 function histEmptyOK(F, t) { return !HIST() || inSphere(F, t) || G.year >= 193; }

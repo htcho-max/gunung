@@ -1,16 +1,16 @@
 // 역사 흐름 측정: 여러 판을 돌려 해마다 세력별 성 수를 봄
 import { chromium } from 'playwright';
-const runs = +(process.argv[2] || 3), months = +(process.argv[3] || 72), who = process.argv[4] || '공융', hist = process.argv[5] ?? '1';
+const runs = +(process.argv[2] || 3), months = +(process.argv[3] || 72), who = process.argv[4] || '공융', hist = process.argv[5] ?? '1', scen = +(process.argv[6] || 190);
 const b = await chromium.launch();
 const errs = [];
 for (let r = 0; r < runs; r++) {
-  const p = await b.newPage(); p.on('pageerror', e => errs.push(e.message));
+  const p = await b.newPage(); p.on('pageerror', e => errs.push(e.message)); p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
   await p.goto('file:///home/claude/gunung/dist/index.html'); await p.evaluate(() => window.__fast = true);
-  await p.evaluate(([who, hist]) => {
-    Setup.diff = 1; Setup.hist = hist === '1'; Setup.open(); Setup.start(G.officers.find(x => x.name === who).id);
+  await p.evaluate(([who, hist, scen]) => {
+    Setup.diff = 1; Setup.hist = hist === '1'; Setup.scen = scen; Setup.open(); Setup.start(G.officers.find(x => x.name === who).id);
     UI.modal = async o => (o.buttons && o.buttons.length ? (o.buttons.find(b => b.cls === 'pri') || o.buttons[0]).k : 'ok');
     BattleUI.run = async B => { B.auto = true; runBattleHeadless(B); };
-  }, [who, hist]);
+  }, [who, hist, scen]);
   const line = [];
   for (let i = 0; i < months; i++) {
     await p.evaluate(() => endMonth());

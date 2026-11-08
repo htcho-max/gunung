@@ -5,6 +5,7 @@ const TER = {
   forest: { name: '숲', cost: 2, cavCost: 3, def: 1.2, col: '#5d7a45' },
   mount: { name: '산', cost: 3, cavCost: 99, def: 1.35, col: '#8a7d63' },
   river: { name: '강', cost: 3, def: .85, col: '#5f8fa8' },
+  water: { name: '장강', cost: 1, def: .95, col: '#3f6f86' },
   bridge: { name: '다리', cost: 1, def: .9, col: '#a58a5c' },
   castle: { name: '성곽', cost: 1, attCost: 2, def: 1, col: '#9b938a' },
   keep: { name: '본성', cost: 1, attCost: 2, def: 1, col: '#b8aa94' },
@@ -50,6 +51,10 @@ function makeBattle(opts) {
       if (R() < .35) q = clamp(q + (R() < .5 ? -1 : 1), 5, 9);
     }
   }
+  if (opts.naval) { // 장강 수전: 서쪽은 오림, 가운데는 강, 동쪽은 적벽
+    for (let i = 0; i < BW * BH; i++) { const q = tQ(i); tiles[i].t = q <= 1 ? (R() < .3 ? 'forest' : 'plain') : q <= 11 ? 'water' : (R() < .25 ? 'forest' : 'plain'); }
+    for (const r of [0, 1, 9, 10]) if (R() < .6) tiles[tIdx(14 + (R() < .5 ? 1 : 0), r)].t = 'mount';
+  }
   tiles[keep].t = 'keep';
   for (const n of hexNb(keep)) tiles[n].t = 'castle';
   const B = {
@@ -57,17 +62,22 @@ function makeBattle(opts) {
     attF, defF, cityId, fromId, food: [attFood, c.food], over: false, result: null,
     fx: [], captives: [], killed: [], fled: [[], []], interactive: false, auto: false, msgs: [], wall: c.wall,
   };
+  if (opts.naval) {
+    B.naval = true; B.northSide = 0; B.chained = !!opts.naval.chained; B.kuyuk = !!opts.naval.kuyuk;
+    if (opts.naval.eastWind) { B.wind = 3; B.windLock = true; } // 동남풍: 불길이 서쪽(조조 쪽)으로
+  }
   // 배치
-  const attSpots = []; for (let q = 0; q <= 2; q++) for (let r = 1; r < BH - 1; r++) attSpots.push(tIdx(q, r));
+  const attSpots = []; for (let q = opts.naval ? 2 : 0; q <= (opts.naval ? 4 : 2); q++) for (let r = 1; r < BH - 1; r++) attSpots.push(tIdx(q, r));
   attSpots.sort((a, b) => Math.abs(tR(a) - 5) - Math.abs(tR(b) - 5) + (tQ(b) - tQ(a)) * .1);
-  const defSpots = [keep, ...hexNb(keep)].concat(hexNb(keep).flatMap(hexNb)).filter((v, i, a) => a.indexOf(v) === i && tiles[v].t !== 'mount' && tiles[v].t !== 'river');
+  const defSpots = [keep, ...hexNb(keep)].concat(hexNb(keep).flatMap(hexNb)).filter((v, i, a) => a.indexOf(v) === i && tiles[v].t !== 'mount' && tiles[v].t !== 'river' && tiles[v].t !== 'water');
   const place = (list, side, spots) => list.forEach((u, k) => {
     const o = G.officers[u.oid];
     let spot = spots.find(s => !B.units.some(x => x.at === s) && (u.type !== 'cav' || tiles[s].t !== 'mount')) ?? spots[0];
-    B.units.push({ id: B.units.length, oid: u.oid, side, type: u.type, troops: u.troops, max: u.troops, morale: side === 1 ? 75 : 80, train: u.train ?? 60, at: spot, done: false, conf: 0, cmd: k === 0, alive: true });
+    B.units.push({ id: B.units.length, oid: u.oid, side, type: u.type, troops: u.troops, max: u.troops, morale: side === 1 ? 75 : 80, train: u.train ?? 60, at: spot, done: false, conf: 0, cmd: k === 0 && !u.ally, alive: true, ally: !!u.ally, fac: u.fac });
   });
   place(att, 0, attSpots);
   place(def, 1, defSpots);
+  if (opts.allies && opts.allies.length) place(opts.allies.map(u => ({ ...u, ally: true })), 1, defSpots.filter(s => tQ(s) >= 11).concat(defSpots));
   return B;
 }
 
@@ -134,7 +144,7 @@ function estDamage(B, a, d, ranged) {
   if (B.day <= 3 && hasSkill(ao, '기습')) m *= 1.25;
   if ((B.naval || B.tiles[a.at].t === 'river') && hasSkill(ao, '수군')) m *= 1.25;
   if (d.side === 1 && (B.tiles[d.at].t === 'castle' || B.tiles[d.at].t === 'keep') && hasSkill(dO, '수성')) m *= .8;
-  if (B.naval && a.side === B.northSide && !hasSkill(ao, '수군')) m *= .8;
+  if (B.naval && a.side === B.northSide && !hasSkill(ao, '수군') && !B.chained) m *= .8; // 북방 군사는 배멀미 (연환이면 덜함)
   return Math.min(d.troops, Math.round(a.troops * .1 * m));
 }
 function doAttack(B, a, d) {
@@ -311,7 +321,14 @@ function endDay(B) {
       const t = B.tiles[n];
       if (t.fire || t.t === 'river' || t.t === 'bridge' || t.t === 'mount') continue;
       const downwind = hexNb(i)[B.wind] === n;
-      if (chance((t.t === 'forest' ? .3 : .08) + (downwind ? .25 : 0))) { t.fire = t.t === 'forest' ? 3 : 1; const v = unitAt(B, n); if (v) burn(B, v); }
+      const v = unitAt(B, n);
+      let p = (t.t === 'forest' ? .3 : .08) + (downwind ? .25 : 0);
+      if (t.t === 'water') { // 물 위에서는 배가 있어야 번짐
+        if (!v) continue;
+        p = .18 + (downwind ? .4 : 0);
+        if (B.chained && v.side === B.northSide && B.tiles[i].t === 'water') p = .9; // 쇠사슬로 묶인 배
+      }
+      if (chance(p)) { t.fire = t.t === 'forest' ? 3 : t.t === 'water' ? 2 : 1; if (v) burn(B, v); if (t.t === 'water' && B.onFx) B.onFx({ kind: 'burst', at: n }); }
     }
     B.tiles[i].fire--;
   }
@@ -323,8 +340,14 @@ function endDay(B) {
   }
   for (const u of B.units) if (u.alive && hasSkill(bOff(u), '위풍')) for (const e of enemiesOf(B, u)) if (hexDist(e.at, u.at) === 1) e.morale = clamp(e.morale - 3, 0, 100);
   for (const u of B.units) { if (u.conf > 0) u.conf--; u.done = false; }
-  if (chance(.2)) B.wind = (B.wind + (chance(.5) ? 1 : 5)) % 6;
+  if (!B.windLock && chance(.2)) B.wind = (B.wind + (chance(.5) ? 1 : 5)) % 6;
   B.day++;
+  if (B.kuyuk && B.day === 2) { // 황개의 거짓 항복: 불붙인 배가 돌진
+    const ships = B.units.filter(u => u.alive && u.side === B.northSide && B.tiles[u.at].t === 'water').sort((a, b) => hexDist(a.at, B.keep) - hexDist(b.at, B.keep)).slice(0, 3);
+    if (ships.length) bmsg(B, '항복하러 온다던 황개의 배에서 불길이 솟는다! 화선이 조조의 선단으로 돌진한다', 'good');
+    for (const u of ships) { B.tiles[u.at].fire = 2; burn(B, u); if (B.onFx) B.onFx({ kind: 'burst', at: u.at }); }
+    if (ships.length) SFX.play('fire');
+  }
   if (!B.over && B.day > B.maxDay) { B.over = true; B.result = { win: 1, why: '30일을 버텨 내 공격군이 물러갔다' }; }
   battleCheck(B);
 }

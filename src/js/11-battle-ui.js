@@ -43,7 +43,7 @@ const BattleUI = {
     this.updTop(); this.panel();
     cancelAnimationFrame(this.raf); const loop = () => { this.draw(); this.raf = requestAnimationFrame(loop); }; loop();
     SFX.play('drum');
-    bmsg(B, `${G.cities[B.cityId].name} 공방전이 시작되었다! 바람은 ${['동', '북동', '북서', '서', '남서', '남동'][B.wind]}쪽으로 분다`, 'big');
+    bmsg(B, `${B.title || G.cities[B.cityId].name + ' 공방전'}이 시작되었다! 바람은 ${['동', '북동', '북서', '서', '남서', '남동'][B.wind]}쪽으로 분다`, 'big');
     while (!B.over) {
       for (const side of [0, 1]) {
         B.side = side; this.updTop(); this.showRibbon(side);
@@ -316,7 +316,7 @@ const BattleUI = {
     const B = this.B, c = G.cities[B.cityId];
     const top = $('#btop'); top.innerHTML = '';
     const arrow = ['→', '↗', '↖', '←', '↙', '↘'][B.wind];
-    top.append(el('div', { class: 'datePlaque' }, el('b', {}, `${c.name} 공방전`), el('small', {}, `${B.day}일째 / ${B.maxDay}일 · 바람 ${arrow}`)));
+    top.append(el('div', { class: 'datePlaque' }, el('b', {}, B.title || `${c.name} 공방전`), el('small', {}, `${B.day}일째 / ${B.maxDay}일 · 바람 ${arrow}`)));
     const side = (f, food, n) => el('span', { class: 'chip', title: `${facName(f)}군 군량` }, el('span', { class: 'dot', style: `background:${facColor(f)}` }), `${facName(f)} `, el('span', { class: 'muted' }, `병 ${fmt(n)} · 쌀 ${fmt(food)}`));
     const tr = sd => B.units.filter(u => u.alive && u.side === sd).reduce((a, u) => a + u.troops, 0);
     top.append(el('div', { class: 'food' }, side(B.attF, B.food[0], tr(0)), side(B.defF, B.food[1], tr(1))));
@@ -400,6 +400,7 @@ const BattleUI = {
       };
       peak(cx + s * .35, cy + s * .45, s * .5, s * .8, false); peak(cx - s * .15, cy + s * .5, s * .62, s * 1.05, true);
     } else if (t === 'river') water();
+    else if (t === 'water') { grad('#4f87a3', '#2c5870'); x.strokeStyle = 'rgba(220,240,255,.28)'; x.lineWidth = 1; for (let k = -2; k <= 2; k++) { const yy = cy + k * s * .34 + (R() - .5) * 3, x0 = cx - s + R() * s * .6; x.beginPath(); x.moveTo(x0, yy); x.quadraticCurveTo(x0 + s * .25, yy - 2.5, x0 + s * .5, yy); x.quadraticCurveTo(x0 + s * .75, yy + 2.5, x0 + s, yy); x.stroke(); } }
     else if (t === 'bridge') {
       water();
       x.fillStyle = 'rgba(0,0,0,.3)'; x.fillRect(cx - s * .38, cy - s, s * .76, s * 2);
@@ -529,8 +530,23 @@ const BattleUI = {
     u.vx += (c.x - u.vx) * .35; u.vy += (c.y - u.vy) * .35;
     let px = u.vx, py = u.vy;
     if (u.lunge) { const tc = this.center(u.lunge.to); const k = Math.sin(Math.min(1, (now - u.lunge.t0) / (this.fast ? 90 : 220)) * Math.PI) * .38; px += (tc.x - px) * k; py += (tc.y - py) * k; }
-    const o = bOff(u), col = facColor(u.side === 0 ? B.attF : B.defF), rr = s * .6;
+    const o = bOff(u), col = facColor(u.fac ?? (u.side === 0 ? B.attF : B.defF)), rr = s * .6;
     const mine = B.ctrl && B.ctrl(u), dim = u.done && B.side === u.side && this.myTurn();
+    if (B.tiles[u.at].t === 'water') { // 배
+      const hw = rr * 1.55, hy = py + rr * .62, dir = u.side === 0 ? 1 : -1;
+      // 돛
+      x.fillStyle = 'rgba(240,228,200,.85)'; x.strokeStyle = 'rgba(60,40,20,.6)'; x.lineWidth = 1;
+      x.beginPath(); x.moveTo(px - dir * rr * 1.05, py - rr * 1.15); x.lineTo(px - dir * rr * 1.05, py + rr * .1); x.lineTo(px - dir * rr * 1.65, py + rr * .1); x.quadraticCurveTo(px - dir * rr * 1.5, py - rr * .5, px - dir * rr * 1.05, py - rr * 1.15); x.fill(); x.stroke();
+      x.fillStyle = col; x.fillRect(px - dir * rr * 1.08 - 1, py - rr * 1.3, 2, rr * .3);
+      // 선체
+      x.fillStyle = 'rgba(0,0,0,.35)'; x.beginPath(); x.ellipse(px, hy + rr * .5, hw, rr * .16, 0, 0, 7); x.fill();
+      const hg = x.createLinearGradient(0, hy - rr * .25, 0, hy + rr * .45); hg.addColorStop(0, '#9a6236'); hg.addColorStop(1, '#4a2a14');
+      x.fillStyle = hg; x.beginPath(); x.moveTo(px - hw, hy - rr * .28); x.lineTo(px + hw, hy - rr * .28); x.quadraticCurveTo(px + hw * .85, hy + rr * .45, px + hw * .5, hy + rr * .45); x.lineTo(px - hw * .5, hy + rr * .45); x.quadraticCurveTo(px - hw * .85, hy + rr * .45, px - hw, hy - rr * .28); x.closePath(); x.fill();
+      x.strokeStyle = '#2a170b'; x.lineWidth = 1.2; x.stroke();
+      x.fillStyle = '#c99a5a'; x.fillRect(px - hw * .95, hy - rr * .32, hw * 1.9, rr * .09);
+      x.fillStyle = 'rgba(255,255,255,.35)'; for (let k = -2; k <= 2; k++) { x.beginPath(); x.arc(px + k * hw * .32, hy + rr * .12, rr * .06, 0, 7); x.fill(); }
+      if (B.chained && u.side === B.northSide) { x.strokeStyle = '#c8c8c0'; x.lineWidth = 2.4; x.setLineDash([4, 3]); x.beginPath(); x.moveTo(px - hw * 1.45, hy + rr * .1); x.lineTo(px + hw * 1.45, hy + rr * .1); x.moveTo(px, hy + rr * .45); x.lineTo(px, hy + rr * 1.1); x.stroke(); x.setLineDash([]); }
+    }
     // 그림자
     x.fillStyle = 'rgba(0,0,0,.45)'; x.beginPath(); x.ellipse(px + 2, py + rr * .92, rr * .95, rr * .3, 0, 0, 7); x.fill();
     // 고리

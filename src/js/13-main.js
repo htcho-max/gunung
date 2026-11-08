@@ -17,23 +17,24 @@ function startPlaying(isNew) {
       officer: `${facName(P.f)}군의 장수로 시작합니다.\n한 달에 행동력 3으로 근무·단련·친교를 하며 공을 쌓으세요. 출진에 뽑히면 직접 부대를 이끕니다.\n뜻이 맞지 않으면 하야해 떠날 수도 있습니다.`,
       ronin: `재야의 몸으로 ${G.cities[P.city].name}에서 시작합니다.\n떠돌며 인재와 사귀고, 빈 땅에서 거병하거나 마음에 드는 군주에게 사관하세요.`,
     }[r];
-    UI.queue({ title: `${G.year}년 ${G.month}월`, portrait: P, text: `동탁이 낙양을 손에 쥐고 천자를 끼고 있다. 각지의 제후들이 들고일어나는 난세가 열렸다.\n\n${txt}` });
+    UI.queue({ title: `${G.year}년 ${G.month}월`, portrait: P, text: `${(SCENARIOS[G.scen] || SCENARIOS[190]).desc}\n\n${txt}` });
     UI.flush().then(() => runEvents()).then(() => UI.refresh());
   }
 }
 
 const Setup = {
-  mode: null, tab: 'all', stats: null, diff: +(store('gunung.diff') ?? 1), hist: store('gunung.hist') !== '0',
+  mode: null, tab: 'all', stats: null, diff: +(store('gunung.diff') ?? 1), hist: store('gunung.hist') !== '0', scen: SCENARIOS[store('gunung.scen')] ? +store('gunung.scen') : 190,
   open() {
-    newGame({ diff: this.diff, hist: this.hist }); // 고르기용 상태
+    newGame({ diff: this.diff, hist: this.hist, scen: this.scen }); // 고르기용 상태
     showScreen('scrSetup');
     this.renderModes();
   },
   renderModes() {
     const box = $('#setupInner'); box.innerHTML = '';
     const card = (k, title, desc) => el('button', { class: 'modeCard', onclick: () => { this.mode = k; k === 'create' ? this.renderCreate() : this.renderPick(); } }, el('b', {}, title), el('span', { class: 'muted', style: 'font-size:14px' }, desc));
-    box.append(el('div', { style: 'display:flex;align-items:center;gap:10px' }, el('button', { class: 'btn sm ghost', onclick: () => showScreen('scrTitle') }, '◂ 처음으로'), el('h2', {}, '190년 · 반동탁 연합')),
-      el('p', { class: 'muted', style: 'margin:0;max-width:65ch' }, '열네 제후와 수많은 재야 인물이 있습니다. 누구로 난세를 살아갈지 고르세요.'),
+    box.append(el('div', { style: 'display:flex;align-items:center;gap:10px' }, el('button', { class: 'btn sm ghost', onclick: () => showScreen('scrTitle') }, '◂ 처음으로'), el('h2', {}, '시나리오')),
+      el('div', { class: 'scenRow' }, Object.values(SCENARIOS).map(sc => el('button', { class: 'scenCard' + (this.scen === sc.year ? ' on' : ''), 'aria-pressed': this.scen === sc.year ? 'true' : 'false', onclick: () => { this.scen = sc.year; store('gunung.scen', String(sc.year)); this.open(); } }, el('b', {}, sc.title.split(' · ')[1]), el('span', { class: 'num' }, sc.year + '년')))),
+      el('p', { class: 'muted', style: 'margin:0;max-width:65ch' }, SCENARIOS[this.scen].desc + ` 세력 ${G.factions.length}, 누구로 난세를 살아갈지 고르세요.`),
       el('div', { style: 'display:flex;flex-direction:column;gap:6px' },
         el('div', { class: 'tabs', role: 'radiogroup', 'aria-label': '난이도' }, DIFFS.map((d, i) => el('button', { class: 'tab' + (this.diff === i ? ' on' : ''), role: 'radio', 'aria-checked': this.diff === i ? 'true' : 'false', onclick: () => { this.diff = i; G.diff = i; store('gunung.diff', String(i)); this.renderModes(); } }, d.name))),
         el('div', { class: 'muted', style: 'font-size:13px' }, DIFFS[this.diff].desc),
@@ -110,8 +111,8 @@ const Setup = {
           el('label', { class: 'fld' }, '이름 (한글 2~4자)', nm),
           el('label', { class: 'fld' }, '시작', startSel),
           el('label', { class: 'fld' }, '도시', citySel),
-          el('div', { class: 'muted', style: 'font-size:13px' }, '나이는 스무 살(170년생)입니다.')),
-        el('div', { style: 'display:flex;flex-direction:column;gap:10px;background:var(--lacq);border:1px solid var(--line);border-radius:8px;padding:14px' },
+          el('div', { class: 'muted', style: 'font-size:13px' }, `나이는 스무 살(${G.year - 20}년생)입니다.`)),
+        el('div', { style: 'display:flex;flex-direction:column;gap:10px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:14px' },
           el('div', { style: 'display:flex;align-items:center;gap:10px' }, el('span', { class: 'muted' }, '능력 합계'), pts, el('button', { class: 'btn sm', style: 'margin-left:auto', onclick: () => { this.roll(); this.spare = 0; drawStats(); SFX.play('tick'); } }, '🎲 다시 굴리기')),
           statBox)),
       el('div', {}, el('button', { class: 'btn pri', style: 'padding:12px 28px;font-size:16px', onclick: () => this.createStart(startSel.value, +citySel.value) }, '이 인물로 시작')));
@@ -121,7 +122,7 @@ const Setup = {
     if (!/^[가-힣]{2,4}$/.test(name)) { UI.toast('이름은 한글 2~4자로 지어 주세요'); return; }
     if (G.officers.some(o => o.name === name)) { UI.toast('이미 있는 이름입니다'); return; }
     const s = this.stats;
-    const o = { id: G.officers.length, name, born: 170, die: 170 + 66 + ri(0, 10), ...s, f: -1, city: cid, loy: 0, merit: 0, fame: 30, st: 'ronin', acted: false, ideal: ri(0, 99), tag: '', found: true, home: cid, fk: '', created: true, bond: {} };
+    const o = { id: G.officers.length, name, born: G.year - 20, die: G.year + 46 + ri(0, 10), ...s, f: -1, city: cid, loy: 0, merit: 0, fame: 30, st: 'ronin', acted: false, ideal: ri(0, 99), tag: '', found: true, home: cid, fk: '', created: true, bond: {} };
     G.officers.push(o); G.player = o.id; G.pgold = 300;
     if (how === 'rise') { if (G.cities[cid].f >= 0) { UI.toast('빈 땅을 골라 주세요'); return; } createFaction(o, G.cities[cid], 3000); }
     saveGame('auto'); startPlaying(true);
@@ -136,6 +137,7 @@ function showHelp() {
     el('p', { style: 'margin:0' }, el('b', {}, '장수 '), '한 달에 행동력 3. 근무로 공을 쌓으면 태수가 됩니다. 태수가 되면 「독립」해 군주가 될 수도 있습니다. 「하야」하면 재야로 돌아갑니다.'),
     el('p', { style: 'margin:0' }, el('b', {}, '재야 '), '어디든 떠돌 수 있습니다. 「탐색」으로 재야 인물을 만나고 「친교」로 사귀세요. 빈 땅(회색 성)에서 「거병」하면 친한 재야 인물이 따라옵니다. 남의 성에서는 「사관」을 청할 수 있습니다.'),
     el('p', { style: 'margin:0' }, el('b', {}, '전투 '), '공격군은 30일 안에 본성(붉은 지붕 칸)을 차지하거나 수비군을 무너뜨려야 합니다. 총대장(노란 점)이 쓰러지면 그쪽이 집니다. 보병은 기병에 강하고, 기병은 빠르며, 궁병은 두 칸 밖에서 쏩니다. 지력 45 이상이면 화계와 혼란을 쓸 수 있고, 불은 바람을 타고 숲으로 번집니다. 적 옆에 붙으면 일기토를 청할 수 있습니다.'),
+    el('p', { style: 'margin:0' }, el('b', {}, '수전 '), '적벽대전은 장강 위에서 배로 싸웁니다. 수군 특기가 없는 북쪽 군사는 뱃멀미로 힘이 빠지지만, 배를 쇠사슬로 묶으면 멀미가 사라지는 대신 불이 묶인 배를 타고 번집니다. 동남풍이 불면 불길은 서쪽으로 갑니다.'),
     el('p', { style: 'margin:0' }, el('b', {}, '포로 '), '사로잡은 장수는 등용하거나 풀어 주거나 처단합니다. 처단은 같은 세력 장수들의 마음을 흔듭니다.'),
     el('p', { class: 'muted', style: 'margin:0' }, '매달 초 자동 저장됩니다. 메뉴에서 세 칸에 따로 저장할 수 있습니다. 인물과 사건은 역사·연의를 바탕으로 했고, 능력치는 이 게임에서 새로 매겼습니다.')) });
 }

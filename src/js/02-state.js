@@ -26,7 +26,8 @@ const DIFF = () => DIFFS[G && G.diff != null ? G.diff : 1];
 const TROOP_MUL = { dz: 1.7, ys: 1.25, ysh: 1.2, cc: .9, lb: .7, kr: .8, gd: 1, md: 1.1, sj: 1, lbi: 1.05, ly: 1.05, tq: 1, gz: 1.15, hf: 1.15 };
 
 function newGame(opts = {}) {
-  const g = { ver: 1, year: START_YEAR, month: 1, factions: [], cities: [], officers: [], log: [], rel: {}, ally: {}, player: -1, diff: opts.diff ?? 1, hist: opts.hist ?? true, focus: [], ev: {}, ap: 3, seen: {}, over: false, pgold: 0, stats: { battles: 0, wins: 0 } };
+  const sc = opts.scen && SCENARIOS[opts.scen] && SCENARIOS[opts.scen].factions ? SCENARIOS[opts.scen] : null;
+  const g = { ver: 1, scen: 190, year: START_YEAR, month: 1, factions: [], cities: [], officers: [], log: [], rel: {}, ally: {}, player: -1, diff: opts.diff ?? 1, hist: opts.hist ?? true, focus: [], ev: {}, ap: 3, seen: {}, over: false, pgold: 0, stats: { battles: 0, wins: 0 } };
   const fIdx = {};
   FACTION_DEFS.forEach(([key, name, ruler, color], i) => { fIdx[key] = i; g.factions.push({ id: i, key, name, color, ruler: -1, alive: true, capital: -1 }); });
   CITY_DEFS.forEach(([name, han, x, y, own, s], i) => {
@@ -50,16 +51,18 @@ function newGame(opts = {}) {
     const o = {
       id: i, name, born: b, die: life, lead: +lead, war: +war, int: +int, pol: +pol, cha: +cha,
       f: fk ? fIdx[fk] : -1, city: CITY_BY_NAME[city], loy: 80, merit: 0, fame: Math.round((+lead + +war + +int + +pol + +cha) / 5),
-      st: 'on', acted: false, ideal: hashStr(name) % 100, tag: tag || '', found: false, home: CITY_BY_NAME[city], fk: fk || '',
+      hdie: hist, st: 'on', acted: false, ideal: hashStr(name) % 100, tag: tag || '', found: false, home: CITY_BY_NAME[city], fk: fk || '',
     };
     if (o.city == null) console.warn('도시 오류', line);
     if (START_YEAR - b < 16) { o.st = 'unborn'; o.f = -1; }
     else if (o.f < 0) o.st = 'ronin';
     g.officers.push(o);
   });
+  let scx = null;
+  if (sc) scx = applyScenario(g, sc);
   // 군주 지정
   g.factions.forEach(f => {
-    const r = g.officers.find(o => o.name === FACTION_DEFS[f.id][2]);
+    const r = g.officers.find(o => o.name === (f.rn || FACTION_DEFS[f.id][2]));
     f.ruler = r.id; f.capital = r.city; r.loy = 100; r.merit = 1000;
   });
   // 묶음끼리는 이상(궁합)이 가깝고 충성 100
@@ -77,6 +80,7 @@ function newGame(opts = {}) {
   G = g;
   assignGovs();
   setupItems(g); g.chron = [];
+  if (sc) { applyScenarioAfter(g, sc, scx.fk); assignGovs(); }
   return g;
 }
 

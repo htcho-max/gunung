@@ -42,7 +42,7 @@ function aiPlanAttacks(F) {
   const ruler = G.officers[F.ruler];
   const aggr = .85 + (ruler.war - 60) / 160 - (ruler.int - 60) / 400;
   const plans = [];
-  const graceForPlayer = mIdx() <= DIFF().grace;
+  const graceForPlayer = mIdx() - (G.start || 0) <= DIFF().grace;
   const pf = me() && me().st === 'on' ? me().f : -2;
   for (const c of G.cities.filter(x => x.f === F.id)) {
     if (playerControls(c)) continue;
@@ -97,7 +97,7 @@ function aiLogistics(F) {
   const cs = G.cities.filter(x => x.f === F.id && !playerControls(x));
   if (!cs.length) return;
   const pf = me() && me().st === 'on' ? me().f : -2;
-  const grace = mIdx() <= DIFF().grace;
+  const grace = mIdx() - (G.start || 0) <= DIFF().grace;
   let tgt = F.target != null ? G.cities[F.target] : null;
   const bad = t => !t || t.f === F.id || isAlly(F.id, t.f) || !ADJ[t.id].some(i => G.cities[i].f === F.id) || (grace && t.f === pf);
   const fT = focusTargets(F.id);
