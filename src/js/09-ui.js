@@ -209,16 +209,28 @@ const UI = {
     this.refresh();
   },
   async cmdReward(c) {
-    const offs = officersIn(c.id, c.f).filter(o => !isRuler(o) && o.id !== G.player);
-    if (!offs.length) { this.toast('포상할 장수가 없습니다'); return; }
-    let sel = null;
-    const list = el('div', { class: 'pickList' }, offs.sort((a, b) => a.loy - b.loy).map(t => {
-      const row = el('button', { class: 'offRow', onclick: () => { $$('.pickList .offRow').forEach(x => x.classList.remove('on')); row.classList.add('on'); sel = t; } }, portraitImg(t, ''), el('span', { class: 'n disp' }, t.name), el('span', { class: 's' }, el('b', { style: `color:${t.loy < 70 ? 'var(--cinnabar)' : 'var(--paper)'}` }, `충성 ${t.loy}`)));
-      return row;
-    }));
-    const k = await this.modal({ title: '포상 (금 100)', body: list, cancel: 'x', buttons: [{ k: 'x', label: '닫기' }, { k: 'ok', label: '금 100을 내린다', cls: 'pri', check: () => !!sel }] });
-    if (k !== 'ok') return;
-    const r = cmdReward(null, c, sel); this.toast(r.msg); this.refresh();
+    const all = role() === 'ruler' && c.f === me().f; // 군주는 세력 안 모두에게
+    let last = null;
+    for (;;) {
+      const offs = (all ? factionOfficers(c.f) : officersIn(c.id, c.f)).filter(o => !isRuler(o) && o.id !== G.player).sort((a, b) => a.loy - b.loy);
+      if (!offs.length) { this.toast('포상할 장수가 없습니다'); return; }
+      let sel = null;
+      const low = offs.filter(o => o.loy < 80);
+      const list = el('div', { class: 'pickList' }, offs.map(t => {
+        const where = t.travel ? `${ro(G.cities[t.travel.to].name)} 가는 길` : G.cities[t.city].name;
+        const row = el('button', { class: 'offRow', onclick: () => { $$('.pickList .offRow').forEach(x => x.classList.remove('on')); row.classList.add('on'); sel = t; } }, portraitImg(t, ''), el('span', { class: 'n disp' }, t.name), all ? el('span', { class: 'tag' }, where) : null, el('span', { class: 's' }, el('b', { style: `color:${t.loy < 70 ? 'var(--cinnabar)' : 'var(--paper)'}` }, `충성 ${t.loy}`)));
+        return row;
+      }));
+      const head = el('div', { class: 'muted', style: 'font-size:13px;margin-bottom:8px' }, `${c.name}의 금 ${fmt(c.gold)}에서 한 사람에 100씩 내립니다.${all ? ' 군주이므로 어느 성에 있는 장수든 포상할 수 있습니다.' : ''}${last ? ` 방금: ${last}` : ''}`);
+      const k = await this.modal({ title: '포상 (금 100)', body: el('div', {}, head, list), cancel: 'x', buttons: [{ k: 'x', label: '닫기' }, { k: 'low', label: `충성 80 미만 모두 (${low.length}명 · 금 ${fmt(low.length * 100)})`, check: () => low.length > 0 }, { k: 'ok', label: '금 100을 내린다', cls: 'pri', check: () => !!sel }] });
+      if (k === 'ok') { const r = cmdReward(null, c, sel); last = r.msg; if (r.ok) SFX.play('ok'); else { this.toast(r.msg); } }
+      else if (k === 'low') {
+        let n = 0; for (const t of low) { if (c.gold < 100) break; if (cmdReward(null, c, t).ok) n++; }
+        last = `${n}명에게 포상했습니다${n < low.length ? ' (금이 모자라 일부만)' : ''}`; SFX.play('ok');
+      } else break;
+      this.refresh();
+    }
+    this.refresh();
   },
   async pickCity(title, cities, note, extra) {
     if (!cities.length) { this.toast('갈 수 있는 곳이 없습니다'); return null; }
