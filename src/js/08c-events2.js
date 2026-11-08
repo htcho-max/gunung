@@ -16,7 +16,7 @@ function handCity(c, f, troops) {
   if (troops != null) c.troops = Math.min(troopMax(c), troops);
   c.order = Math.max(c.order, 45);
 }
-function moveOfficer(o, c) { if (o && o.st === 'on') { const oc = G.cities[o.city]; if (oc.gov === o.id) oc.gov = -1; o.city = c.id; } }
+function moveOfficer(o, c) { if (o && o.st === 'on') { delete o.travel; const oc = G.cities[o.city]; if (oc.gov === o.id) oc.gov = -1; o.city = c.id; } }
 function passItem(id, to) { const st = G.items && G.items[id]; if (!st || !to || to.st === 'dead') return false; if (st.holder >= 0 && G.officers[st.holder].id === G.player) return false; giveItemRaw(G, id, to); return true; }
 
 EVENTS.push(

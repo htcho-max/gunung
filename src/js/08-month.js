@@ -18,7 +18,7 @@ async function endMonth() {
     for (const p of plans) {
       if (p.from.f < 0 || G.officers[p.army[0].oid].city !== p.from.id) continue; // 상황이 바뀜
       if (p.to.f === p.from.f || isAlly(p.from.f, p.to.f)) continue;
-      p.army = p.army.filter(u => { const o = G.officers[u.oid]; return o.st === 'on' && o.f === p.from.f && o.city === p.from.id; });
+      p.army = p.army.filter(u => { const o = G.officers[u.oid]; return o.st === 'on' && o.f === p.from.f && o.city === p.from.id && !o.travel; });
       if (!p.army.length || p.from.troops < p.army.reduce((a, u) => a + u.troops, 0)) continue;
       G.factions[p.from.f].idle = 0;
       await runWar(p.from, p.to, p.army, p.food);
@@ -32,11 +32,12 @@ async function endMonth() {
     await monthlyEvents();
     G.month++;
     MapView.monthBanner();
+    monthlyTravel();
     if (G.month > 12) { G.month = 1; G.year++; await yearlyEvents(); }
     await runEvents();
     monthlyMission();
     for (const o of G.officers) o.acted = false;
-    G.ap = 3;
+    G.ap = me() && me().travel ? 0 : 3;
     assignGovs();
     aiOfficersDrift();
     await afterMonthChecks();

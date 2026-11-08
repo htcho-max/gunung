@@ -93,8 +93,8 @@ const fac = id => G.factions[id];
 const facName = id => id < 0 ? '재야' : G.factions[id].name;
 const facColor = id => id < 0 ? '#8c8676' : G.factions[id].color;
 const me = () => G.officers[G.player];
-const officersIn = (cid, f) => G.officers.filter(o => o.st === 'on' && o.city === cid && (f === undefined || o.f === f));
-const roninIn = cid => G.officers.filter(o => o.st === 'ronin' && o.city === cid);
+const officersIn = (cid, f) => G.officers.filter(o => o.st === 'on' && o.city === cid && !o.travel && (f === undefined || o.f === f));
+const roninIn = cid => G.officers.filter(o => o.st === 'ronin' && o.city === cid && !o.travel);
 const citiesOf = f => G.cities.filter(c => c.f === f);
 const isRuler = o => o.f >= 0 && G.factions[o.f].ruler === o.id;
 function relKey(a, b) { return a < b ? a + ',' + b : b + ',' + a; }
@@ -138,7 +138,7 @@ function assignGovs() {
     const ruler = G.factions[c.f].ruler;
     if (offs.some(o => o.id === ruler)) { c.gov = ruler; continue; }
     const cur = c.gov >= 0 ? G.officers[c.gov] : null;
-    if (cur && cur.st === 'on' && cur.city === c.id && cur.f === c.f) continue;
+    if (cur && cur.st === 'on' && cur.city === c.id && !cur.travel && cur.f === c.f) continue;
     if (!offs.length) { c.gov = -1; continue; }
     offs.sort((a, b) => govScore(b) - govScore(a));
     c.gov = offs[0].id;

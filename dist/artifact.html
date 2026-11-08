@@ -382,7 +382,7 @@ input[type=text]:focus,select:focus{outline:2px solid var(--brass);outline-offse
 <script>
 // ---- 00-util.js
 // ===== 공용 도구 =====
-const VERSION = '0.7.0';
+const VERSION = '0.7.1';
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -1207,8 +1207,8 @@ const fac = id => G.factions[id];
 const facName = id => id < 0 ? '재야' : G.factions[id].name;
 const facColor = id => id < 0 ? '#8c8676' : G.factions[id].color;
 const me = () => G.officers[G.player];
-const officersIn = (cid, f) => G.officers.filter(o => o.st === 'on' && o.city === cid && (f === undefined || o.f === f));
-const roninIn = cid => G.officers.filter(o => o.st === 'ronin' && o.city === cid);
+const officersIn = (cid, f) => G.officers.filter(o => o.st === 'on' && o.city === cid && !o.travel && (f === undefined || o.f === f));
+const roninIn = cid => G.officers.filter(o => o.st === 'ronin' && o.city === cid && !o.travel);
 const citiesOf = f => G.cities.filter(c => c.f === f);
 const isRuler = o => o.f >= 0 && G.factions[o.f].ruler === o.id;
 function relKey(a, b) { return a < b ? a + ',' + b : b + ',' + a; }
@@ -1252,7 +1252,7 @@ function assignGovs() {
     const ruler = G.factions[c.f].ruler;
     if (offs.some(o => o.id === ruler)) { c.gov = ruler; continue; }
     const cur = c.gov >= 0 ? G.officers[c.gov] : null;
-    if (cur && cur.st === 'on' && cur.city === c.id && cur.f === c.f) continue;
+    if (cur && cur.st === 'on' && cur.city === c.id && !cur.travel && cur.f === c.f) continue;
     if (!offs.length) { c.gov = -1; continue; }
     offs.sort((a, b) => govScore(b) - govScore(a));
     c.gov = offs[0].id;
@@ -1705,7 +1705,7 @@ function joinFaction(t, f, cid) {
   if (t.st === 'on' && t.f >= 0) {
     const oc = G.cities[t.city]; if (oc.gov === t.id) oc.gov = -1;
   }
-  t.st = 'on'; t.f = f; t.city = cid; t.found = true; t.acted = true;
+  t.st = 'on'; t.f = f; t.city = cid; t.found = true; t.acted = true; delete t.travel;
   const ruler = G.officers[G.factions[f].ruler];
   t.loy = (t.tag && t.tag === ruler.tag) ? 100 : clamp(78 - affDist(t, ruler) / 2 + ri(0, 12), 55, 96);
   t.merit = Math.max(t.merit, 100);
@@ -1716,8 +1716,52 @@ function cmdReward(giver, c, t) {
   c.gold -= 100; const g = ri(5, 10); t.loy = Math.min(100, t.loy + g);
   return { ok: true, msg: `${t.name} 충성 +${g}` };
 }
-function cmdMove(o, to) { const from = G.cities[o.city]; if (from.gov === o.id) from.gov = -1; o.city = to; o.acted = true; }
-function cmdTransport(o, from, to, gold, food, troops) {
+// ===== 먼 길: 길을 따라 한 칸에 한 달 (바로 옆 성은 그달에 도착) =====
+// f가 있으면 그 세력의 성만 지나감, 없으면(재야) 어디든
+function routesFrom(cid, f) {
+  const prev = { [cid]: -1 }, q = [cid], out = [];
+  while (q.length) {
+    const a = q.shift();
+    for (const b of ADJ[a]) {
+      if (prev[b] !== undefined) continue;
+      if (f != null && G.cities[b].f !== f) continue;
+      prev[b] = a; q.push(b);
+      const path = [b]; for (let k = a; k !== -1; k = prev[k]) path.unshift(k);
+      out.push({ c: G.cities[b], path, months: path.length - 2 });
+    }
+  }
+  return out;
+}
+function routeTo(from, to, f) { return routesFrom(from, f).find(r => r.c.id === to) || null; }
+function nearestOwn(cid, f) {
+  if (G.cities[cid].f === f) return cid;
+  const r = routesFrom(cid, null).find(r => r.c.f === f); return r ? r.c.id : -1;
+}
+function travelLeft(o) { return o.travel ? Math.max(0, o.travel.eta - mIdx()) : 0; }
+// 지도에 그릴 현재 위치(길 위 비율)
+function travelPos(t) {
+  const tot = Math.max(1, t.eta - t.start), done = clamp((mIdx() - t.start + .5) / (tot + 1), 0, 1);
+  const segs = t.path.length - 1, u = done * segs, i = Math.min(segs - 1, Math.floor(u)), fr = u - i;
+  const A = G.cities[t.path[i]], B = G.cities[t.path[i + 1]];
+  return { x: A.x + (B.x - A.x) * fr, y: A.y + (B.y - A.y) * fr };
+}
+function cmdMove(o, to, path) {
+  const from = G.cities[o.city]; if (from.gov === o.id) from.gov = -1;
+  const months = path ? path.length - 2 : 0;
+  if (months <= 0) { o.city = to; delete o.travel; }
+  else o.travel = { to, path, start: mIdx(), eta: mIdx() + months };
+  o.acted = true;
+  return months;
+}
+function cmdTransport(o, from, to, gold, food, troops, path) {
+  const months = path ? path.length - 2 : 0;
+  if (months > 0) {
+    gold = clamp(Math.floor(gold), 0, from.gold); food = clamp(Math.floor(food), 0, from.food); troops = clamp(Math.floor(troops / 100) * 100, 0, from.troops);
+    from.gold -= gold; from.food -= food; from.troops -= troops;
+    (G.convoys = G.convoys || []).push({ f: from.f, from: from.id, to: to.id, gold, food, troops, train: from.train, path, start: mIdx(), eta: mIdx() + months, oid: o.id });
+    o.acted = true; o.merit += 6 + months * 3;
+    return { ok: true, msg: `${ro(to.name)} 금 ${fmt(gold)}·쌀 ${fmt(food)}·병사 ${fmt(troops)}을 보냈습니다. ${months}달 뒤 도착합니다` };
+  }
   gold = clamp(Math.floor(gold), 0, from.gold); food = clamp(Math.floor(food), 0, from.food); troops = clamp(Math.floor(troops / 100) * 100, 0, Math.min(from.troops, Math.max(0, troopMax(to) - to.troops)));
   from.gold -= gold; to.gold += gold; from.food -= food; to.food += food;
   if (troops > 0) { to.train = Math.round((to.train * to.troops + from.train * troops) / (to.troops + troops)); from.troops -= troops; to.troops += troops; }
@@ -1816,6 +1860,37 @@ function checkFactions() {
   }
 }
 
+// 달이 바뀔 때: 길 위의 장수와 수송대 도착
+function monthlyTravel() {
+  const now = mIdx(), P = me();
+  for (const o of G.officers) {
+    if (!o.travel || o.st === 'dead') { if (o.travel && o.st === 'dead') delete o.travel; continue; }
+    if (now < o.travel.eta) continue;
+    let to = o.travel.to;
+    if (o.st === 'on' && G.cities[to].f !== o.f) {
+      const alt = nearestOwn(to, o.f);
+      if (o.id === G.player || (P && o.f === P.f)) logMsg(`${G.cities[to].name}이(가) 다른 세력의 손에 넘어가 ${o.name}은(는) ${alt >= 0 ? G.cities[alt].name + '(으)로 향했습니다' : '갈 곳을 잃었습니다'}`);
+      if (alt >= 0) to = alt;
+    }
+    o.city = to; delete o.travel;
+    if (o.st === 'ronin' && o.id === G.player) for (const x of roninIn(to)) x.found = x.found || chance(.5);
+    if (o.id === G.player) logMsg(`${G.cities[to].name}에 도착했습니다`, 'big');
+  }
+  const keep = [];
+  for (const v of G.convoys || []) {
+    if (now < v.eta) { keep.push(v); continue; }
+    let to = G.cities[v.to];
+    if (to.f !== v.f) { const alt = nearestOwn(v.to, v.f); to = alt >= 0 ? G.cities[alt] : null; }
+    const mine = P && P.st === 'on' && P.f === v.f;
+    if (!to) { if (mine) logMsg(`${G.cities[v.to].name}(으)로 가던 수송대가 갈 곳을 잃고 흩어졌습니다`); continue; }
+    to.gold += v.gold; to.food += v.food;
+    const room = Math.max(0, troopMax(to) - to.troops), t = Math.min(v.troops, room);
+    if (t > 0) { to.train = Math.round((to.train * to.troops + v.train * t) / (to.troops + t)); to.troops += t; }
+    if (mine) logMsg(`수송대가 ${to.name}에 도착했습니다 (금 ${fmt(v.gold)}·쌀 ${fmt(v.food)}·병사 ${fmt(t)}${v.troops > t ? ` · 병력 한도로 ${fmt(v.troops - t)}명 흩어짐` : ''})`);
+  }
+  G.convoys = keep;
+}
+
 // ---- 05-war.js
 // ===== 전쟁: 출진·점령·포로 =====
 function autoType(o) { return o.war >= 82 && o.lead >= 70 ? 'cav' : (o.int > o.war + 8 ? (o.lead >= 74 ? 'xbow' : 'arc') : 'inf'); }
@@ -1894,7 +1969,7 @@ function occupy(c, f, oids, troops, train, food) {
   for (const id of oids) { const o = G.officers[id]; if (o.st === 'on') o.city = c.id; }
   c.gov = -1;
   // 지휘관 또는 공적 높은 이가 태수
-  const cands = oids.map(id => G.officers[id]).filter(o => o.st === 'on' && o.city === c.id);
+  const cands = oids.map(id => G.officers[id]).filter(o => o.st === 'on' && o.city === c.id && !o.travel);
   if (cands.length) c.gov = cands[0].id;
   assignGovs();
 }
@@ -2099,7 +2174,7 @@ function aiPlanAttacks(F) {
       let top = [...pool].sort((a, b) => (b.lead + b.war) - (a.lead + a.war)).slice(0, 5);
       // 플레이어가 이 성의 장수면 데려갈 수 있음
       const P = me();
-      if (P && P.st === 'on' && P.f === F.id && P.city === c.id && !isRuler(P) && c.gov !== P.id && top.length < 5 && (P.lead + P.war > 110 || chance(.5))) top.push(P);
+      if (P && P.st === 'on' && P.f === F.id && P.city === c.id && !P.travel && !isRuler(P) && c.gov !== P.id && top.length < 5 && (P.lead + P.war > 110 || chance(.5))) top.push(P);
       const tr = splitTroops(top, Math.floor(c.troops * .78));
       army = top.map((o, i) => ({ oid: o.id, troops: tr[i], type: autoType(o) })).filter(u => u.troops >= 500);
       if (!army.length) continue;
@@ -2783,7 +2858,7 @@ async function endMonth() {
     for (const p of plans) {
       if (p.from.f < 0 || G.officers[p.army[0].oid].city !== p.from.id) continue; // 상황이 바뀜
       if (p.to.f === p.from.f || isAlly(p.from.f, p.to.f)) continue;
-      p.army = p.army.filter(u => { const o = G.officers[u.oid]; return o.st === 'on' && o.f === p.from.f && o.city === p.from.id; });
+      p.army = p.army.filter(u => { const o = G.officers[u.oid]; return o.st === 'on' && o.f === p.from.f && o.city === p.from.id && !o.travel; });
       if (!p.army.length || p.from.troops < p.army.reduce((a, u) => a + u.troops, 0)) continue;
       G.factions[p.from.f].idle = 0;
       await runWar(p.from, p.to, p.army, p.food);
@@ -2797,11 +2872,12 @@ async function endMonth() {
     await monthlyEvents();
     G.month++;
     MapView.monthBanner();
+    monthlyTravel();
     if (G.month > 12) { G.month = 1; G.year++; await yearlyEvents(); }
     await runEvents();
     monthlyMission();
     for (const o of G.officers) o.acted = false;
-    G.ap = 3;
+    G.ap = me() && me().travel ? 0 : 3;
     assignGovs();
     aiOfficersDrift();
     await afterMonthChecks();
@@ -3489,7 +3565,7 @@ function handCity(c, f, troops) {
   if (troops != null) c.troops = Math.min(troopMax(c), troops);
   c.order = Math.max(c.order, 45);
 }
-function moveOfficer(o, c) { if (o && o.st === 'on') { const oc = G.cities[o.city]; if (oc.gov === o.id) oc.gov = -1; o.city = c.id; } }
+function moveOfficer(o, c) { if (o && o.st === 'on') { delete o.travel; const oc = G.cities[o.city]; if (oc.gov === o.id) oc.gov = -1; o.city = c.id; } }
 function passItem(id, to) { const st = G.items && G.items[id]; if (!st || !to || to.st === 'dead') return false; if (st.holder >= 0 && G.officers[st.holder].id === G.player) return false; giveItemRaw(G, id, to); return true; }
 
 EVENTS.push(
@@ -3836,6 +3912,8 @@ function chibiFront(cf, qf) {
 const STAT_NAMES = { lead: '통솔', war: '무력', int: '지력', pol: '정치', cha: '매력' };
 const SEASON = m => m <= 2 || m === 12 ? '겨울' : m <= 5 ? '봄' : m <= 8 ? '여름' : '가을';
 
+const monthsLabel = m => m <= 0 ? '이번 달' : `${m}달`;
+const incomingTroops = cid => (G.convoys || []).filter(v => v.to === cid).reduce((a, v) => a + v.troops, 0);
 const UI = {
   sel: -1, q: [], modalOpen: false,
   toast(t) { const e = $('#toast'); e.textContent = t; e.classList.add('on'); clearTimeout(this._tt); this._tt = setTimeout(() => e.classList.remove('on'), 2200); },
@@ -4052,33 +4130,33 @@ const UI = {
     if (k !== 'ok') return;
     const r = cmdReward(null, c, sel); this.toast(r.msg); this.refresh();
   },
-  async pickCity(title, cities, note) {
+  async pickCity(title, cities, note, extra) {
     if (!cities.length) { this.toast('갈 수 있는 곳이 없습니다'); return null; }
     let sel = null;
     const list = el('div', { class: 'pickList' }, cities.map(t => {
       const row = el('button', { class: 'offRow', onclick: () => { $$('.pickList .offRow').forEach(x => x.classList.remove('on')); row.classList.add('on'); sel = t; } },
         el('span', { class: 'dot', style: `background:${facColor(t.f)}` }), el('span', { class: 'n disp' }, t.name), el('span', { class: 'tag' }, t.f >= 0 ? facName(t.f) : '빈 땅'),
-        el('span', { class: 's' }, `병사 ${me() && (t.f === me().f || ADJ[t.id].includes(me().city) || true) ? fmt(t.troops) : '?'}`));
+        el('span', { class: 's' }, (extra ? extra(t) + ' · ' : '') + `병사 ${fmt(t.troops)}`));
       return row;
     }));
     const k = await this.modal({ title, body: el('div', {}, note ? el('div', { class: 'muted', style: 'font-size:13px;margin-bottom:8px' }, note) : null, list), cancel: 'x', buttons: [{ k: 'x', label: '취소' }, { k: 'ok', label: '고른다', cls: 'pri', check: () => !!sel }] });
     return k === 'ok' ? sel : null;
   },
   async cmdMove(c) {
-    const dests = ADJ[c.id].map(i => G.cities[i]).filter(x => x.f === c.f);
-    const to = await this.pickCity('이동할 성', dests); if (!to) return;
+    const R = routesFrom(c.id, c.f), dests = R.map(r => r.c), rt = t => R.find(r => r.c === t);
+    const to = await this.pickCity('이동할 성', dests, '우리 성을 따라 길이 이어진 곳이면 어디든 갑니다. 바로 옆 성은 이번 달, 그보다 멀면 한 칸에 한 달씩 걸립니다.', t => monthsLabel(rt(t).months)); if (!to) return;
     const o = await this.pickOfficer(c, { title: `${ro(to.name)} 보낼 장수`, stat: 'lead', filter: o => !isRuler(o) || role() === 'ruler' }); if (!o) return;
-    cmdMove(o, to.id); assignGovs(); this.toast(`${eun(o.name)} ${ro(to.name)} 떠났습니다`); this.refresh();
+    const m = cmdMove(o, to.id, rt(to).path); assignGovs(); this.toast(m ? `${eun(o.name)} ${ro(to.name)} 떠났습니다 · ${m}달 뒤 도착` : `${eun(o.name)} ${ro(to.name)} 옮겼습니다`); this.refresh();
   },
   async cmdTransport(c) {
-    const dests = ADJ[c.id].map(i => G.cities[i]).filter(x => x.f === c.f);
-    const to = await this.pickCity('물자를 보낼 성', dests); if (!to) return;
+    const R = routesFrom(c.id, c.f), dests = R.map(r => r.c), rt = t => R.find(r => r.c === t);
+    const to = await this.pickCity('물자를 보낼 성', dests, '먼 성으로 보내면 수송대가 한 칸에 한 달씩 걸려 갑니다. 그 사이 목적지를 빼앗기면 가장 가까운 우리 성으로 갑니다.', t => monthsLabel(rt(t).months)); if (!to) return;
     const o = await this.pickOfficer(c, { title: '수송을 맡을 장수', stat: 'lead' }); if (!o) return;
     const vals = { gold: 0, food: 0, troops: 0 };
     const row = (key, label, max, step) => { const lab = el('b', { class: 'num', style: 'min-width:70px;text-align:right' }, '0'); return el('label', { class: 'fld' }, label, el('div', { class: 'slider' }, el('input', { type: 'range', id: 'tr_' + key, min: 0, max, step, value: 0, oninput: e => { vals[key] = +e.target.value; lab.textContent = fmt(vals[key]); } }), lab)); };
-    const k = await this.modal({ title: `수송 — ${c.name} → ${to.name}`, body: el('div', { style: 'display:flex;flex-direction:column;gap:10px' }, row('gold', '금', c.gold, 10), row('food', '쌀', c.food, 100), row('troops', '병사', Math.min(c.troops, Math.max(0, troopMax(to) - to.troops)), 100)), cancel: 'x', buttons: [{ k: 'x', label: '취소' }, { k: 'ok', label: '보낸다', cls: 'pri' }] });
+    const k = await this.modal({ title: `수송 — ${c.name} → ${to.name}`, body: el('div', { style: 'display:flex;flex-direction:column;gap:10px' }, row('gold', '금', c.gold, 10), row('food', '쌀', c.food, 100), row('troops', '병사', Math.min(c.troops, Math.max(0, troopMax(to) - to.troops - incomingTroops(to.id))), 100)), cancel: 'x', buttons: [{ k: 'x', label: '취소' }, { k: 'ok', label: '보낸다', cls: 'pri' }] });
     if (k !== 'ok') return;
-    const r = cmdTransport(o, c, to, vals.gold, vals.food, vals.troops); this.toast(r.msg); this.refresh();
+    const r = cmdTransport(o, c, to, vals.gold, vals.food, vals.troops, rt(to).path); this.toast(r.msg); this.refresh();
   },
   async cmdAttack(c) {
     const targets = ADJ[c.id].map(i => G.cities[i]).filter(x => x.f !== c.f && !isAlly(c.f, x.f));
@@ -4227,7 +4305,7 @@ const UI = {
     if (r === 'gov') g.append(el('button', { class: 'cmd', disabled: !here, onclick: () => this.pRebel(), title: '독립' }, icon('rebel'), el('span', {}, '독립')));
     const pane = el('div', { class: 'pane' },
       el('div', { class: 'secTitle' }, r === 'gov' ? '나의 일' : '나의 행동', r !== 'gov' ? dots : null, el('span', { class: 'r' }, `소지금 ${fmt(G.pgold)} · 명성 ${P.fame}${P.st === 'on' ? ` · 공적 ${P.merit}` : ''}`)),
-      here ? g : el('div', { class: 'hint' }, `지금 ${G.cities[P.city].name}에 있습니다. 그 성을 눌러 행동하세요.`));
+      P.travel ? el('div', { class: 'hint' }, `${G.cities[P.travel.to].name}(으)로 가는 길입니다 · ${travelLeft(P) ? travelLeft(P) + '달 뒤' : '다음 달'} 도착 (${P.travel.path.map(i => G.cities[i].name).join(' → ')})`) : here ? g : el('div', { class: 'hint' }, `지금 ${G.cities[P.city].name}에 있습니다. 그 성을 눌러 행동하세요.`));
     if (r === 'officer' && G.mission) pane.append(missionCard());
     if ((P.sworn || []).length) pane.append(el('div', { class: 'hint' }, '의형제: ' + P.sworn.map(id => G.officers[id].name + (G.officers[id].st === 'dead' ? '(고인)' : '')).join(', ')));
     if (r === 'officer') pane.append(el('div', { class: 'hint' }, '공을 쌓으면 태수로 임명될 수 있습니다. 출진은 태수가 정하고, 뽑히면 직접 부대를 이끕니다.'));
@@ -4268,7 +4346,7 @@ const UI = {
   },
   async pBond() {
     const P = me(), c = G.cities[P.city];
-    const ppl = G.officers.filter(o => o.id !== P.id && o.city === c.id && (o.st === 'on' || (o.st === 'ronin' && (o.found || P.st === 'ronin'))));
+    const ppl = G.officers.filter(o => o.id !== P.id && o.city === c.id && !o.travel && (o.st === 'on' || (o.st === 'ronin' && (o.found || P.st === 'ronin'))));
     if (!ppl.length) { this.toast('여기에는 만날 사람이 없습니다'); return; }
     P.bond = P.bond || {};
     let sel = null;
@@ -4292,9 +4370,16 @@ const UI = {
   },
   async pMove() {
     const P = me();
-    const dests = ADJ[P.city].map(i => G.cities[i]).filter(x => P.st === 'ronin' || x.f === P.f);
-    const to = await this.pickCity('어디로 갈까요?', dests, P.st === 'ronin' ? '재야는 어디든 갈 수 있습니다' : '같은 세력의 성으로만 옮길 수 있습니다');
+    const R = routesFrom(P.city, P.st === 'ronin' ? null : P.f), rt = t => R.find(r => r.c === t);
+    const dests = R.map(r => r.c).sort((a, b) => rt(a).months - rt(b).months);
+    const to = await this.pickCity('어디로 갈까요?', dests, (P.st === 'ronin' ? '재야는 어디든 갈 수 있습니다.' : '우리 세력의 성을 따라서만 갈 수 있습니다.') + ' 바로 옆 성은 지금 바로, 멀면 한 칸에 한 달씩 걸리고 가는 동안에는 다른 일을 할 수 없습니다.', t => monthsLabel(rt(t).months));
     if (!to) return;
+    const r = rt(to);
+    if (r.months > 0) {
+      if (role() === 'gov') G.cities[P.city].gov = -1;
+      P.travel = { to: to.id, path: r.path, start: mIdx(), eta: mIdx() + r.months }; G.ap = 0;
+      this.toast(`${ro(to.name)} 길을 떠났습니다 · ${r.months}달 뒤 도착`); MapView.focus(to.id); assignGovs(); this.refresh(); return;
+    }
     this.useAP(); P.city = to.id; if (P.st === 'ronin') for (const x of roninIn(to.id)) x.found = x.found || chance(.5);
     this.sel = to.id; this.toast(`${ro(to.name)} 왔습니다`); MapView.focus(to.id); this.refresh();
   },
@@ -4827,9 +4912,25 @@ const MapView = {
       x.strokeStyle = 'rgba(214,173,85,.5)'; x.lineWidth = 4;
       x.beginPath(); x.ellipse(sel.x, sel.y + 3, r * 1.3 + 4, r * .7 + 3, 0, 0, 7); x.stroke();
     }
+    // 길 위의 우리 장수·수송대
+    const myF = P && P.st === 'on' ? P.f : -2;
+    const road = (t, col, label) => {
+      const line = () => { x.beginPath(); t.path.forEach((i, k) => { const c = G.cities[i]; k ? x.lineTo(c.x, c.y) : x.moveTo(c.x, c.y); }); x.stroke(); };
+      x.lineCap = 'round'; x.strokeStyle = 'rgba(30,15,5,.45)'; x.lineWidth = 4.5; line();
+      x.strokeStyle = col; x.lineWidth = 2.5; x.setLineDash([5, 5]); x.lineDashOffset = -now / 70; line(); x.setLineDash([]);
+      const end = G.cities[t.path[t.path.length - 1]]; x.fillStyle = col; x.beginPath(); x.arc(end.x, end.y, 3.5, 0, 7); x.fill();
+      const p = travelPos(t);
+      x.fillStyle = 'rgba(0,0,0,.4)'; x.beginPath(); x.ellipse(p.x, p.y + 6, 7, 2.5, 0, 0, 7); x.fill();
+      x.fillStyle = col; x.strokeStyle = '#1a0e05'; x.lineWidth = 1; x.beginPath(); x.roundRect ? x.roundRect(p.x - 10, p.y - 8, 20, 14, 3) : x.rect(p.x - 10, p.y - 8, 20, 14); x.fill(); x.stroke();
+      x.fillStyle = '#fff4ea'; x.font = "bold 10px 'Gowun Dodum',sans-serif"; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(label, p.x, p.y - .5);
+    };
+    for (const v of G.convoys || []) if (v.f === myF) road(v, '#b8862e', '수');
+    for (const o of G.officers) if (o.travel && o.st === 'on' && o.f === myF && o.id !== G.player) road({ ...o.travel }, facColor(o.f), o.name[0]);
     // 나
     if (P && P.st !== 'dead') {
-      const c = G.cities[P.city], bob = Math.sin(now / 300) * 2;
+      let c = G.cities[P.city];
+      if (P.travel) { const p = travelPos(P.travel); road(P.travel, '#c94a30', '…'); c = { x: p.x + 20, y: p.y - 4 }; }
+      const bob = Math.sin(now / 300) * 2;
       const px = c.x - 20, py = c.y - 26 + bob;
       x.fillStyle = 'rgba(0,0,0,.35)'; x.beginPath(); x.ellipse(c.x - 20, c.y + 4, 5, 2, 0, 0, 7); x.fill();
       x.fillStyle = '#c94a30'; x.strokeStyle = '#2a1205'; x.lineWidth = 1.2;

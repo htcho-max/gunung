@@ -2,6 +2,8 @@
 const STAT_NAMES = { lead: '통솔', war: '무력', int: '지력', pol: '정치', cha: '매력' };
 const SEASON = m => m <= 2 || m === 12 ? '겨울' : m <= 5 ? '봄' : m <= 8 ? '여름' : '가을';
 
+const monthsLabel = m => m <= 0 ? '이번 달' : `${m}달`;
+const incomingTroops = cid => (G.convoys || []).filter(v => v.to === cid).reduce((a, v) => a + v.troops, 0);
 const UI = {
   sel: -1, q: [], modalOpen: false,
   toast(t) { const e = $('#toast'); e.textContent = t; e.classList.add('on'); clearTimeout(this._tt); this._tt = setTimeout(() => e.classList.remove('on'), 2200); },
@@ -218,33 +220,33 @@ const UI = {
     if (k !== 'ok') return;
     const r = cmdReward(null, c, sel); this.toast(r.msg); this.refresh();
   },
-  async pickCity(title, cities, note) {
+  async pickCity(title, cities, note, extra) {
     if (!cities.length) { this.toast('갈 수 있는 곳이 없습니다'); return null; }
     let sel = null;
     const list = el('div', { class: 'pickList' }, cities.map(t => {
       const row = el('button', { class: 'offRow', onclick: () => { $$('.pickList .offRow').forEach(x => x.classList.remove('on')); row.classList.add('on'); sel = t; } },
         el('span', { class: 'dot', style: `background:${facColor(t.f)}` }), el('span', { class: 'n disp' }, t.name), el('span', { class: 'tag' }, t.f >= 0 ? facName(t.f) : '빈 땅'),
-        el('span', { class: 's' }, `병사 ${me() && (t.f === me().f || ADJ[t.id].includes(me().city) || true) ? fmt(t.troops) : '?'}`));
+        el('span', { class: 's' }, (extra ? extra(t) + ' · ' : '') + `병사 ${fmt(t.troops)}`));
       return row;
     }));
     const k = await this.modal({ title, body: el('div', {}, note ? el('div', { class: 'muted', style: 'font-size:13px;margin-bottom:8px' }, note) : null, list), cancel: 'x', buttons: [{ k: 'x', label: '취소' }, { k: 'ok', label: '고른다', cls: 'pri', check: () => !!sel }] });
     return k === 'ok' ? sel : null;
   },
   async cmdMove(c) {
-    const dests = ADJ[c.id].map(i => G.cities[i]).filter(x => x.f === c.f);
-    const to = await this.pickCity('이동할 성', dests); if (!to) return;
+    const R = routesFrom(c.id, c.f), dests = R.map(r => r.c), rt = t => R.find(r => r.c === t);
+    const to = await this.pickCity('이동할 성', dests, '우리 성을 따라 길이 이어진 곳이면 어디든 갑니다. 바로 옆 성은 이번 달, 그보다 멀면 한 칸에 한 달씩 걸립니다.', t => monthsLabel(rt(t).months)); if (!to) return;
     const o = await this.pickOfficer(c, { title: `${ro(to.name)} 보낼 장수`, stat: 'lead', filter: o => !isRuler(o) || role() === 'ruler' }); if (!o) return;
-    cmdMove(o, to.id); assignGovs(); this.toast(`${eun(o.name)} ${ro(to.name)} 떠났습니다`); this.refresh();
+    const m = cmdMove(o, to.id, rt(to).path); assignGovs(); this.toast(m ? `${eun(o.name)} ${ro(to.name)} 떠났습니다 · ${m}달 뒤 도착` : `${eun(o.name)} ${ro(to.name)} 옮겼습니다`); this.refresh();
   },
   async cmdTransport(c) {
-    const dests = ADJ[c.id].map(i => G.cities[i]).filter(x => x.f === c.f);
-    const to = await this.pickCity('물자를 보낼 성', dests); if (!to) return;
+    const R = routesFrom(c.id, c.f), dests = R.map(r => r.c), rt = t => R.find(r => r.c === t);
+    const to = await this.pickCity('물자를 보낼 성', dests, '먼 성으로 보내면 수송대가 한 칸에 한 달씩 걸려 갑니다. 그 사이 목적지를 빼앗기면 가장 가까운 우리 성으로 갑니다.', t => monthsLabel(rt(t).months)); if (!to) return;
     const o = await this.pickOfficer(c, { title: '수송을 맡을 장수', stat: 'lead' }); if (!o) return;
     const vals = { gold: 0, food: 0, troops: 0 };
     const row = (key, label, max, step) => { const lab = el('b', { class: 'num', style: 'min-width:70px;text-align:right' }, '0'); return el('label', { class: 'fld' }, label, el('div', { class: 'slider' }, el('input', { type: 'range', id: 'tr_' + key, min: 0, max, step, value: 0, oninput: e => { vals[key] = +e.target.value; lab.textContent = fmt(vals[key]); } }), lab)); };
-    const k = await this.modal({ title: `수송 — ${c.name} → ${to.name}`, body: el('div', { style: 'display:flex;flex-direction:column;gap:10px' }, row('gold', '금', c.gold, 10), row('food', '쌀', c.food, 100), row('troops', '병사', Math.min(c.troops, Math.max(0, troopMax(to) - to.troops)), 100)), cancel: 'x', buttons: [{ k: 'x', label: '취소' }, { k: 'ok', label: '보낸다', cls: 'pri' }] });
+    const k = await this.modal({ title: `수송 — ${c.name} → ${to.name}`, body: el('div', { style: 'display:flex;flex-direction:column;gap:10px' }, row('gold', '금', c.gold, 10), row('food', '쌀', c.food, 100), row('troops', '병사', Math.min(c.troops, Math.max(0, troopMax(to) - to.troops - incomingTroops(to.id))), 100)), cancel: 'x', buttons: [{ k: 'x', label: '취소' }, { k: 'ok', label: '보낸다', cls: 'pri' }] });
     if (k !== 'ok') return;
-    const r = cmdTransport(o, c, to, vals.gold, vals.food, vals.troops); this.toast(r.msg); this.refresh();
+    const r = cmdTransport(o, c, to, vals.gold, vals.food, vals.troops, rt(to).path); this.toast(r.msg); this.refresh();
   },
   async cmdAttack(c) {
     const targets = ADJ[c.id].map(i => G.cities[i]).filter(x => x.f !== c.f && !isAlly(c.f, x.f));
@@ -393,7 +395,7 @@ const UI = {
     if (r === 'gov') g.append(el('button', { class: 'cmd', disabled: !here, onclick: () => this.pRebel(), title: '독립' }, icon('rebel'), el('span', {}, '독립')));
     const pane = el('div', { class: 'pane' },
       el('div', { class: 'secTitle' }, r === 'gov' ? '나의 일' : '나의 행동', r !== 'gov' ? dots : null, el('span', { class: 'r' }, `소지금 ${fmt(G.pgold)} · 명성 ${P.fame}${P.st === 'on' ? ` · 공적 ${P.merit}` : ''}`)),
-      here ? g : el('div', { class: 'hint' }, `지금 ${G.cities[P.city].name}에 있습니다. 그 성을 눌러 행동하세요.`));
+      P.travel ? el('div', { class: 'hint' }, `${G.cities[P.travel.to].name}(으)로 가는 길입니다 · ${travelLeft(P) ? travelLeft(P) + '달 뒤' : '다음 달'} 도착 (${P.travel.path.map(i => G.cities[i].name).join(' → ')})`) : here ? g : el('div', { class: 'hint' }, `지금 ${G.cities[P.city].name}에 있습니다. 그 성을 눌러 행동하세요.`));
     if (r === 'officer' && G.mission) pane.append(missionCard());
     if ((P.sworn || []).length) pane.append(el('div', { class: 'hint' }, '의형제: ' + P.sworn.map(id => G.officers[id].name + (G.officers[id].st === 'dead' ? '(고인)' : '')).join(', ')));
     if (r === 'officer') pane.append(el('div', { class: 'hint' }, '공을 쌓으면 태수로 임명될 수 있습니다. 출진은 태수가 정하고, 뽑히면 직접 부대를 이끕니다.'));
@@ -434,7 +436,7 @@ const UI = {
   },
   async pBond() {
     const P = me(), c = G.cities[P.city];
-    const ppl = G.officers.filter(o => o.id !== P.id && o.city === c.id && (o.st === 'on' || (o.st === 'ronin' && (o.found || P.st === 'ronin'))));
+    const ppl = G.officers.filter(o => o.id !== P.id && o.city === c.id && !o.travel && (o.st === 'on' || (o.st === 'ronin' && (o.found || P.st === 'ronin'))));
     if (!ppl.length) { this.toast('여기에는 만날 사람이 없습니다'); return; }
     P.bond = P.bond || {};
     let sel = null;
@@ -458,9 +460,16 @@ const UI = {
   },
   async pMove() {
     const P = me();
-    const dests = ADJ[P.city].map(i => G.cities[i]).filter(x => P.st === 'ronin' || x.f === P.f);
-    const to = await this.pickCity('어디로 갈까요?', dests, P.st === 'ronin' ? '재야는 어디든 갈 수 있습니다' : '같은 세력의 성으로만 옮길 수 있습니다');
+    const R = routesFrom(P.city, P.st === 'ronin' ? null : P.f), rt = t => R.find(r => r.c === t);
+    const dests = R.map(r => r.c).sort((a, b) => rt(a).months - rt(b).months);
+    const to = await this.pickCity('어디로 갈까요?', dests, (P.st === 'ronin' ? '재야는 어디든 갈 수 있습니다.' : '우리 세력의 성을 따라서만 갈 수 있습니다.') + ' 바로 옆 성은 지금 바로, 멀면 한 칸에 한 달씩 걸리고 가는 동안에는 다른 일을 할 수 없습니다.', t => monthsLabel(rt(t).months));
     if (!to) return;
+    const r = rt(to);
+    if (r.months > 0) {
+      if (role() === 'gov') G.cities[P.city].gov = -1;
+      P.travel = { to: to.id, path: r.path, start: mIdx(), eta: mIdx() + r.months }; G.ap = 0;
+      this.toast(`${ro(to.name)} 길을 떠났습니다 · ${r.months}달 뒤 도착`); MapView.focus(to.id); assignGovs(); this.refresh(); return;
+    }
     this.useAP(); P.city = to.id; if (P.st === 'ronin') for (const x of roninIn(to.id)) x.found = x.found || chance(.5);
     this.sel = to.id; this.toast(`${ro(to.name)} 왔습니다`); MapView.focus(to.id); this.refresh();
   },

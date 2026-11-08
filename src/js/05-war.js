@@ -75,7 +75,7 @@ function occupy(c, f, oids, troops, train, food) {
   for (const id of oids) { const o = G.officers[id]; if (o.st === 'on') o.city = c.id; }
   c.gov = -1;
   // 지휘관 또는 공적 높은 이가 태수
-  const cands = oids.map(id => G.officers[id]).filter(o => o.st === 'on' && o.city === c.id);
+  const cands = oids.map(id => G.officers[id]).filter(o => o.st === 'on' && o.city === c.id && !o.travel);
   if (cands.length) c.gov = cands[0].id;
   assignGovs();
 }

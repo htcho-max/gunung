@@ -80,7 +80,7 @@ function aiPlanAttacks(F) {
       let top = [...pool].sort((a, b) => (b.lead + b.war) - (a.lead + a.war)).slice(0, 5);
       // 플레이어가 이 성의 장수면 데려갈 수 있음
       const P = me();
-      if (P && P.st === 'on' && P.f === F.id && P.city === c.id && !isRuler(P) && c.gov !== P.id && top.length < 5 && (P.lead + P.war > 110 || chance(.5))) top.push(P);
+      if (P && P.st === 'on' && P.f === F.id && P.city === c.id && !P.travel && !isRuler(P) && c.gov !== P.id && top.length < 5 && (P.lead + P.war > 110 || chance(.5))) top.push(P);
       const tr = splitTroops(top, Math.floor(c.troops * .78));
       army = top.map((o, i) => ({ oid: o.id, troops: tr[i], type: autoType(o) })).filter(u => u.troops >= 500);
       if (!army.length) continue;

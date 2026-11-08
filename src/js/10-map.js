@@ -230,9 +230,25 @@ const MapView = {
       x.strokeStyle = 'rgba(214,173,85,.5)'; x.lineWidth = 4;
       x.beginPath(); x.ellipse(sel.x, sel.y + 3, r * 1.3 + 4, r * .7 + 3, 0, 0, 7); x.stroke();
     }
+    // 길 위의 우리 장수·수송대
+    const myF = P && P.st === 'on' ? P.f : -2;
+    const road = (t, col, label) => {
+      const line = () => { x.beginPath(); t.path.forEach((i, k) => { const c = G.cities[i]; k ? x.lineTo(c.x, c.y) : x.moveTo(c.x, c.y); }); x.stroke(); };
+      x.lineCap = 'round'; x.strokeStyle = 'rgba(30,15,5,.45)'; x.lineWidth = 4.5; line();
+      x.strokeStyle = col; x.lineWidth = 2.5; x.setLineDash([5, 5]); x.lineDashOffset = -now / 70; line(); x.setLineDash([]);
+      const end = G.cities[t.path[t.path.length - 1]]; x.fillStyle = col; x.beginPath(); x.arc(end.x, end.y, 3.5, 0, 7); x.fill();
+      const p = travelPos(t);
+      x.fillStyle = 'rgba(0,0,0,.4)'; x.beginPath(); x.ellipse(p.x, p.y + 6, 7, 2.5, 0, 0, 7); x.fill();
+      x.fillStyle = col; x.strokeStyle = '#1a0e05'; x.lineWidth = 1; x.beginPath(); x.roundRect ? x.roundRect(p.x - 10, p.y - 8, 20, 14, 3) : x.rect(p.x - 10, p.y - 8, 20, 14); x.fill(); x.stroke();
+      x.fillStyle = '#fff4ea'; x.font = "bold 10px 'Gowun Dodum',sans-serif"; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(label, p.x, p.y - .5);
+    };
+    for (const v of G.convoys || []) if (v.f === myF) road(v, '#b8862e', '수');
+    for (const o of G.officers) if (o.travel && o.st === 'on' && o.f === myF && o.id !== G.player) road({ ...o.travel }, facColor(o.f), o.name[0]);
     // 나
     if (P && P.st !== 'dead') {
-      const c = G.cities[P.city], bob = Math.sin(now / 300) * 2;
+      let c = G.cities[P.city];
+      if (P.travel) { const p = travelPos(P.travel); road(P.travel, '#c94a30', '…'); c = { x: p.x + 20, y: p.y - 4 }; }
+      const bob = Math.sin(now / 300) * 2;
       const px = c.x - 20, py = c.y - 26 + bob;
       x.fillStyle = 'rgba(0,0,0,.35)'; x.beginPath(); x.ellipse(c.x - 20, c.y + 4, 5, 2, 0, 0, 7); x.fill();
       x.fillStyle = '#c94a30'; x.strokeStyle = '#2a1205'; x.lineWidth = 1.2;
