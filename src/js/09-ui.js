@@ -479,7 +479,11 @@ const UI = {
       o.st === 'on' ? `공적 ${o.merit}` : '', `명성 ${o.fame}`, `있는 곳 ${G.cities[o.city].name}`,
       P && P.bond && P.bond[o.id] ? `나와의 친밀 ${P.bond[o.id]}` : '',
     ].filter(Boolean).join(' · ');
-    this.modal({ title: o.name, body: el('div', { class: 'msg' }, portraitImg(o), el('div', { style: 'flex:1;display:flex;flex-direction:column;gap:6px' }, el('div', { class: 'muted', style: 'font-size:13px' }, info), st)), cancel: 'x', buttons: [{ k: 'x', label: '닫기' }] });
+    const b = bioOf(o);
+    const bio = b ? el('div', { class: 'bio' },
+      el('div', { class: 'bioHead' }, el('span', { class: 'eyebrow' }, '열전'), b.ja ? el('span', {}, `자 ${b.ja}`) : null, b.from ? el('span', {}, b.from) : null, el('span', {}, `${o.born}년생`)),
+      el('p', {}, b.text)) : null;
+    this.modal({ title: o.name, body: el('div', { style: 'display:flex;flex-direction:column;gap:12px' }, el('div', { class: 'msg' }, portraitImg(o), el('div', { style: 'flex:1;display:flex;flex-direction:column;gap:6px;min-width:0' }, el('div', { class: 'muted', style: 'font-size:13px' }, info), st)), bio), cancel: 'x', buttons: [{ k: 'x', label: '닫기' }] });
   },
   factionList() {
     const P = me();

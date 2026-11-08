@@ -55,7 +55,7 @@ const Setup = {
         grid.append(el('button', { class: 'ofCard', style: `box-shadow:inset 4px 0 0 ${F.color}`, onclick: () => this.start(r.id) }, portraitImg(r), el('div', { style: 'min-width:0' },
           el('div', { style: 'display:flex;align-items:center;gap:6px' }, el('span', { class: 'dot', style: `background:${F.color}` }), el('span', { class: 'nm' }, r.name)),
           el('div', { class: 'muted', style: 'font-size:12px' }, `${cs.map(c => c.name).join('·')} · 장수 ${offs.length} · 병력 ${fmt(cs.reduce((a, c) => a + c.troops, 0))}`),
-          el('div', { class: 'stats5' }, statSpans(r)))));
+          el('div', { class: 'stats5' }, statSpans(r)), bioOf(r) ? el('div', { class: 'bl' }, bioOf(r).text) : null)));
       }
       box.append(grid); return;
     }
@@ -68,7 +68,7 @@ const Setup = {
     const grid = el('div', { class: 'ofGrid' });
     for (const o of list) grid.append(el('button', { class: 'ofCard', onclick: () => successor ? this.continueAs(o.id) : this.start(o.id) }, portraitImg(o), el('div', { style: 'min-width:0' },
       el('div', { style: 'display:flex;align-items:center;gap:6px' }, el('span', { class: 'dot', style: `background:${facColor(o.f)}` }), el('span', { class: 'nm' }, o.name), el('span', { class: 'muted', style: 'font-size:12px' }, `${o.st === 'ronin' ? '재야' : rankName(o)} · ${G.cities[o.city].name} · ${age(o)}세`)),
-      el('div', { class: 'stats5' }, statSpans(o)))));
+      el('div', { class: 'stats5' }, statSpans(o)), bioOf(o) ? el('div', { class: 'bl' }, bioOf(o).text) : null)));
     box.append(grid);
   },
   openPick(successor) { showScreen('scrSetup'); this.tab = 'all'; this.mode = 'officer'; this.renderPick(true); },
