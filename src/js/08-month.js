@@ -15,11 +15,14 @@ async function endMonth() {
       if (isRuler(me()) && me().f === F.id) { plans.push(...aiPlanAttacks(F).filter(p => p.from.deleg)); continue; }
       plans.push(...aiPlanAttacks(F));
     }
+    const warUsed = new Set();
     for (const p of plans) {
       if (p.from.f < 0 || G.officers[p.army[0].oid].city !== p.from.id) continue; // 상황이 바뀜
       if (p.to.f === p.from.f || isAlly(p.from.f, p.to.f)) continue;
-      p.army = p.army.filter(u => { const o = G.officers[u.oid]; return o.st === 'on' && o.f === p.from.f && o.city === p.from.id && !o.travel; });
-      if (!p.army.length || p.from.troops < p.army.reduce((a, u) => a + u.troops, 0)) continue;
+      p.army = p.army.filter(u => { const s = u.src ?? p.from.id, o = G.officers[u.oid]; return G.cities[s].f === p.from.f && o.st === 'on' && o.f === p.from.f && o.city === s && !o.travel && !warUsed.has(o.id); });
+      const need = {}; for (const u of p.army) need[u.src ?? p.from.id] = (need[u.src ?? p.from.id] || 0) + u.troops;
+      if (!p.army.length || Object.entries(need).some(([id, t]) => G.cities[id].troops < t)) continue;
+      for (const u of p.army) warUsed.add(u.oid);
       G.factions[p.from.f].idle = 0;
       await runWar(p.from, p.to, p.army, p.food);
       if (G.over) return;
@@ -55,7 +58,8 @@ function aiLogisticsDeleg() {
 // 전쟁 하나를 처리 (플레이어가 끼면 직접 지휘)
 async function runWar(from, to, army, food, extra = {}) {
   const defF = to.f, attF = from.f;
-  await MapView.march(from.id, to.id, attF);
+  const srcIds = [...new Set(army.map(u => u.src ?? from.id))];
+  await Promise.all(srcIds.map(id => MapView.march(id, to.id, attF)));
   const B = launchAttack(from, to, army, food, extra);
   if (!B) { MapView.flash(to.id, '입성', facColor(attF)); UI.refresh(); return; }
   const P = me();

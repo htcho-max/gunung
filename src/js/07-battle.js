@@ -96,9 +96,22 @@ function makeBattle(opts) {
   const place = (list, side, spots) => list.forEach((u, k) => {
     const o = G.officers[u.oid];
     let spot = spots.find(s => !B.units.some(x => x.at === s) && (u.type !== 'cav' || tiles[s].t !== 'mount')) ?? spots[0];
-    B.units.push({ id: B.units.length, oid: u.oid, side, type: u.type, troops: u.troops, max: u.troops, morale: side === 1 ? 75 : 80, train: u.train ?? 60, at: spot, done: false, conf: 0, cmd: k === 0 && !u.ally, alive: true, ally: !!u.ally, fac: u.fac, home: u.home });
+    B.units.push({ id: B.units.length, oid: u.oid, side, type: u.type, troops: u.troops, max: u.troops, morale: side === 1 ? 75 : 80, train: u.train ?? 60, at: spot, done: false, conf: 0, cmd: k === 0 && !u.ally && !u.flank, alive: true, ally: !!u.ally, fac: u.fac, home: u.home, src: u.src });
   });
-  place(att, 0, attSpots);
+  // 다른 성에서 온 부대는 그 성 방향의 가장자리(위·아래)에서 협공
+  const mainSrc = att[0] && att[0].src != null ? att[0].src : fromId;
+  const main = att.filter(u => u.src == null || u.src === mainSrc), flank = att.filter(u => !(u.src == null || u.src === mainSrc));
+  place(main, 0, attSpots);
+  if (flank.length) {
+    const T = G.cities[cityId], F0 = G.cities[mainSrc];
+    const side = s => { const S = G.cities[s]; const cr = (F0.x - T.x) * (S.y - T.y) - (F0.y - T.y) * (S.x - T.x); return cr < 0 ? 'top' : 'bottom'; };
+    const edge = e => { const out = []; for (let q = 3; q <= 9; q++) for (const r of e === 'top' ? [0, 1] : [BH - 1, BH - 2]) { const i = tIdx(q, r); if (tiles[i].t !== 'mount' && tiles[i].t !== 'river' && tiles[i].t !== 'water' && tiles[i].t !== 'castle' && tiles[i].t !== 'keep') out.push(i); } return out.sort((a, b) => tQ(a) - tQ(b)); };
+    const groups = {}; for (const u of flank) (groups[side(u.src)] = groups[side(u.src)] || []).push({ ...u, flank: true });
+    for (const e in groups) place(groups[e], 0, edge(e).concat(attSpots));
+    B.flankFrom = [...new Set(flank.map(u => u.src))];
+    bmsg(B, `${B.flankFrom.map(i => G.cities[i].name).join('·')}에서 온 부대가 옆에서 협공한다!`, 'big');
+    G.stats.flank = (G.stats.flank || 0) + 1;
+  }
   place(def, 1, defSpots);
   if (opts.allies && opts.allies.length) place(opts.allies.map(u => ({ ...u, ally: true })), 1, defSpots.filter(s => tQ(s) >= 11).concat(defSpots));
   B.form = [aiFormation(B, 0), aiFormation(B, 1)];

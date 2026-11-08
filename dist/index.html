@@ -385,7 +385,7 @@ input[type=text]:focus,select:focus{outline:2px solid var(--brass);outline-offse
 <script>
 // ---- 00-util.js
 // ===== 공용 도구 =====
-const VERSION = '0.7.3';
+const VERSION = '0.7.4';
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -1949,8 +1949,14 @@ function defendArmy(c) {
 function launchAttack(from, to, army, food, extra = {}) {
   const attF = from.f;
   const total = army.reduce((a, u) => a + u.troops, 0);
-  from.troops -= total; from.food -= food;
-  army.forEach(u => { const o = G.officers[u.oid]; o.acted = true; if (from.gov === o.id) from.gov = -1; u.train = from.train; });
+  // 여러 성에서 함께 출진: 부대마다 제 성(src)에서 병사를 뺌
+  for (const u of army) { if (u.src == null) u.src = from.id; const s = G.cities[u.src]; s.troops -= u.troops; u.train = s.train; const o = G.officers[u.oid]; o.acted = true; if (s.gov === o.id) s.gov = -1; }
+  // 군량은 성마다 보낸 병사 비율대로 (출발 성이 모자라면 남은 성들이 메움)
+  let need = food;
+  const bySrc = {}; for (const u of army) bySrc[u.src] = (bySrc[u.src] || 0) + u.troops;
+  for (const id in bySrc) { const s = G.cities[id], take = Math.min(s.food, Math.round(food * bySrc[id] / Math.max(1, total))); s.food -= take; need -= take; }
+  for (const id in bySrc) { if (need <= 0) break; const s = G.cities[id], take = Math.min(s.food, need); s.food -= take; need -= take; }
+  food -= Math.max(0, need);
   const defOffs = to.f >= 0 ? officersIn(to.id, to.f) : [];
   if (to.f < 0 || !defOffs.length) {
     // 무혈 입성
@@ -1966,6 +1972,10 @@ function launchAttack(from, to, army, food, extra = {}) {
   const B = makeBattle({ attF, defF: to.f, cityId: to.id, fromId: from.id, att: army, def: defendArmy(to), attFood: food, ...extra });
   return B;
 }
+// 공격 부대가 떠나온 성 (그 사이 잃었으면 null)
+function homeOf(B, oid, f) { const u = B.units.find(x => x.oid === oid && x.side === 0); const h = G.cities[u && u.src != null ? u.src : B.fromId]; return h && h.f === f ? h : null; }
+// 목표 성에 붙어 있는 우리 성들 (출발 성 먼저)
+function attackSources(from, to) { return [from, ...ADJ[to.id].map(i => G.cities[i]).filter(x => x.f === from.f && x !== from)]; }
 function occupy(c, f, oids, troops, train, food) {
   c.f = f; c.troops = Math.min(troops, troopMax(c)); c.train = train; c.food += food; c.deleg = false;
   c.order = Math.max(20, c.order - 10);
@@ -2005,8 +2015,7 @@ function applyBattle(B) {
     c.food = Math.round(B.food[1] * .5);
     c.wall = Math.max(60, Math.round(c.wall * .8));
     occupy(c, att, attCmd && attCmd.alive ? [attCmd.oid, ...winners.filter(x => x !== attCmd.oid)] : winners, tr, B.units[0].train, B.food[0]);
-    for (const f of B.fled[0]) { const o = G.officers[f.oid]; if (o.st === 'on') { o.city = from.id; from.troops += f.troops; } }
-    if (from.f !== att) { /* 출발 성을 그 사이 잃었으면 */ for (const f of B.fled[0]) { const o = G.officers[f.oid]; if (o.st === 'on') o.city = c.id; } }
+    for (const f of B.fled[0]) { const o = G.officers[f.oid]; if (o.st !== 'on') continue; const h = homeOf(B, f.oid, att); if (h) { o.city = h.id; h.troops += f.troops; } else o.city = c.id; }
     logMsg(`${facName(att)}군이 ${eul(c.name)} 함락했습니다 (${B.result.why})`, 'war');
     for (const u of attAlive) { const o = G.officers[u.oid]; o.merit += 120; o.fame += 4; }
     if (attCmd) { const o = G.officers[attCmd.oid]; o.fame += 6; }
@@ -2016,7 +2025,8 @@ function applyBattle(B) {
     const retList = [...attAlive.map(u => ({ oid: u.oid, troops: u.troops })), ...B.fled[0]];
     for (const r of retList) {
       const o = G.officers[r.oid]; if (o.st !== 'on' || capturedSet.has(o.id)) continue;
-      if (back) { o.city = back.id; back.troops += r.troops; } else { B.captives.push(o.id); }
+      const h = homeOf(B, r.oid, att) || back; // 각자 떠나온 성으로
+      if (h) { o.city = h.id; h.troops += r.troops; } else { B.captives.push(o.id); }
     }
     if (back) back.food += B.food[0];
     c.troops = defAlive.reduce((a, u) => a + u.troops, 0) + B.fled[1].reduce((a, f) => a + f.troops, 0);
@@ -2181,11 +2191,20 @@ function aiPlanAttacks(F) {
       const tr = splitTroops(top, Math.floor(c.troops * .78));
       army = top.map((o, i) => ({ oid: o.id, troops: tr[i], type: autoType(o) })).filter(u => u.troops >= 500);
       if (!army.length) continue;
+      // 목표에 붙은 다른 우리 성에서도 함께 출진 (협공)
+      for (const s of attackSources(c, bestT).slice(1)) {
+        if (army.length >= 5) break;
+        if (playerControls(s) || s.troops < 5000) continue;
+        const so = officersIn(s.id, F.id).filter(o => o.id !== s.gov && o.id !== G.player && !o.busyWar).sort((a, b) => (b.lead + b.war) - (a.lead + a.war))[0];
+        if (!so || !chance(.8)) continue;
+        const t = Math.min(troopCap(so), Math.floor(s.troops * .45 / 100) * 100);
+        if (t >= 1500) army.push({ oid: so.id, troops: t, type: autoType(so), src: s.id });
+      }
       // 성벽이 두꺼우면 가장 약한 부대가 충차를 끔
       if (army.length >= 3 && bestT.wall >= 380 && chance(.6)) { const w = army.reduce((m, u) => G.officers[u.oid].war < G.officers[m.oid].war ? u : m, army[army.length - 1]); if (w !== army[0] && w.oid !== G.player) w.type = 'ram'; }
     }
     const tot = army.reduce((a, u) => a + u.troops, 0);
-    const food = Math.min(c.food, Math.ceil(tot * 32 / 80));
+    const food = Math.min(attackSources(c, bestT).filter(s => s === c || army.some(u => u.src === s.id)).reduce((a, s) => a + s.food, 0), Math.ceil(tot * 32 / 80));
     plans.push({ from: c, to: bestT, army, food });
   }
   return plans;
@@ -2454,9 +2473,22 @@ function makeBattle(opts) {
   const place = (list, side, spots) => list.forEach((u, k) => {
     const o = G.officers[u.oid];
     let spot = spots.find(s => !B.units.some(x => x.at === s) && (u.type !== 'cav' || tiles[s].t !== 'mount')) ?? spots[0];
-    B.units.push({ id: B.units.length, oid: u.oid, side, type: u.type, troops: u.troops, max: u.troops, morale: side === 1 ? 75 : 80, train: u.train ?? 60, at: spot, done: false, conf: 0, cmd: k === 0 && !u.ally, alive: true, ally: !!u.ally, fac: u.fac, home: u.home });
+    B.units.push({ id: B.units.length, oid: u.oid, side, type: u.type, troops: u.troops, max: u.troops, morale: side === 1 ? 75 : 80, train: u.train ?? 60, at: spot, done: false, conf: 0, cmd: k === 0 && !u.ally && !u.flank, alive: true, ally: !!u.ally, fac: u.fac, home: u.home, src: u.src });
   });
-  place(att, 0, attSpots);
+  // 다른 성에서 온 부대는 그 성 방향의 가장자리(위·아래)에서 협공
+  const mainSrc = att[0] && att[0].src != null ? att[0].src : fromId;
+  const main = att.filter(u => u.src == null || u.src === mainSrc), flank = att.filter(u => !(u.src == null || u.src === mainSrc));
+  place(main, 0, attSpots);
+  if (flank.length) {
+    const T = G.cities[cityId], F0 = G.cities[mainSrc];
+    const side = s => { const S = G.cities[s]; const cr = (F0.x - T.x) * (S.y - T.y) - (F0.y - T.y) * (S.x - T.x); return cr < 0 ? 'top' : 'bottom'; };
+    const edge = e => { const out = []; for (let q = 3; q <= 9; q++) for (const r of e === 'top' ? [0, 1] : [BH - 1, BH - 2]) { const i = tIdx(q, r); if (tiles[i].t !== 'mount' && tiles[i].t !== 'river' && tiles[i].t !== 'water' && tiles[i].t !== 'castle' && tiles[i].t !== 'keep') out.push(i); } return out.sort((a, b) => tQ(a) - tQ(b)); };
+    const groups = {}; for (const u of flank) (groups[side(u.src)] = groups[side(u.src)] || []).push({ ...u, flank: true });
+    for (const e in groups) place(groups[e], 0, edge(e).concat(attSpots));
+    B.flankFrom = [...new Set(flank.map(u => u.src))];
+    bmsg(B, `${B.flankFrom.map(i => G.cities[i].name).join('·')}에서 온 부대가 옆에서 협공한다!`, 'big');
+    G.stats.flank = (G.stats.flank || 0) + 1;
+  }
   place(def, 1, defSpots);
   if (opts.allies && opts.allies.length) place(opts.allies.map(u => ({ ...u, ally: true })), 1, defSpots.filter(s => tQ(s) >= 11).concat(defSpots));
   B.form = [aiFormation(B, 0), aiFormation(B, 1)];
@@ -2858,11 +2890,14 @@ async function endMonth() {
       if (isRuler(me()) && me().f === F.id) { plans.push(...aiPlanAttacks(F).filter(p => p.from.deleg)); continue; }
       plans.push(...aiPlanAttacks(F));
     }
+    const warUsed = new Set();
     for (const p of plans) {
       if (p.from.f < 0 || G.officers[p.army[0].oid].city !== p.from.id) continue; // 상황이 바뀜
       if (p.to.f === p.from.f || isAlly(p.from.f, p.to.f)) continue;
-      p.army = p.army.filter(u => { const o = G.officers[u.oid]; return o.st === 'on' && o.f === p.from.f && o.city === p.from.id && !o.travel; });
-      if (!p.army.length || p.from.troops < p.army.reduce((a, u) => a + u.troops, 0)) continue;
+      p.army = p.army.filter(u => { const s = u.src ?? p.from.id, o = G.officers[u.oid]; return G.cities[s].f === p.from.f && o.st === 'on' && o.f === p.from.f && o.city === s && !o.travel && !warUsed.has(o.id); });
+      const need = {}; for (const u of p.army) need[u.src ?? p.from.id] = (need[u.src ?? p.from.id] || 0) + u.troops;
+      if (!p.army.length || Object.entries(need).some(([id, t]) => G.cities[id].troops < t)) continue;
+      for (const u of p.army) warUsed.add(u.oid);
       G.factions[p.from.f].idle = 0;
       await runWar(p.from, p.to, p.army, p.food);
       if (G.over) return;
@@ -2898,7 +2933,8 @@ function aiLogisticsDeleg() {
 // 전쟁 하나를 처리 (플레이어가 끼면 직접 지휘)
 async function runWar(from, to, army, food, extra = {}) {
   const defF = to.f, attF = from.f;
-  await MapView.march(from.id, to.id, attF);
+  const srcIds = [...new Set(army.map(u => u.src ?? from.id))];
+  await Promise.all(srcIds.map(id => MapView.march(id, to.id, attF)));
   const B = launchAttack(from, to, army, food, extra);
   if (!B) { MapView.flash(to.id, '입성', facColor(attF)); UI.refresh(); return; }
   const P = me();
@@ -4176,45 +4212,60 @@ const UI = {
   async cmdAttack(c) {
     const targets = ADJ[c.id].map(i => G.cities[i]).filter(x => x.f !== c.f && !isAlly(c.f, x.f));
     const to = await this.pickCity('공격할 성', targets, '빈 땅이나 장수가 없는 성은 싸우지 않고 차지합니다'); if (!to) return;
-    const offs = officersIn(c.id, c.f).filter(o => !o.acted).sort((a, b) => (b.lead + b.war) - (a.lead + a.war));
+    // 목표 성에 붙어 있는 우리 성(내가 다스리는 곳)에서 함께 출진할 수 있음
+    const srcs = attackSources(c, to).filter(x => x === c || playerControls(x));
+    const srcOf = {}; const offs = [];
+    for (const sc of srcs) for (const o of officersIn(sc.id, c.f).filter(o => !o.acted).sort((a, b) => (b.lead + b.war) - (a.lead + a.war))) { srcOf[o.id] = sc; offs.push(o); }
     if (!offs.length) { this.toast('출진할 장수가 없습니다'); return; }
-    // 기본 편성
+    // 기본 편성: 이 성의 장수들
     const picked = new Map(); // oid → {troops,type}
     const emptyT = to.f < 0 || !officersIn(to.id, to.f).length;
-    const autoFill = () => { picked.clear(); const top = emptyT ? [offs[offs.length - 1]] : offs.slice(0, Math.min(5, offs.length)); const tr = splitTroops(top, Math.floor(c.troops * (emptyT ? .3 : .8))); top.forEach((o, i) => picked.set(o.id, { troops: Math.max(0, tr[i]), type: autoType(o) })); };
+    const usedIn = sc => { let u = 0; picked.forEach((v, id) => { if (srcOf[id] === sc) u += v.troops; }); return u; };
+    const autoFill = () => {
+      picked.clear(); const mine = offs.filter(o => srcOf[o.id] === c), pool = mine.length ? mine : offs;
+      const top = emptyT ? [pool[pool.length - 1]] : pool.slice(0, Math.min(5, pool.length));
+      const base = srcOf[top[0].id];
+      const tr = splitTroops(top, Math.floor(base.troops * (emptyT ? .3 : .8))); top.forEach((o, i) => picked.set(o.id, { troops: Math.max(0, tr[i]), type: autoType(o) }));
+    };
     autoFill();
     const wrap = el('div', { style: 'display:flex;flex-direction:column;gap:6px' });
     const sum = el('div', { class: 'muted num', style: 'font-size:13px' });
+    const foodNeed = () => srcs.reduce((a, sc) => a + Math.min(sc.food, Math.ceil(usedIn(sc) * 32 / 80)), 0);
+    const sumText = () => { let u = 0; picked.forEach(v => u += v.troops); const per = srcs.filter(sc => usedIn(sc) > 0).map(sc => `${sc.name} ${fmt(usedIn(sc))}/${fmt(sc.troops)}`).join(' · '); return `출진 병력 ${fmt(u)} (${per || '없음'}) · 군량 ${fmt(foodNeed())} · 첫 번째가 총대장`; };
     const draw = () => {
       wrap.innerHTML = '';
-      let used = 0; picked.forEach(v => used += v.troops);
+      let lastSrc = null;
       for (const o of offs) {
+        const sc = srcOf[o.id];
+        if (srcs.length > 1 && sc !== lastSrc) { lastSrc = sc; wrap.append(el('div', { class: 'secTitle', style: 'margin:4px 0 0' }, sc === c ? `${sc.name} (출발 성)` : `${sc.name}에서 협공`, el('span', { class: 'r' }, `병사 ${fmt(sc.troops)}`))); }
         const p = picked.get(o.id);
-        const chk = el('input', { type: 'checkbox', id: 'at_' + o.id, checked: !!p, onchange: e => { if (e.target.checked) { if (picked.size >= 5) { e.target.checked = false; this.toast('한 번에 다섯 부대까지'); return; } picked.set(o.id, { troops: Math.min(troopCap(o), Math.max(0, Math.floor((c.troops - used) / 100) * 100)), type: autoType(o) }); } else picked.delete(o.id); draw(); } });
+        const chk = el('input', { type: 'checkbox', id: 'at_' + o.id, checked: !!p, onchange: e => { if (e.target.checked) { if (picked.size >= 5) { e.target.checked = false; this.toast('한 번에 다섯 부대까지'); return; } picked.set(o.id, { troops: Math.min(troopCap(o), Math.max(0, Math.floor((sc.troops - usedIn(sc)) / 100) * 100)), type: autoType(o) }); } else picked.delete(o.id); draw(); } });
         const line = el('div', { style: 'display:flex;flex-direction:column;gap:4px;padding:6px;border:1px solid var(--line);border-radius:6px' },
           el('label', { style: 'display:flex;align-items:center;gap:8px;cursor:pointer' }, chk, portraitImg(o, ''), el('span', { class: 'disp', style: 'font-size:17px' }, o.name), el('span', { class: 'muted', style: 'font-size:12px;margin-left:auto' }, `통${o.lead} 무${o.war} 지${o.int} · 최대 ${fmt(troopCap(o))}`)));
         line.querySelector('img').style.cssText = 'width:26px;height:30px;border-radius:3px';
         if (p) {
           const lab = el('b', { class: 'num', style: 'min-width:60px;text-align:right' }, fmt(p.troops));
-          const maxT = Math.min(troopCap(o), p.troops + Math.max(0, c.troops - used));
+          const maxT = Math.min(troopCap(o), p.troops + Math.max(0, sc.troops - usedIn(sc)));
           line.append(el('div', { class: 'slider' },
             el('select', { id: 'ty_' + o.id, onchange: e => p.type = e.target.value }, Object.entries(TYPES).map(([k, t]) => el('option', { value: k, selected: k === p.type }, t.name))),
-            el('input', { type: 'range', id: 'tn_' + o.id, min: 0, max: maxT, step: 100, value: p.troops, oninput: e => { p.troops = +e.target.value; lab.textContent = fmt(p.troops); let u = 0; picked.forEach(v => u += v.troops); sum.textContent = `출진 병력 ${fmt(u)} / 성 병사 ${fmt(c.troops)} · 군량 ${fmt(Math.min(c.food, Math.ceil(u * 32 / 80)))}`; }, onchange: () => draw() }), lab));
+            el('input', { type: 'range', id: 'tn_' + o.id, min: 0, max: maxT, step: 100, value: p.troops, oninput: e => { p.troops = +e.target.value; lab.textContent = fmt(p.troops); sum.textContent = sumText(); }, onchange: () => draw() }), lab));
         }
         wrap.append(line);
       }
-      sum.textContent = `출진 병력 ${fmt(used)} / 성 병사 ${fmt(c.troops)} · 군량 ${fmt(Math.min(c.food, Math.ceil(used * 32 / 80)))} (첫 번째가 총대장)`;
+      sum.textContent = sumText();
     };
     draw();
-    const k = await this.modal({ title: `출진 — ${to.name} 공격`, wide: true, body: el('div', { style: 'display:flex;flex-direction:column;gap:8px' }, el('div', { class: 'muted', style: 'font-size:13px' }, '보병은 기병에 강하고, 기병은 빠르고 세며, 궁병은 1~2칸, 노병은 2~3칸 밖에서 쏩니다. 충차는 성곽 위의 적과 성벽을 부숩니다.'), wrap, sum), cancel: 'x', buttons: [{ k: 'x', label: '취소' }, { k: 'ok', label: '출진!', cls: 'red' }] });
+    const note = srcs.length > 1 ? `${to.name}에 붙어 있는 ${srcs.slice(1).map(x => x.name).join('·')}의 장수도 함께 출진할 수 있습니다. 다른 성에서 온 부대는 그쪽 가장자리에서 협공합니다. ` : '';
+    const k = await this.modal({ title: `출진 — ${to.name} 공격`, wide: true, body: el('div', { style: 'display:flex;flex-direction:column;gap:8px' }, el('div', { class: 'muted', style: 'font-size:13px' }, note + '보병은 기병에 강하고, 기병은 빠르고 세며, 궁병은 1~2칸, 노병은 2~3칸 밖에서 쏩니다. 충차는 성곽 위의 적과 성벽을 부숩니다.'), wrap, sum), cancel: 'x', buttons: [{ k: 'x', label: '취소' }, { k: 'ok', label: '출진!', cls: 'red' }] });
     if (k !== 'ok') return;
-    const army = offs.filter(o => picked.has(o.id) && picked.get(o.id).troops >= 100).map(o => ({ oid: o.id, troops: picked.get(o.id).troops, type: picked.get(o.id).type }));
+    const army = offs.filter(o => picked.has(o.id) && picked.get(o.id).troops >= 100).map(o => ({ oid: o.id, troops: picked.get(o.id).troops, type: picked.get(o.id).type, src: srcOf[o.id].id }));
     if (!army.length) { this.toast('병사를 실은 부대가 없습니다'); return; }
-    const tot = army.reduce((a, u) => a + u.troops, 0);
-    if (tot > c.troops) { this.toast('병사가 모자랍니다'); return; }
-    const food = Math.min(c.food, Math.ceil(tot * 32 / 80));
+    for (const sc of srcs) { const t = army.filter(u => u.src === sc.id).reduce((a, u) => a + u.troops, 0); if (t > sc.troops) { this.toast(`${sc.name}의 병사가 모자랍니다`); return; } }
+    const food = foodNeed();
+    // 총대장이 있는 성이 출발 성
+    const start = G.cities[army[0].src];
     BUSY = true;
-    try { await runWar(c, to, army, food); } finally { BUSY = false; }
+    try { await runWar(start, to, army, food); } finally { BUSY = false; }
     this.sel = (G.cities[to.id].f === c.f) ? to.id : c.id;
     if (G.over) return;
     this.refresh();

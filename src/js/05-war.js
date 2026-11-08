@@ -52,8 +52,14 @@ function defendArmy(c) {
 function launchAttack(from, to, army, food, extra = {}) {
   const attF = from.f;
   const total = army.reduce((a, u) => a + u.troops, 0);
-  from.troops -= total; from.food -= food;
-  army.forEach(u => { const o = G.officers[u.oid]; o.acted = true; if (from.gov === o.id) from.gov = -1; u.train = from.train; });
+  // 여러 성에서 함께 출진: 부대마다 제 성(src)에서 병사를 뺌
+  for (const u of army) { if (u.src == null) u.src = from.id; const s = G.cities[u.src]; s.troops -= u.troops; u.train = s.train; const o = G.officers[u.oid]; o.acted = true; if (s.gov === o.id) s.gov = -1; }
+  // 군량은 성마다 보낸 병사 비율대로 (출발 성이 모자라면 남은 성들이 메움)
+  let need = food;
+  const bySrc = {}; for (const u of army) bySrc[u.src] = (bySrc[u.src] || 0) + u.troops;
+  for (const id in bySrc) { const s = G.cities[id], take = Math.min(s.food, Math.round(food * bySrc[id] / Math.max(1, total))); s.food -= take; need -= take; }
+  for (const id in bySrc) { if (need <= 0) break; const s = G.cities[id], take = Math.min(s.food, need); s.food -= take; need -= take; }
+  food -= Math.max(0, need);
   const defOffs = to.f >= 0 ? officersIn(to.id, to.f) : [];
   if (to.f < 0 || !defOffs.length) {
     // 무혈 입성
@@ -69,6 +75,10 @@ function launchAttack(from, to, army, food, extra = {}) {
   const B = makeBattle({ attF, defF: to.f, cityId: to.id, fromId: from.id, att: army, def: defendArmy(to), attFood: food, ...extra });
   return B;
 }
+// 공격 부대가 떠나온 성 (그 사이 잃었으면 null)
+function homeOf(B, oid, f) { const u = B.units.find(x => x.oid === oid && x.side === 0); const h = G.cities[u && u.src != null ? u.src : B.fromId]; return h && h.f === f ? h : null; }
+// 목표 성에 붙어 있는 우리 성들 (출발 성 먼저)
+function attackSources(from, to) { return [from, ...ADJ[to.id].map(i => G.cities[i]).filter(x => x.f === from.f && x !== from)]; }
 function occupy(c, f, oids, troops, train, food) {
   c.f = f; c.troops = Math.min(troops, troopMax(c)); c.train = train; c.food += food; c.deleg = false;
   c.order = Math.max(20, c.order - 10);
@@ -108,8 +118,7 @@ function applyBattle(B) {
     c.food = Math.round(B.food[1] * .5);
     c.wall = Math.max(60, Math.round(c.wall * .8));
     occupy(c, att, attCmd && attCmd.alive ? [attCmd.oid, ...winners.filter(x => x !== attCmd.oid)] : winners, tr, B.units[0].train, B.food[0]);
-    for (const f of B.fled[0]) { const o = G.officers[f.oid]; if (o.st === 'on') { o.city = from.id; from.troops += f.troops; } }
-    if (from.f !== att) { /* 출발 성을 그 사이 잃었으면 */ for (const f of B.fled[0]) { const o = G.officers[f.oid]; if (o.st === 'on') o.city = c.id; } }
+    for (const f of B.fled[0]) { const o = G.officers[f.oid]; if (o.st !== 'on') continue; const h = homeOf(B, f.oid, att); if (h) { o.city = h.id; h.troops += f.troops; } else o.city = c.id; }
     logMsg(`${facName(att)}군이 ${eul(c.name)} 함락했습니다 (${B.result.why})`, 'war');
     for (const u of attAlive) { const o = G.officers[u.oid]; o.merit += 120; o.fame += 4; }
     if (attCmd) { const o = G.officers[attCmd.oid]; o.fame += 6; }
@@ -119,7 +128,8 @@ function applyBattle(B) {
     const retList = [...attAlive.map(u => ({ oid: u.oid, troops: u.troops })), ...B.fled[0]];
     for (const r of retList) {
       const o = G.officers[r.oid]; if (o.st !== 'on' || capturedSet.has(o.id)) continue;
-      if (back) { o.city = back.id; back.troops += r.troops; } else { B.captives.push(o.id); }
+      const h = homeOf(B, r.oid, att) || back; // 각자 떠나온 성으로
+      if (h) { o.city = h.id; h.troops += r.troops; } else { B.captives.push(o.id); }
     }
     if (back) back.food += B.food[0];
     c.troops = defAlive.reduce((a, u) => a + u.troops, 0) + B.fled[1].reduce((a, f) => a + f.troops, 0);

@@ -84,11 +84,20 @@ function aiPlanAttacks(F) {
       const tr = splitTroops(top, Math.floor(c.troops * .78));
       army = top.map((o, i) => ({ oid: o.id, troops: tr[i], type: autoType(o) })).filter(u => u.troops >= 500);
       if (!army.length) continue;
+      // 목표에 붙은 다른 우리 성에서도 함께 출진 (협공)
+      for (const s of attackSources(c, bestT).slice(1)) {
+        if (army.length >= 5) break;
+        if (playerControls(s) || s.troops < 5000) continue;
+        const so = officersIn(s.id, F.id).filter(o => o.id !== s.gov && o.id !== G.player && !o.busyWar).sort((a, b) => (b.lead + b.war) - (a.lead + a.war))[0];
+        if (!so || !chance(.8)) continue;
+        const t = Math.min(troopCap(so), Math.floor(s.troops * .45 / 100) * 100);
+        if (t >= 1500) army.push({ oid: so.id, troops: t, type: autoType(so), src: s.id });
+      }
       // 성벽이 두꺼우면 가장 약한 부대가 충차를 끔
       if (army.length >= 3 && bestT.wall >= 380 && chance(.6)) { const w = army.reduce((m, u) => G.officers[u.oid].war < G.officers[m.oid].war ? u : m, army[army.length - 1]); if (w !== army[0] && w.oid !== G.player) w.type = 'ram'; }
     }
     const tot = army.reduce((a, u) => a + u.troops, 0);
-    const food = Math.min(c.food, Math.ceil(tot * 32 / 80));
+    const food = Math.min(attackSources(c, bestT).filter(s => s === c || army.some(u => u.src === s.id)).reduce((a, s) => a + s.food, 0), Math.ceil(tot * 32 / 80));
     plans.push({ from: c, to: bestT, army, food });
   }
   return plans;
