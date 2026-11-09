@@ -156,6 +156,26 @@ const UI = {
     if (!sel) sel = offs[0];
     return sel;
   },
+  // 여러 명 고르기 (누를 때마다 넣고 빼기)
+  async pickOfficers(c, { title, stat, filter, note, okLabel }) {
+    const offs = officersIn(c.id, c.f).filter(o => !o.acted && (!filter || filter(o)));
+    if (!offs.length) { this.toast('쓸 수 있는 장수가 없습니다'); return null; }
+    if (stat) offs.sort((a, b) => b[stat] - a[stat]);
+    const sel = new Set();
+    const count = el('span', { class: 'muted num', style: 'font-size:13px' });
+    const rows = offs.map(o => {
+      const row = el('button', { class: 'offRow', 'aria-pressed': 'false', onclick: () => { sel.has(o) ? sel.delete(o) : sel.add(o); upd(); } },
+        el('span', { class: 'chk' }), portraitImg(o, ''), el('span', { class: 'n disp' }, o.name),
+        el('span', { class: 's' }, stat ? el('b', { style: 'color:var(--brass)' }, `${STAT_NAMES[stat]} ${o[stat]}`) : null, el('span', {}, `통${o.lead} 무${o.war} 지${o.int} 정${o.pol} 매${o.cha}${o.id === c.gov ? ' · 태수' : ''}`)));
+      row._o = o; return row;
+    });
+    const allBtn = el('button', { class: 'btn sm ghost', onclick: () => { if (sel.size === offs.length) sel.clear(); else offs.forEach(o => sel.add(o)); upd(); } });
+    const upd = () => { rows.forEach(r => { const on = sel.has(r._o); r.classList.toggle('on', on); r.setAttribute('aria-pressed', on ? 'true' : 'false'); }); count.textContent = `${sel.size}명 고름 / ${offs.length}명`; allBtn.textContent = sel.size === offs.length ? '모두 빼기' : '모두 고르기'; };
+    upd();
+    const k = await this.modal({ title, body: el('div', {}, note ? el('div', { class: 'muted', style: 'margin-bottom:8px;font-size:13px' }, note) : null, el('div', { style: 'display:flex;align-items:center;justify-content:space-between;margin-bottom:6px' }, count, allBtn), el('div', { class: 'pickList multi' }, rows)), cancel: 'x', buttons: [{ k: 'x', label: '취소' }, { k: 'ok', label: okLabel || '맡긴다', cls: 'pri', check: () => sel.size > 0 }] });
+    if (k !== 'ok' || !sel.size) return null;
+    return offs.filter(o => sel.has(o));
+  },
   async cmdDev(c, kind) {
     const stat = kind === 'order' ? 'war' : 'pol';
     const o = await this.pickOfficer(c, { title: DEV_NAME[kind], stat, note: `금 ${COST[kind]} 필요 · 지금 금 ${fmt(c.gold)}` });
@@ -247,8 +267,11 @@ const UI = {
   async cmdMove(c) {
     const R = routesFrom(c.id, c.f), dests = R.map(r => r.c), rt = t => R.find(r => r.c === t);
     const to = await this.pickCity('이동할 성', dests, '우리 성을 따라 길이 이어진 곳이면 어디든 갑니다. 바로 옆 성은 이번 달, 그보다 멀면 한 칸에 한 달씩 걸립니다.', t => monthsLabel(rt(t).months)); if (!to) return;
-    const o = await this.pickOfficer(c, { title: `${ro(to.name)} 보낼 장수`, stat: 'lead', filter: o => !isRuler(o) || role() === 'ruler' }); if (!o) return;
-    const m = cmdMove(o, to.id, rt(to).path); assignGovs(); this.toast(m ? `${eun(o.name)} ${ro(to.name)} 떠났습니다 · ${m}달 뒤 도착` : `${eun(o.name)} ${ro(to.name)} 옮겼습니다`); this.refresh();
+    const os = await this.pickOfficers(c, { title: `${ro(to.name)} 보낼 장수`, stat: 'lead', filter: o => !isRuler(o) || role() === 'ruler', note: '여러 명을 눌러 함께 보낼 수 있습니다. 다시 누르면 빠집니다.', okLabel: '보낸다' }); if (!os) return;
+    let m = 0; for (const o of os) m = cmdMove(o, to.id, rt(to).path);
+    assignGovs();
+    const who = os.length === 1 ? os[0].name : `${os[0].name} 등 ${os.length}명`;
+    this.toast(m ? `${eun(who)} ${ro(to.name)} 떠났습니다 · ${m}달 뒤 도착` : `${eun(who)} ${ro(to.name)} 옮겼습니다`); this.refresh();
   },
   async cmdTransport(c) {
     const R = routesFrom(c.id, c.f), dests = R.map(r => r.c), rt = t => R.find(r => r.c === t);
