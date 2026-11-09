@@ -156,6 +156,7 @@ const BIOS = {
 function bioOf(o) {
   const b = BIOS[o.name];
   if (b) return { ja: b[0], from: b[1], text: b[2] };
+  if (o.gen) return { ja: '', from: G && G.cities[o.home] ? G.cities[o.home].name : '', text: { war: '난세에 태어나 창칼을 익힌 젊은 무인. 아직 이름 없는 몸이나 공을 세워 천하에 이름을 떨치기를 꿈꾼다.', civ: '책을 끼고 자란 젊은 선비. 어지러운 세상을 바로잡을 주인을 찾아 때를 기다리고 있다.', mix: '글과 무예를 두루 갖춘 젊은 인재. 어느 길로 나아갈지는 아직 정하지 않았다.' }[o.gen] || '난세에 나타난 새로운 인재.' };
   if (o.created) return { ja: '', from: G && G.cities[o.home] ? G.cities[o.home].name : '', text: '난세에 뜻을 품고 일어선 인물. 이 이야기는 아직 쓰이는 중이다.' };
   return null;
 }

@@ -166,6 +166,7 @@ async function yearlyEvents() {
     if (F) { o.st = 'on'; o.f = -1; joinFaction(o, F.id, G.officers[F.ruler].city); logMsg(`${eun(o.name)} 자라서 ${F.name}군에 들어왔습니다`); }
     else { o.st = 'ronin'; o.f = -1; o.found = false; }
   }
+  spawnTalents();
   checkFactions();
   assignGovs();
   await checkHegemon();
@@ -197,4 +198,35 @@ function onPlayerDeath(o, f, wasRuler) {
     }
   }
   UI.queue({ title: '영웅의 죽음', portrait: o, text: `${eun(o.name)} 세상을 떠났습니다.\n다른 인물로 이어서 할 수 있습니다.`, after: () => UI.pickSuccessor() });
+}
+
+// ===== 새 인재: 역사 속 인물이 줄어들면 해마다 이름 없는 인재가 재야에 나타남 =====
+const GEN_SUR = '왕 이 장 유 진 양 황 주 오 서 손 마 호 곽 하 고 임 정 한 조 위 채 반 송 소 노 엄 공 우 육 염 방 전 설 허 맹 두 여 범 문 석 견 화 동 부 신'.split(' ');
+const GEN_GIV = '위 문 무 덕 량 휘 충 의 현 소 원 표 승 홍 기 연 강 준 영 평 백 숙 계 언 경 보 양 익 수 진 명 상 도 안 태 웅 성 장 공 달 용 패 녕 광 규 림 순 탁 융 의'.split(' ');
+function genName() {
+  const used = new Set(G.officers.map(o => o.name));
+  for (let k = 0; k < 200; k++) { const n = pick(GEN_SUR) + pick(GEN_GIV) + (chance(.25) ? pick(GEN_GIV) : ''); if (!used.has(n) && n.length >= 2) return n; }
+  return null;
+}
+function spawnTalents() {
+  const living = G.officers.filter(o => o.st === 'on' || o.st === 'ronin').length;
+  const target = 95;
+  if (living >= target) return 0;
+  const n = Math.min(6, Math.ceil((target - living) / 4)) + (chance(.4) ? 1 : 0);
+  const owned = G.cities.filter(c => c.f >= 0);
+  let made = 0;
+  for (let i = 0; i < n; i++) {
+    const name = genName(); if (!name) break;
+    const kind = pick(['war', 'war', 'civ', 'civ', 'mix']), r = (a, b) => ri(a, b);
+    const st = kind === 'war' ? { lead: r(55, 84), war: r(60, 88), int: r(25, 60), pol: r(20, 55), cha: r(35, 75) }
+      : kind === 'civ' ? { lead: r(35, 70), war: r(20, 50), int: r(60, 88), pol: r(55, 88), cha: r(40, 80) }
+      : { lead: r(48, 78), war: r(45, 78), int: r(45, 78), pol: r(45, 78), cha: r(45, 80) };
+    if (chance(.06)) { const k = kind === 'civ' ? ['int', 'pol'] : ['lead', 'war']; for (const x of k) st[x] = Math.min(96, st[x] + ri(6, 12)); } // 드물게 뛰어난 인재
+    const city = pick(chance(.8) && owned.length ? owned : G.cities);
+    const born = G.year - ri(17, 26);
+    G.officers.push({ id: G.officers.length, name, born, die: born + ri(52, 74), ...st, f: -1, city: city.id, loy: 0, merit: 0, fame: ri(5, 30), st: 'ronin', acted: false, ideal: ri(0, 99), tag: '', found: false, home: city.id, fk: '', gen: kind, bond: {} });
+    made++;
+  }
+  if (made) logMsg(`새로운 인재 ${made}명이 세상에 나타났다는 소문입니다`);
+  return made;
 }

@@ -44,8 +44,8 @@ const MapView = {
   clampView() {
     const r = this.cv.getBoundingClientRect();
     const w = 1000 * this.s, h = 760 * this.s;
-    this.ox = w < r.width ? (r.width - w) / 2 : clamp(this.ox, r.width - w - 40, 40);
-    this.oy = h < r.height ? (r.height - h) / 2 : clamp(this.oy, r.height - h - 40, 40);
+    this.ox = w < r.width ? (r.width - w) / 2 : clamp(this.ox, r.width - w, 0);
+    this.oy = h < r.height ? (r.height - h) / 2 : clamp(this.oy, r.height - h, 0);
   },
   zoomAt(cx, cy, f) {
     const r = this.cv.getBoundingClientRect();
