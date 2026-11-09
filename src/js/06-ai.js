@@ -44,6 +44,7 @@ function aiPlanAttacks(F) {
   const plans = [];
   const graceForPlayer = mIdx() - (G.start || 0) <= DIFF().grace;
   const pf = me() && me().st === 'on' ? me().f : -2;
+  if (G.tut && F.key === 'yt') return plans; // 튜토리얼: 황건 잔당은 가만히
   for (const c of G.cities.filter(x => x.f === F.id)) {
     if (playerControls(c)) continue;
     const offs = officersIn(c.id, F.id).filter(o => o.id !== G.player && !o.busyWar);
@@ -52,6 +53,7 @@ function aiPlanAttacks(F) {
     let bestT = null, bestS = 0;
     for (const t of targets) {
       if (t.f === pf && graceForPlayer) continue;
+      if (G.tut && t.f >= 0 && G.factions[t.f].key === 'yt') continue; // 튜토리얼 목표는 남겨 둠
       const tOffs = t.f >= 0 ? officersIn(t.id, t.f) : [];
       if (t.f < 0 || !tOffs.length) {
         if (c.troops >= 5000 && offs.length >= 2 && histEmptyOK(F, t)) { const s = 2 + t.size; if (s > bestS) { bestS = s; bestT = t; } }

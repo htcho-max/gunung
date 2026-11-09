@@ -1,7 +1,7 @@
 // ===== 시작 화면·설정·도움말 =====
 function showScreen(id) {
   for (const s of $$('#app > section')) s.hidden = s.id !== id;
-  if (id === 'scrTitle') { drawTitleBg(); $('#bCont').hidden = !saveMeta('auto'); }
+  if (id === 'scrTitle') { drawTitleBg(); $('#bCont').hidden = !saveMeta('auto'); if (Tutorial.box) { clearInterval(Tutorial.timer); Tutorial.box.remove(); Tutorial.ring.remove(); Tutorial.box = Tutorial.ring = null; } }
   BGM.play(id === 'scrBattle' ? 'battle' : id === 'scrGame' ? 'map' : 'title');
 }
 
@@ -20,7 +20,7 @@ function startPlaying(isNew) {
     }[r];
     UI.queue({ title: `${G.year}년 ${G.month}월`, portrait: P, text: `${(SCENARIOS[G.scen] || SCENARIOS[190]).desc}\n\n${txt}` });
     UI.flush().then(() => runEvents()).then(() => UI.refresh());
-  }
+  } else if (G.tut) Tutorial.resume();
 }
 
 const Setup = {
@@ -203,6 +203,7 @@ function boot() {
   $('#bCont').onclick = () => { if (loadGame('auto')) startPlaying(false); };
   $('#bLoad').onclick = async () => { G = G || newGame(); const ok = await UI.loadDialog(); if (!ok && !me()) showScreen('scrTitle'); };
   $('#bHelp').onclick = () => showHelp();
+  $('#bTut').onclick = () => { SFX.play('gong'); Tutorial.start(); };
   window.addEventListener('resize', () => { if (!$('#scrTitle').hidden) drawTitleBg(); });
   showScreen('scrTitle');
 }

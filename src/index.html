@@ -73,6 +73,23 @@ section{flex:1;min-height:0;display:flex;flex-direction:column;}
 .setupInner h2{font-family:var(--f-disp);font-size:30px;margin:0;font-weight:400;color:var(--brass3);}
 .mission{display:flex;gap:10px;align-items:flex-start;margin-top:8px;padding:8px 10px;border:1px solid var(--brass2);border-radius:8px;background:rgba(214,173,85,.07);font-size:13px}
 .mission > svg{width:18px;height:18px;flex:none;color:var(--brass);margin-top:2px}
+.tutRing{position:fixed;z-index:58;pointer-events:none;border:2px solid var(--brass);border-radius:10px;box-shadow:0 0 0 4px rgba(214,173,85,.25),0 0 22px rgba(214,173,85,.55);animation:tutPulse 1.4s ease-in-out infinite;display:none;transition:all .25s}
+@keyframes tutPulse{50%{box-shadow:0 0 0 8px rgba(214,173,85,.08),0 0 30px rgba(214,173,85,.8)}}
+.tutBox{box-sizing:border-box;position:fixed;z-index:60;background:linear-gradient(170deg,#2a1c10,#1a110a);border:1.5px solid var(--brass);border-radius:12px;padding:12px 14px;color:var(--paper);box-shadow:0 12px 40px rgba(0,0,0,.55);font-size:14px;line-height:1.55;transition:left .25s,top .25s,opacity .2s}
+.tutBox.dim{opacity:.85;pointer-events:none}
+.tutMore{display:none;background:none;border:0;color:var(--brass);font:inherit;font-size:12px;cursor:pointer;padding:0;margin-top:4px;text-decoration:underline}
+.tutBox.mini{padding:8px 12px}
+.tutBox.mini .tutText{display:none}
+.tutBox.mini.inBattle:not(.dim) .tutMore{display:inline-block}
+.tutBox.inBattle:not(.mini) .tutMore{display:inline-block}
+.tutBox.mini .tutHead{margin-bottom:2px}
+.tutBox.dim .tutX,.tutBox.dim .tutFoot .btn{display:none}
+.tutHead{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.tutHead b{font-family:var(--f-disp);font-size:18px;font-weight:400;color:var(--brass);flex:1}
+.tutNo{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:1px 7px}
+.tutX{background:none;border:0;color:var(--muted);font:inherit;font-size:12px;cursor:pointer;text-decoration:underline}
+.tutText{white-space:pre-line}
+.tutFoot{display:flex;justify-content:flex-end;margin-top:10px;font-size:12px}
 .scenRow{display:flex;gap:8px;flex-wrap:wrap}
 .scenCard{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 16px;min-width:130px;border-radius:8px;border:1px solid var(--line);background:linear-gradient(170deg,#203036,#141e22);color:var(--paper);cursor:pointer;font:inherit;text-align:left}
 .scenCard b{font-family:var(--f-disp);font-size:18px;font-weight:400}
@@ -347,6 +364,7 @@ input[type=text]:focus,select:focus{outline:2px solid var(--brass);outline-offse
       <button class="btn pri" id="bNew">새로 시작</button>
       <button class="btn" id="bCont" hidden>이어 하기</button>
       <button class="btn" id="bLoad">불러오기</button>
+      <button class="btn" id="bTut">튜토리얼 <small style="opacity:.7;font-size:12px">처음이라면</small></button>
       <button class="btn ghost" id="bHelp">하는 법</button>
     </div>
     <div class="ver" id="verTxt"></div>

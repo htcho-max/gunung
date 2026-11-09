@@ -1,5 +1,5 @@
 // ===== 공용 도구 =====
-const VERSION = '0.7.5';
+const VERSION = '0.8.0';
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));

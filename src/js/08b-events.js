@@ -496,6 +496,7 @@ async function replayChron(rec) {
 }
 async function runEvents() {
   G.ev = G.ev || {};
+  if (G.tut) return; // 튜토리얼 동안은 역사 사건을 미룸
   for (const ev of EVENTS) {
     if (G.ev[ev.id] || G.over) continue;
     let ok = false;
