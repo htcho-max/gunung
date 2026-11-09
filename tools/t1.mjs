@@ -1,9 +1,10 @@
+import { GAME, SHOTS } from './env.mjs';
 import { chromium } from 'playwright';
-const SH = '/tmp/claude-0/-home-claude/ff6dc56c-7f85-5c18-b2ad-a3067656522b/scratchpad/';
+const SH = SHOTS;
 const W = +(process.argv[2] || 1280), H = +(process.argv[3] || 800), tag = process.argv[4] || 'd';
 const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 1 });
 const errs = []; p.on('pageerror', e => errs.push(e.stack)); p.on('console', m => { if (m.type() === 'error' && !/Failed to load/.test(m.text())) errs.push(m.text()); });
-await p.goto('file:///home/claude/gunung/dist/index.html');
+await p.goto(GAME);
 await p.waitForTimeout(300); await p.screenshot({ path: SH + tag + '_title.png' });
 await p.click('#bNew'); await p.waitForTimeout(200);
 await p.click('.modeCard >> nth=0'); await p.waitForTimeout(200); await p.screenshot({ path: SH + tag + '_pick.png' });

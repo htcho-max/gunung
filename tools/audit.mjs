@@ -1,9 +1,10 @@
+import { GAME, SHOTS } from './env.mjs';
 // 장기 진행 불변식 점검: node tools/audit.mjs 시나리오 인물 달 [역할행동 0|1]
 import { chromium } from 'playwright';
 const scen = +(process.argv[2] || 190), who = process.argv[3] || '조조', months = +(process.argv[4] || 120), act = process.argv[5] === '1';
 const b = await chromium.launch(); const p = await b.newPage();
 const errs = []; p.on('pageerror', e => errs.push(e.stack.split('\n').slice(0, 3).join(' / '))); p.on('console', m => { if (m.type() === 'error' && !/Failed to load/.test(m.text())) errs.push(m.text().slice(0, 300)); });
-await p.goto('file:///home/claude/gunung/dist/index.html');
+await p.goto(GAME);
 await p.evaluate(([scen, who]) => {
   window.__fast = true; Setup.scen = scen; Setup.open();
   Setup.start(G.officers.find(x => x.name === who).id);

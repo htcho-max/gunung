@@ -1,9 +1,10 @@
+import { GAME, SHOTS } from './env.mjs';
 // 사건 하나씩 따로 시험: 새 게임 → 다른 사건은 끝난 것으로 → 대상 사건만
 import { chromium } from 'playwright';
-const SH = '/tmp/claude-0/-home-claude/ff6dc56c-7f85-5c18-b2ad-a3067656522b/scratchpad/';
+const SH = SHOTS;
 const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1280, height: 800 } });
 const errs = []; p.on('pageerror', e => errs.push(e.stack)); p.on('console', m => { if (m.type() === 'error' && !/Failed to load/.test(m.text())) errs.push(m.text()); });
-await p.goto('file:///home/claude/gunung/dist/index.html');
+await p.goto(GAME);
 async function only(id, who, setup, picks, shot) {
   await p.evaluate(([id, who, setup]) => {
     newGame({ diff: 1 }); G.player = byName(who).id; G.pgold = 100;

@@ -1,9 +1,10 @@
+import { GAME, SHOTS } from './env.mjs';
 // 휴대폰 화면 + 신무장 재야 플레이
 import { chromium } from 'playwright';
-const SH = '/tmp/claude-0/-home-claude/ff6dc56c-7f85-5c18-b2ad-a3067656522b/scratchpad/';
+const SH = SHOTS;
 const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true });
 const errs = []; p.on('pageerror', e => errs.push(e.stack)); p.on('console', m => { if (m.type() === 'error' && !/Failed to load/.test(m.text())) errs.push(m.text()); });
-await p.goto('file:///home/claude/gunung/dist/index.html');
+await p.goto(GAME);
 await p.click('#bNew'); await p.click('.modeCard >> nth=2'); await p.waitForTimeout(200);
 await p.fill('#newName', '한결'); await p.selectOption('#newCity', String(await p.evaluate(() => CITY_BY_NAME['허창'])));
 await p.screenshot({ path: SH + 'm_create.png' });

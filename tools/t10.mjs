@@ -1,9 +1,10 @@
+import { GAME, SHOTS } from './env.mjs';
 // 시나리오 고르기 화면 + 적벽 수전 화면
 import { chromium } from 'playwright';
-const SH = '/tmp/claude-0/-home-claude/ff6dc56c-7f85-5c18-b2ad-a3067656522b/scratchpad/';
+const SH = SHOTS;
 const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1280, height: 800 } });
 const errs = []; p.on('pageerror', e => errs.push(e.stack));
-await p.goto('file:///home/claude/gunung/dist/index.html');
+await p.goto(GAME);
 await p.evaluate(() => { Setup.scen = 208; Setup.open(); });
 await p.waitForTimeout(400); await p.screenshot({ path: SH + 'scen_pick.png' });
 await p.click('.modeCard >> nth=0'); await p.waitForTimeout(300); await p.screenshot({ path: SH + 'scen_rulers.png' });

@@ -1,7 +1,8 @@
+import { GAME, SHOTS } from './env.mjs';
 import { chromium } from 'playwright';
 const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1280, height: 800 } });
 const errs = []; p.on('pageerror', e => errs.push(e.stack));
-await p.goto('file:///home/claude/gunung/dist/index.html'); await p.evaluate(() => window.__fast = true);
+await p.goto(GAME); await p.evaluate(() => window.__fast = true);
 const r = await p.evaluate(async () => {
   Setup.scen = 200; Setup.open(); Setup.start(G.officers.find(x => x.name === '조조').id);
   const c = G.cities[me().city]; c.gold = 5000;

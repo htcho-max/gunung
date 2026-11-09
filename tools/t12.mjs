@@ -1,7 +1,8 @@
+import { GAME, SHOTS } from './env.mjs';
 import { chromium } from 'playwright';
 const b = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] }); const p = await b.newPage();
 const errs = []; p.on('pageerror', e => errs.push(e.stack));
-await p.goto('file:///home/claude/gunung/dist/index.html');
+await p.goto(GAME);
 await p.mouse.click(400, 300); await p.waitForTimeout(500);
 const r = await p.evaluate(async () => {
   const out = [];

@@ -1,12 +1,13 @@
+import { GAME, SHOTS } from './env.mjs';
 // 화면 모음: PC·태블릿·폰
 import { chromium, devices } from 'playwright';
-const SH = '/tmp/claude-0/-home-claude/ff6dc56c-7f85-5c18-b2ad-a3067656522b/scratchpad/shots/';
+const SH = SHOTS + 'shots/';
 import fs from 'fs'; fs.mkdirSync(SH, { recursive: true });
 const b = await chromium.launch();
 const errs = [];
 for (const [tag, ctxOpt] of [['pc', { viewport: { width: 1366, height: 768 } }], ['tab', { viewport: { width: 1024, height: 768 }, hasTouch: true }], ['phone', devices['iPhone 13']]]) {
   const ctx = await b.newContext(ctxOpt); const p = await ctx.newPage(); p.on('pageerror', e => errs.push(tag + ' ' + e.message));
-  await p.goto('file:///home/claude/gunung/dist/index.html'); await p.waitForTimeout(900);
+  await p.goto(GAME); await p.waitForTimeout(900);
   await p.screenshot({ path: SH + tag + '_1title.png' });
   await p.evaluate(() => { window.__fast = true; Setup.scen = 190; Setup.open(); }); await p.waitForTimeout(400);
   await p.screenshot({ path: SH + tag + '_2setup.png' });

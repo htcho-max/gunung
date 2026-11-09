@@ -1,11 +1,12 @@
+import { GAME, SHOTS } from './env.mjs';
 // 튜토리얼을 실제 클릭으로 끝까지
 import { chromium, devices } from 'playwright';
-const SH = '/tmp/claude-0/-home-claude/ff6dc56c-7f85-5c18-b2ad-a3067656522b/scratchpad/tut/';
+const SH = SHOTS + 'tut/';
 import fs from 'fs'; fs.mkdirSync(SH, { recursive: true });
 const phone = process.argv[2] === 'phone';
 const b = await chromium.launch(); const ctx = await b.newContext(phone ? devices['iPhone 13'] : { viewport: { width: 1366, height: 768 } }); const p = await ctx.newPage();
 const errs = []; p.on('pageerror', e => errs.push(e.stack));
-await p.goto('file:///home/claude/gunung/dist/index.html'); await p.evaluate(() => { window.__fast = true; BattleUI.fast = true; });
+await p.goto(GAME); await p.evaluate(() => { window.__fast = true; BattleUI.fast = true; });
 await p.click('#bTut'); await p.waitForTimeout(600);
 const step = () => p.evaluate(() => G.tut ? G.tut.step : -1);
 const modalPri = async () => { const bt = await p.$('#modalLayer.on footer .btn.pri:not([disabled]), #modalLayer.on footer .btn.red:not([disabled])'); if (bt) { await bt.click(); await p.waitForTimeout(350); return true; } return false; };

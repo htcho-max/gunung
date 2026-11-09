@@ -1,9 +1,10 @@
+import { GAME, SHOTS } from './env.mjs';
 // 침공 방어 전투를 실제 마우스 클릭으로 진행 (덮개가 클릭을 막는지 확인)
 import { chromium } from 'playwright';
 const who = process.argv[2] || '원소', scen = +(process.argv[3] || 200), months = +(process.argv[4] || 12);
 const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1280, height: 800 } });
 const errs = []; p.on('pageerror', e => errs.push(e.stack));
-await p.goto('file:///home/claude/gunung/dist/index.html');
+await p.goto(GAME);
 await p.evaluate(([who, scen]) => {
   window.__fast = true;
   Setup.scen = scen; Setup.open(); Setup.start(G.officers.find(x => x.name === who).id);

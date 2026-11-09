@@ -1,9 +1,10 @@
+import { GAME, SHOTS } from './env.mjs';
 // 3단계: 술집·의형제·혼인·임무 + 원군·진형 헤드리스 확인
 import { chromium } from 'playwright';
-const SH = '/tmp/claude-0/-home-claude/ff6dc56c-7f85-5c18-b2ad-a3067656522b/scratchpad/';
+const SH = SHOTS;
 const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1280, height: 800 } });
 const errs = []; p.on('pageerror', e => errs.push(e.stack)); p.on('console', m => { if (m.type() === 'error' && !/Failed to load/.test(m.text())) errs.push(m.text()); });
-await p.goto('file:///home/claude/gunung/dist/index.html'); await p.evaluate(() => window.__fast = true);
+await p.goto(GAME); await p.evaluate(() => window.__fast = true);
 const out = await p.evaluate(async () => {
   Setup.open(); Setup.start(G.officers.find(x => x.name === '조운').id);
   const log = [];
