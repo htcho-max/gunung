@@ -27,7 +27,7 @@ const TROOP_MUL = { dz: 1.7, ys: 1.25, ysh: 1.2, cc: .9, lb: .7, kr: .8, gd: 1, 
 
 function newGame(opts = {}) {
   const sc = opts.scen && SCENARIOS[opts.scen] && SCENARIOS[opts.scen].factions ? SCENARIOS[opts.scen] : null;
-  const g = { ver: 1, scen: 190, year: START_YEAR, month: 1, factions: [], cities: [], officers: [], log: [], rel: {}, ally: {}, player: -1, diff: opts.diff ?? 1, hist: opts.hist ?? true, focus: [], ev: {}, ap: 3, seen: {}, over: false, pgold: 0, stats: { battles: 0, wins: 0 } };
+  const g = { ver: 1, scen: 190, year: START_YEAR, month: 1, factions: [], cities: [], officers: [], log: [], rel: {}, ally: {}, player: -1, diff: opts.diff ?? 1, hist: opts.hist ?? true, yanyi: opts.yanyi !== false, focus: [], ev: {}, ap: 3, seen: {}, over: false, pgold: 0, stats: { battles: 0, wins: 0 } };
   const fIdx = {};
   FACTION_DEFS.forEach(([key, name, ruler, color], i) => { fIdx[key] = i; g.factions.push({ id: i, key, name, color, ruler: -1, alive: true, capital: -1 }); });
   CITY_DEFS.forEach(([name, han, x, y, own, s], i) => {
@@ -80,6 +80,8 @@ function newGame(opts = {}) {
   G = g;
   assignGovs();
   setupItems(g); g.chron = [];
+  initEmperor(g, sc ? sc.year : START_YEAR);
+  if (!g.yanyi) applyZhengshi(g);
   if (sc) { applyScenarioAfter(g, sc, scx.fk); assignGovs(); }
   return g;
 }

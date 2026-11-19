@@ -81,12 +81,13 @@ EVENTS.push(
       else if (isP(c)) ch = await scene({ title: '괘인봉금', involved: true, lines: [[g, '형님이 계신 곳을 알았으니 떠나겠소. 받은 금은 창고에 봉해 두고, 한수정후의 인수는 걸어 두었소.'], [onIn(zl, c.f) ? zl : null, '운장은 떠날 사람입니다. 붙잡으면 원한만 남습니다.', '장수들이 뒤를 쫓아 베자고 한다.']], options: [{ k: 'go', label: '"제 주인을 잊지 않으니 참으로 의사로다" — 보내 준다' }, { k: 'stay', label: '관문을 닫고 붙잡는다', danger: true }] });
       if (ch === 'stay') { if (isP(c)) { g.loy = 25; c.fame -= 5; logMsg('조조가 관우를 붙잡아 두었습니다. 관우의 마음은 떠나 있습니다'); } return; }
       if (!isP(g) && G.items && G.items.jeokto && G.items.jeokto.holder >= 0 && G.officers[G.items.jeokto.holder].f === c.f && G.items.jeokto.holder !== G.player) passItem('jeokto', g);
-      await scene({ title: '오관참육장', involved: inv, lines: [
+      if (YANYI()) await scene({ title: '오관참육장', involved: inv, lines: [
         [null, '두 형수의 수레를 호위하며 관우는 다섯 관문을 지나고 여섯 장수를 베었다.'],
         [g, '나는 승상께 작별을 고하고 떠나는 길이다. 길을 막는 자는 용서하지 않겠다!'],
         [onIn(zf, l.f) ? zf : null, '형님이 조조에게 항복했다고? …오해였구려! 형님, 이 장비를 용서하시오!', '고성에서 세 형제가 다시 만났다.'],
         [l, '운장, 돌아왔구나!'],
       ] });
+      else await scene({ title: '괘인봉금', involved: inv, lines: [[null, '관우는 조조에게서 받은 재물을 모두 봉해 두고 작별 편지를 남긴 채 떠났다.'], [c, '저마다 제 주인을 위하는 것이니 뒤쫓지 말라.'], [l, '운장, 돌아왔구나!']] });
       joinFaction(g, l.f, l.city); g.loy = 100; g.fame += 15; G.guanCao = false;
       logMsg('관우가 다섯 관문을 지나 유비에게 돌아왔습니다 (천리행)', 'big');
     },
@@ -250,7 +251,7 @@ EVENTS.push(
       // 4. 동남풍
       const eastWind = !!zgSide || (live(zg) && chance(.5)) || chance(.4);
       await scene({ title: '동남풍', involved: inv, lines: [
-        [zgSide, '남병산에 칠성단을 쌓고 사흘 밤낮으로 바람을 빌겠습니다.', '겨울 하늘에 구름이 몰려든다.'],
+        YANYI() ? [zgSide, '남병산에 칠성단을 쌓고 사흘 밤낮으로 바람을 빌겠습니다.', '겨울 하늘에 구름이 몰려든다.'] : [null, '한겨울이었지만 이 무렵 장강에는 드물게 동남풍이 부는 날이 있었다. 주유는 그날을 기다렸다.'],
         [null, eastWind ? '동짓달 스무날 밤, 깃발이 서북쪽으로 펄럭였다. 동남풍이다!' : '바람은 끝내 바뀌지 않았다. 강동은 제 힘으로 싸워야 한다.'],
       ] });
       // 5. 수전

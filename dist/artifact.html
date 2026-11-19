@@ -205,7 +205,7 @@ section{flex:1;min-height:0;display:flex;flex-direction:column;}
 .cmd:active{transform:translateY(1px);}
 .cmd:focus-visible{outline:2px solid var(--brass3);outline-offset:1px;}
 .cmd:disabled{opacity:.35;cursor:default;filter:grayscale(.7);transform:none;}
-.g-nae{--gc:#7fd1a9;} .g-mil{--gc:#ef8a6c;} .g-in{--gc:#f0cf7c;} .g-ce{--gc:#b9a0e4;}
+.g-nae{--gc:#7fd1a9;} .g-mil{--gc:#ef8a6c;} .g-in{--gc:#f0cf7c;} .g-ce{--gc:#b9a0e4;} .g-jo{--gc:#e7c66a;}
 .apDots{display:inline-flex;gap:4px;}
 .apDots i{width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#f6dc93,#b48a35);box-shadow:0 0 0 1px #5a4214;display:inline-block;}
 .apDots i.off{background:#26343a;box-shadow:inset 0 1px 2px rgba(0,0,0,.6);}
@@ -403,7 +403,7 @@ input[type=text]:focus,select:focus{outline:2px solid var(--brass);outline-offse
 <script>
 // ---- 00-util.js
 // ===== 공용 도구 =====
-const VERSION = '0.9.0';
+const VERSION = '0.10.0';
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -494,6 +494,9 @@ const ICONS = {
   horse: '<path d="M5 21c0-3 1-5 3-7-1-3 0-6 3-8l1-3 2 3c3 1 5 3 5 6l-2 1-2-1-2 2v7"/><circle cx="14.5" cy="7.5" r=".5"/>',
   xbow: '<path d="M4 9c5-3 11-3 16 0"/><path d="M4 9l8 4 8-4"/><path d="M12 4v17"/><path d="M10 18h4"/><path d="m10 6 2-2 2 2"/>',
   ram: '<path d="M3 15h14l3-3"/><path d="M4 15V9h11v6"/><path d="M6 9 9 5h3l3 4"/><path d="M5 18a2 2 0 1 0 4 0a2 2 0 1 0-4 0"/><path d="M12 18a2 2 0 1 0 4 0a2 2 0 1 0-4 0"/><path d="M17 12h4"/>',
+  crown: '<path d="M3 8l4 4 5-6 5 6 4-4-2 11H5z"/><path d="M5 19h14"/>',
+  rank: '<path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5L12 15.6 7.1 18.2 8 12.7 4 8.8l5.5-.8z"/>',
+  edict: '<path d="M6 3h9l3 3v15H6z"/><path d="M9 9h6M9 13h6M9 17h4"/>',
   wine: '<path d="M7 3h10l-1 7a4 4 0 0 1-8 0z"/><path d="M12 14v6M8 21h8"/><path d="M7.5 7h9"/>',
   music: '<path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/>',
   form: '<circle cx="12" cy="5" r="2"/><circle cx="7" cy="11" r="2"/><circle cx="17" cy="11" r="2"/><circle cx="4" cy="18" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="20" cy="18" r="2"/>',
@@ -1098,7 +1101,7 @@ const SCENARIOS = {
     ],
     dead: '번조 화웅 서영 우보 동민 이유 경무 반봉 국의 엄강 조무 왕윤 동탁 손견 한복 도겸',
     ronin: '조운@계 태사자@시상 곽가@허창 노숙@수춘 화흠@여강 장연@진양 감녕@강주 위연@양양 서서@신야 방통@양양 마량@양양 사마의@낙양 육손@오 제갈근@오 능조@건업',
-    done: 'peach coalition luoyang_fire jade_seal sunjian_death jizhou chain dong_death cao_song xuzhou sun_zhou',
+    done: 'peach qingzhou coalition luoyang_fire jade_seal sunjian_death jizhou chain dong_death cao_song xuzhou sun_zhou',
     items: { okse: '원술' },
     focus: [['cc', 'lp', 24], ['lp', 'cc', 24], ['ys', 'gz', 24], ['gz', 'ys', 24], ['sj', 'wl', 18], ['sj', 'ybh', 18]],
     ally: [['ys', 'cc', 24], ['sj', 'ysh', 12]],
@@ -1119,7 +1122,7 @@ const SCENARIOS = {
     ],
     dead: '번조 화웅 서영 우보 동민 이유 경무 반봉 국의 엄강 조무 왕윤 동탁 손견 한복 도겸 이각 곽사 장제 양봉 여포 진궁 고순 원술 기령 교유 공손찬 관정 공손속 전해 전위 엄백호 조표',
     ronin: '제갈량@신야 서서@신야 방통@양양 마량@양양 마속@양양 위연@양양 사마의@낙양 육손@오 장연@진양 전예@계',
-    done: 'peach coalition luoyang_fire jade_seal sunjian_death jizhou chain dong_death cao_song xuzhou sun_zhou li_guo emperor yuan_emperor xiapi yijing',
+    done: 'peach qingzhou coalition luoyang_fire jade_seal sunjian_death jizhou chain dong_death cao_song xuzhou sun_zhou li_guo emperor yuan_emperor xiapi yijing',
     items: { jeokto: '조조', gojeong: '손책', chilseong: null },
     focus: [['cc', 'lb', 12]],
     ally: [['ys', 'lb', 24]],
@@ -1138,7 +1141,7 @@ const SCENARIOS = {
     ],
     dead: '번조 화웅 서영 우보 동민 이유 경무 반봉 국의 엄강 조무 왕윤 동탁 손견 한복 도겸 이각 곽사 장제 양봉 여포 진궁 고순 원술 기령 교유 공손찬 관정 공손속 전해 전위 엄백호 조표 원소 원담 원상 안량 문추 전풍 저수 심배 봉기 허유 곽도 순심 공손도 손책 오경 태사자 능조 곽가 공융 유표 괴량 황조 진등 진규 장수 단외',
     ronin: '황충@장사 위연@장사 방통@시상 마량@무릉 마속@무릉 등애@신야',
-    done: 'peach coalition luoyang_fire jade_seal sunjian_death jizhou chain dong_death cao_song xuzhou sun_zhou li_guo emperor yuan_emperor xiapi yijing guandu sun_ce_death xushu three_visits yuan_split guanyu_return changban',
+    done: 'peach qingzhou coalition luoyang_fire jade_seal sunjian_death jizhou chain dong_death cao_song xuzhou sun_zhou li_guo emperor yuan_emperor xiapi yijing guandu sun_ce_death xushu three_visits yuan_split guanyu_return changban',
     items: { jeokto: '관우', cheonggang: '조운', jeongno: '유비', gojeong: '손권', okse: null },
     focus: [['cc', 'sj', 24], ['cc', 'lb', 24]],
     ally: [['sj', 'lb', 36]],
@@ -1154,7 +1157,7 @@ const SCENARIOS = {
     ],
     dead: '하후연 능통 악진 진림 노숙',
     ronin: '강유@천수 맹획@건녕',
-    done: 'peach coalition luoyang_fire jade_seal sunjian_death jizhou chain dong_death cao_song xuzhou sun_zhou li_guo emperor yuan_emperor xiapi yijing guandu sun_ce_death xushu three_visits yuan_split guanyu_return changban liubei_rout baekmun jingzhou_surrender chibi shu_entry luofeng hefei dingjun hanzhong_king',
+    done: 'peach qingzhou coalition luoyang_fire jade_seal sunjian_death jizhou chain dong_death cao_song xuzhou sun_zhou li_guo emperor yuan_emperor xiapi yijing guandu sun_ce_death xushu three_visits yuan_split guanyu_return changban liubei_rout baekmun jingzhou_surrender chibi shu_entry luofeng hefei dingjun hanzhong_king',
     items: { jeokto: '관우', cheonggang: '조운', jeongno: '유비', gojeong: '손권' },
     focus: [['lb', 'cc', 18], ['sj', 'lb', 18]],
     ally: [],
@@ -1169,7 +1172,7 @@ const SCENARIOS = {
     ],
     dead: '관우 관평 장비 황충 법정 여몽 감녕 장흠 조조 하후돈 하후연 방덕 정욱 능통 노숙',
     ronin: '강유@천수 맹획@건녕',
-    done: 'peach coalition luoyang_fire jade_seal sunjian_death jizhou chain dong_death cao_song xuzhou sun_zhou li_guo emperor yuan_emperor xiapi yijing guandu sun_ce_death xushu three_visits yuan_split guanyu_return changban liubei_rout baekmun jingzhou_surrender chibi shu_entry luofeng hefei dingjun hanzhong_king fan_castle maicheng wei_found shu_found zhangfei_death',
+    done: 'peach qingzhou coalition luoyang_fire jade_seal sunjian_death jizhou chain dong_death cao_song xuzhou sun_zhou li_guo emperor yuan_emperor xiapi yijing guandu sun_ce_death xushu three_visits yuan_split guanyu_return changban liubei_rout baekmun jingzhou_surrender chibi shu_entry luofeng hefei dingjun hanzhong_king fan_castle maicheng wei_found shu_found zhangfei_death',
     items: { cheonggang: '조운', jeongno: '유비', gojeong: '손권', jeokto: null },
     focus: [['lb', 'sj', 24]],
     ally: [['cc', 'sj', 18]],
@@ -1183,7 +1186,7 @@ const SCENARIOS = {
     ],
     dead: '조비 조진 조휴 장합 학소 왕쌍 조운 마량 마속 황권 이엄 미방 장포 서성',
     ronin: '',
-    done: 'peach coalition luoyang_fire jade_seal sunjian_death jizhou chain dong_death cao_song xuzhou sun_zhou li_guo emperor yuan_emperor xiapi yijing guandu sun_ce_death xushu three_visits yuan_split guanyu_return changban liubei_rout baekmun jingzhou_surrender chibi shu_entry luofeng hefei dingjun hanzhong_king fan_castle maicheng wei_found shu_found wu_found zhangfei_death yiling baidi nanman northern jieting',
+    done: 'peach qingzhou coalition luoyang_fire jade_seal sunjian_death jizhou chain dong_death cao_song xuzhou sun_zhou li_guo emperor yuan_emperor xiapi yijing guandu sun_ce_death xushu three_visits yuan_split guanyu_return changban liubei_rout baekmun jingzhou_surrender chibi shu_entry luofeng hefei dingjun hanzhong_king fan_castle maicheng wei_found shu_found wu_found zhangfei_death yiling baidi nanman northern jieting',
     items: { gojeong: '손권', jeongno: '유선' },
     focus: [['lb', 'cc', 24], ['cc', 'lb', 24]],
     ally: [['lb', 'sj', 48]],
@@ -1282,7 +1285,7 @@ const TROOP_MUL = { dz: 1.7, ys: 1.25, ysh: 1.2, cc: .9, lb: .7, kr: .8, gd: 1, 
 
 function newGame(opts = {}) {
   const sc = opts.scen && SCENARIOS[opts.scen] && SCENARIOS[opts.scen].factions ? SCENARIOS[opts.scen] : null;
-  const g = { ver: 1, scen: 190, year: START_YEAR, month: 1, factions: [], cities: [], officers: [], log: [], rel: {}, ally: {}, player: -1, diff: opts.diff ?? 1, hist: opts.hist ?? true, focus: [], ev: {}, ap: 3, seen: {}, over: false, pgold: 0, stats: { battles: 0, wins: 0 } };
+  const g = { ver: 1, scen: 190, year: START_YEAR, month: 1, factions: [], cities: [], officers: [], log: [], rel: {}, ally: {}, player: -1, diff: opts.diff ?? 1, hist: opts.hist ?? true, yanyi: opts.yanyi !== false, focus: [], ev: {}, ap: 3, seen: {}, over: false, pgold: 0, stats: { battles: 0, wins: 0 } };
   const fIdx = {};
   FACTION_DEFS.forEach(([key, name, ruler, color], i) => { fIdx[key] = i; g.factions.push({ id: i, key, name, color, ruler: -1, alive: true, capital: -1 }); });
   CITY_DEFS.forEach(([name, han, x, y, own, s], i) => {
@@ -1335,6 +1338,8 @@ function newGame(opts = {}) {
   G = g;
   assignGovs();
   setupItems(g); g.chron = [];
+  initEmperor(g, sc ? sc.year : START_YEAR);
+  if (!g.yanyi) applyZhengshi(g);
   if (sc) { applyScenarioAfter(g, sc, scx.fk); assignGovs(); }
   return g;
 }
@@ -1739,7 +1744,7 @@ function portraitImg(o, cls = 'pt') { return el('img', { class: cls, src: portra
 const COST = { agri: 50, comm: 50, order: 20, wall: 80, train: 0, search: 0 };
 const DEV_NAME = { agri: '개간', comm: '상업', order: '치안', wall: '성벽' };
 
-function devMul(o, kind) { let m = hasSkill(o, '치정') ? 1.3 : 1; if (kind === 'agri' && hasSkill(o, '둔전')) m *= 1.5; if (kind === 'comm' && hasSkill(o, '상재')) m *= 1.5; if (kind === 'wall' && hasSkill(o, '축성')) m *= 1.5; return m; }
+function devMul(o, kind) { let m = hasSkill(o, '치정') ? 1.3 : 1; if (kind === 'agri' && hasSkill(o, '둔전')) m *= 1.5; if (kind === 'comm' && hasSkill(o, '상재')) m *= 1.5; if (kind === 'wall' && hasSkill(o, '축성')) m *= 1.5; if (kind === 'wall' && policyOf(o.f)?.wall) m *= policyOf(o.f).wall; return m; }
 function cmdDevelop(o, c, kind) {
   if (c.gold < COST[kind]) return { ok: false, msg: '금이 모자랍니다' };
   let gain = 0, msg = '';
@@ -1818,6 +1823,7 @@ function hireChance(o, target, f) {
     if (target.tag && target.fk && G.factions.find(x => x.key === target.fk && x.alive && x.id !== f)) p *= .25;
     if (target.tag) { const lord = G.factions.find(x => x.alive && G.officers[x.ruler].tag === target.tag); if (lord && lord.id !== f) p *= .1; }
     if (G.player === target.id) return 0;
+    p += (policyOf(f)?.hire || 0) + rankOf(G.factions[f]) * .03 - (isRebel(f) ? .1 : 0);
     return clamp(p, .04, .9);
   }
   if (target.st !== 'on' || target.f === f || target.f < 0) return 0;
@@ -2483,10 +2489,12 @@ function focusTargets(f) { return (G.focus || []).filter(x => x.f === f && x.unt
 function histNeed(F, t) {
   if (!HIST()) return 0;
   if (t.f >= 0 && hasFocus(F.id, t.f)) return -.3;
-  return (inSphere(F, t) ? 0 : sphereLoose(F)) + capPenalty(F);
+  const cao = F.key === 'cc' && G.year >= 192 && G.year < 208 ? -.15 : 0; // 조조는 역사에서 공격적으로 커 나감
+  const reb = isRebel(t.f) ? -.1 : 0; // 칙명으로 역적이 된 세력은 치기 쉬움
+  return (inSphere(F, t) ? 0 : sphereLoose(F)) + capPenalty(F) + cao + reb;
 }
 // 빈 땅을 차지해도 되는가 (초반엔 자기 지역만)
-function histEmptyOK(F, t) { return !HIST() || inSphere(F, t) || G.year >= 193; }
+function histEmptyOK(F, t) { if (!HIST()) return true; if (capPenalty(F) > 0) return false; return inSphere(F, t) || G.year >= 193; }
 // 병력 모을 목표 고르기: 점수(낮을수록 좋음)에 더할 값
 function histTargetBias(F, t) {
   if (!HIST()) return 0;
@@ -2602,6 +2610,10 @@ function makeBattle(opts) {
     for (let i = 0; i < BW * BH; i++) { const q = tQ(i); tiles[i].t = q <= 1 ? (R() < .3 ? 'forest' : 'plain') : q <= 11 ? 'water' : (R() < .25 ? 'forest' : 'plain'); }
     for (const r of [0, 1, 9, 10]) if (R() < .6) tiles[tIdx(14 + (R() < .5 ? 1 : 0), r)].t = 'mount';
   }
+  const passName = !opts.naval && PASSES[G.cities[cityId]?.name];
+  if (passName) { // 관문: 양옆이 산으로 막힌 좁은 길
+    for (let q = 6; q <= 10; q++) for (let r = 0; r < BH; r++) if (r <= 3 || r >= 7) tiles[tIdx(q, r)].t = 'mount'; else if (tiles[tIdx(q, r)].t === 'mount' || tiles[tIdx(q, r)].t === 'river') tiles[tIdx(q, r)].t = 'plain';
+  }
   tiles[keep].t = 'keep';
   for (const n of hexNb(keep)) tiles[n].t = 'castle';
   const B = {
@@ -2609,6 +2621,7 @@ function makeBattle(opts) {
     attF, defF, cityId, fromId, food: [attFood, c.food], over: false, result: null,
     fx: [], captives: [], killed: [], fled: [[], []], interactive: false, auto: false, msgs: [], wall: c.wall,
   };
+  if (passName) { B.pass = passName; B.wall += 150; bmsg(B, `${passName} — 양옆이 깎아지른 산인 좁은 관문이다. 지키는 쪽이 유리하다`, 'big'); }
   if (opts.naval) {
     B.naval = true; B.northSide = 0; B.chained = !!opts.naval.chained; B.kuyuk = !!opts.naval.kuyuk;
     if (opts.naval.eastWind) { B.wind = 3; B.windLock = true; } // 동남풍: 불길이 서쪽(조조 쪽)으로
@@ -2702,7 +2715,8 @@ function attackTargets(B, u, from = u.at) {
 }
 function estDamage(B, a, d, ranged) {
   let m = powAtk(a) / Math.max(10, powDef(d) * terrDef(B, d, d.at));
-  if (a.type === 'cav' && !ranged) m *= 1.2;
+  if (a.type === 'cav' && !ranged) m *= 1.2 * (policyOf(a.side === 0 ? B.attF : (a.fac ?? B.defF))?.cav || 1);
+  if (B.naval) { const pf = a.side === 0 ? B.attF : (a.fac ?? B.defF); if (policyOf(pf)?.naval) m *= policyOf(pf).naval; }
   if (d.type === 'inf' && a.type === 'cav') m *= .82;
   if (d.type === 'arc' && !ranged) m *= 1.15;
   if (ranged) m *= a.type === 'xbow' ? .95 : .72;
@@ -2982,7 +2996,7 @@ function aiPlan(B, u) {
     if (o.war >= 70) {
       for (const e of enemies.filter(e => hexDist(e.at, tile) === 1)) {
         const diff = o.war - bOff(e).war;
-        if (diff >= 12) { const v = 380 + diff * 10 + (e.cmd ? 300 : 0); if (v > av && chance(.5)) { av = v; act = { kind: 'duel', target: e.id }; } }
+        if (diff >= 12) { const v = 380 + diff * 10 + (e.cmd ? 300 : 0); if (v > av && chance(YANYI() ? .5 : .22)) { av = v; act = { kind: 'duel', target: e.id }; } }
       }
     }
     u.at = save;
@@ -3058,6 +3072,7 @@ async function endMonth() {
     G.month++;
     MapView.monthBanner();
     monthlyTravel();
+    await monthlyCourt();
     if (G.month > 12) { G.month = 1; G.year++; await yearlyEvents(); }
     await runEvents();
     monthlyMission();
@@ -3124,7 +3139,7 @@ function monthlyEconomy() {
       const inc = c.f === pf ? DIFF().pInc : DIFF().aiInc;
       c.gold += Math.round((c.comm / 4 + c.pop / 25000) * inc);
       c.food -= Math.round(c.troops * .03);
-      if (G.month === 7) c.food += Math.round(c.agri * 22 * (.55 + c.order / 220) * inc);
+      if (G.month === 7) c.food += Math.round(c.agri * 22 * (.55 + c.order / 220) * inc * (policyOf(c.f)?.food || 1));
       if (c.troops > troopMax(c)) { const loss = Math.round((c.troops - troopMax(c)) * .3); c.troops -= loss; c.pop += loss; }
       if (c.food < 0) { const loss = Math.round(c.troops * .25); c.troops -= loss; c.food = 0; if (c.f === me()?.f) logMsg(`${c.name}에 군량이 떨어져 병사 ${fmt(loss)}명이 달아났습니다`, 'bad'); }
       if (c.gold > 30000) c.gold = 30000;
@@ -3189,6 +3204,7 @@ async function yearlyEvents() {
     }
   }
   spawnTalents();
+  yearlyCourt();
   checkFactions();
   assignGovs();
   await checkHegemon();
@@ -3343,7 +3359,7 @@ const EVENTS = [
       ly.wall = Math.round(ly.wall * .6);
       const move = Math.round(ly.troops * .5); ly.troops -= move; ca.troops += move;
       for (const o of [d, li].filter(o => onIn(o, d.f))) { if (ly.gov === o.id) ly.gov = -1; o.city = ca.id; }
-      F.capital = ca.id;
+      F.capital = ca.id; setEmpCity('장안');
       d.fame -= 5; d.cha = Math.max(1, d.cha - 3);
       logMsg('동탁이 낙양을 불태우고 장안으로 천도했습니다', 'big');
       assignGovs();
@@ -3492,6 +3508,7 @@ const EVENTS = [
       ], options: isP(c) ? [{ k: 'yes', label: '천자를 맞이한다' }, { k: 'no', label: '천자는 짐이 될 뿐이다' }] : null });
       if (ch === 'no') return;
       const cap = cityN('허창').f === c.f ? cityN('허창') : cityN('낙양');
+      if (G.emp && G.emp.alive) G.emp.city = cap.id;
       cap.gold += 1500; cap.food += 8000;
       for (const x of G.cities) if (x.f === c.f) x.order = Math.min(100, x.order + 10);
       c.fame += 20; G.emperor = c.f;
@@ -3672,7 +3689,7 @@ const EVENTS = [
       const oc = G.cities[other.city]; if (oc.gov === other.id) oc.gov = -1; other.city = c.id;
       const NF = splitOff(other, c, F.id, []);
       addFocus(NF.id, F.id, 24); addFocus(F.id, NF.id, 24);
-      logMsg(`${eun(other.name)} ${r.name}와 갈라서서 ${c.name}에서 따로 섰습니다`, 'big');
+      setEmpCity('낙양'); logMsg(`${eun(other.name)} ${r.name}와 갈라서서 ${c.name}에서 따로 섰습니다`, 'big');
     },
   },
 
@@ -3849,12 +3866,13 @@ EVENTS.push(
       else if (isP(c)) ch = await scene({ title: '괘인봉금', involved: true, lines: [[g, '형님이 계신 곳을 알았으니 떠나겠소. 받은 금은 창고에 봉해 두고, 한수정후의 인수는 걸어 두었소.'], [onIn(zl, c.f) ? zl : null, '운장은 떠날 사람입니다. 붙잡으면 원한만 남습니다.', '장수들이 뒤를 쫓아 베자고 한다.']], options: [{ k: 'go', label: '"제 주인을 잊지 않으니 참으로 의사로다" — 보내 준다' }, { k: 'stay', label: '관문을 닫고 붙잡는다', danger: true }] });
       if (ch === 'stay') { if (isP(c)) { g.loy = 25; c.fame -= 5; logMsg('조조가 관우를 붙잡아 두었습니다. 관우의 마음은 떠나 있습니다'); } return; }
       if (!isP(g) && G.items && G.items.jeokto && G.items.jeokto.holder >= 0 && G.officers[G.items.jeokto.holder].f === c.f && G.items.jeokto.holder !== G.player) passItem('jeokto', g);
-      await scene({ title: '오관참육장', involved: inv, lines: [
+      if (YANYI()) await scene({ title: '오관참육장', involved: inv, lines: [
         [null, '두 형수의 수레를 호위하며 관우는 다섯 관문을 지나고 여섯 장수를 베었다.'],
         [g, '나는 승상께 작별을 고하고 떠나는 길이다. 길을 막는 자는 용서하지 않겠다!'],
         [onIn(zf, l.f) ? zf : null, '형님이 조조에게 항복했다고? …오해였구려! 형님, 이 장비를 용서하시오!', '고성에서 세 형제가 다시 만났다.'],
         [l, '운장, 돌아왔구나!'],
       ] });
+      else await scene({ title: '괘인봉금', involved: inv, lines: [[null, '관우는 조조에게서 받은 재물을 모두 봉해 두고 작별 편지를 남긴 채 떠났다.'], [c, '저마다 제 주인을 위하는 것이니 뒤쫓지 말라.'], [l, '운장, 돌아왔구나!']] });
       joinFaction(g, l.f, l.city); g.loy = 100; g.fame += 15; G.guanCao = false;
       logMsg('관우가 다섯 관문을 지나 유비에게 돌아왔습니다 (천리행)', 'big');
     },
@@ -4018,7 +4036,7 @@ EVENTS.push(
       // 4. 동남풍
       const eastWind = !!zgSide || (live(zg) && chance(.5)) || chance(.4);
       await scene({ title: '동남풍', involved: inv, lines: [
-        [zgSide, '남병산에 칠성단을 쌓고 사흘 밤낮으로 바람을 빌겠습니다.', '겨울 하늘에 구름이 몰려든다.'],
+        YANYI() ? [zgSide, '남병산에 칠성단을 쌓고 사흘 밤낮으로 바람을 빌겠습니다.', '겨울 하늘에 구름이 몰려든다.'] : [null, '한겨울이었지만 이 무렵 장강에는 드물게 동남풍이 부는 날이 있었다. 주유는 그날을 기다렸다.'],
         [null, eastWind ? '동짓달 스무날 밤, 깃발이 서북쪽으로 펄럭였다. 동남풍이다!' : '바람은 끝내 바뀌지 않았다. 강동은 제 힘으로 싸워야 한다.'],
       ] });
       // 5. 수전
@@ -4132,10 +4150,21 @@ const facK = k => G.factions.find(f => f.key === k && f.alive) || null;
 const rK = k => { const F = facK(k); return F ? G.officers[F.ruler] : null; };
 const anyP = (...Fs) => Fs.some(F => F && pOf(F.id));
 const after = (id, months) => G.evAt && G.evAt[id] != null && mIdx() >= G.evAt[id] + months;
-function setTitle(F, t) { if (F) { F.title = t; logMsg(`${F.name}이(가) ${t}에 올랐습니다`, 'big'); } }
+function setTitle(F, t) { if (F) { F.title = t; F.rank = Math.max(F.rank || 0, rankFromTitle(t)); F.rankAt = mIdx(); F.nation = t.replace(/ ?(황제|왕|공)$/, '').replace(/ \(.*\)$/, '') || F.nation; logMsg(`${F.name}이(가) ${t}에 올랐습니다`, 'big'); } }
 const kill = (o, why) => { if (o && o.st !== 'dead' && !isP(o)) killOfficer(o, why); };
 
 EVENTS.push(
+  // ── 청주병 (192): 조조가 황건의 무리를 거두어 정예로 삼음
+  {
+    id: 'qingzhou',
+    cond: () => { const c = rulerNamed('조조'); return HIST() && c && G.year >= 192 && G.year <= 195 && citiesOf(c.f).length >= 1; },
+    async run() {
+      const c = rulerNamed('조조'), cs = citiesOf(c.f);
+      await scene({ title: '청주병', involved: pOf(c.f), lines: [[null, '청주의 황건 무리 백만이 연주로 몰려들었다. 조조는 이들을 쳐서 항복을 받아 내고, 날랜 자를 골라 청주병이라 이름 붙였다.'], [c, '이들이면 천하를 다툴 만하다. 남은 이들에게는 땅을 나눠 주어 농사를 짓게 하라.']] });
+      for (const x of cs) { x.troops = Math.min(troopMax(x), x.troops + Math.round(12000 / cs.length)); x.pop += 20000; }
+      c.fame += 10;
+    },
+  },
   // ── 합비 전투 (215)
   {
     id: 'hefei',
@@ -4245,7 +4274,7 @@ EVENTS.push(
         [null, '천하의 간웅 조조가 낙양에서 숨을 거두었다. 아들 조비는 헌제에게서 황제의 자리를 물려받았다. 사백 년 한 왕조가 끝났다.'],
         [cp, '하늘의 뜻에 따라 위를 세우노라. 연호를 황초라 하겠다.'],
       ] });
-      setTitle(W, '위 황제'); cp.fame += 10;
+      setTitle(W, '위 황제'); cp.fame += 10; if (G.emp) G.emp.alive = false;
     },
   },
   {
@@ -4503,7 +4532,7 @@ const UI = {
     const chips = el('div', { class: 'chips' });
     if (P && P.st === 'on') {
       const F = G.factions[P.f], cs = citiesOf(P.f);
-      chips.append(el('span', { class: 'chip', title: '세력' }, el('span', { class: 'dot', style: `background:${F.color}` }), `${F.name}군`),
+      chips.append(el('span', { class: 'chip', title: '세력' }, el('span', { class: 'dot', style: `background:${F.color}` }), `${F.name}군${F.title ? ' · ' + F.title : ''}${empHolder() === F.id ? ' · 천자' : ''}`),
         chip('c', 'wall', '성', cs.length), chip('p', 'people', '장수', factionOfficers(P.f).length),
         chip('t', 'troops', '병력', fmt(cs.reduce((a, c) => a + c.troops, 0))), chip('g', 'gold', '금', fmt(cs.reduce((a, c) => a + c.gold, 0))), chip('f', 'food', '쌀', fmt(cs.reduce((a, c) => a + c.food, 0))));
       if (r !== 'ruler') chips.append(chip('s', 'merit', '공적', P.merit));
@@ -4586,7 +4615,8 @@ const UI = {
       row('g-in', '인사', B('search', '탐색', () => this.cmdSimple(c, 'search')), B('hire', '등용', () => this.cmdHire(c)), B('reward', '포상', () => this.cmdReward(c), '금 100'), B('move', '이동', () => this.cmdMove(c))),
       row('g-ce', '책략', r === 'ruler' ? B('diplo', '외교', () => this.cmdDiplo(c)) : null, B('plot', '계략', () => this.cmdPlot(c)),
         r === 'ruler' && c.gov !== me().id ? el('button', { class: 'cmd', onclick: () => { c.deleg = true; this.toast(`${c.name}을 태수에게 맡겼습니다`); this.refresh(); }, title: '위임' }, icon('deleg'), el('span', {}, '위임')) : null,
-        r === 'ruler' ? el('button', { class: 'cmd', onclick: () => this.cmdTreasure(c), title: '보물' }, icon('reward'), el('span', {}, '보물'), el('small', {}, `${itemsOfFaction(c.f).length}점`)) : null));
+        r === 'ruler' ? el('button', { class: 'cmd', onclick: () => this.cmdTreasure(c), title: '보물' }, icon('reward'), el('span', {}, '보물'), el('small', {}, `${itemsOfFaction(c.f).length}점`)) : null),
+      r === 'ruler' ? row('g-jo', '조정', B('rank', '관직', () => this.cmdOffices(c)), B('crown', '칭호', () => this.cmdTitle(c), G.factions[c.f].title || '없음'), empHolder() === c.f ? B('edict', '칙명', () => this.cmdEdict(c), edictReady(G.factions[c.f]) ? '천자의 이름으로' : '1년에 한 번') : null) : null);
     return el('div', { class: 'pane' }, el('div', { class: 'secTitle cmdT' }, '명령', el('span', { class: 'r' }, `쓸 수 있는 장수 ${free.length}명`)), g);
   },
   async pickOfficer(c, { title, stat, filter, note }) {
@@ -4625,6 +4655,53 @@ const UI = {
     const k = await this.modal({ title, body: el('div', {}, note ? el('div', { class: 'muted', style: 'margin-bottom:8px;font-size:13px' }, note) : null, el('div', { style: 'display:flex;align-items:center;justify-content:space-between;margin-bottom:6px' }, count, allBtn), el('div', { class: 'pickList multi' }, rows)), cancel: 'x', buttons: [{ k: 'x', label: '취소' }, { k: 'ok', label: okLabel || '맡긴다', cls: 'pri', check: () => sel.size > 0 }] });
     if (k !== 'ok' || !sel.size) return null;
     return offs.filter(o => sel.has(o));
+  },
+  // ── 조정: 관직
+  async cmdOffices(c) {
+    const F = G.factions[c.f]; F.offices = F.offices || {};
+    for (;;) {
+      const list = el('div', { class: 'pickList' }, OFFICES.map(of => {
+        const h = F.offices[of.id] != null ? G.officers[F.offices[of.id]] : null, ok = officeOK(F, of);
+        return el('button', { class: 'offRow', disabled: !ok, onclick: () => this._close(of.id) }, h ? portraitImg(h, '') : el('span', { style: 'width:30px' }),
+          el('span', { class: 'n disp' }, of.name), el('span', { class: 's' }, el('b', { style: 'color:var(--brass)' }, h ? h.name : ok ? '비어 있음' : ['', '공', '왕', '황제'][of.rank] + ' 이상'), el('span', {}, of.desc)));
+      }));
+      const k = await this.modal({ title: '관직', body: el('div', {}, el('div', { class: 'muted', style: 'font-size:13px;margin-bottom:8px' }, '관직을 고르고 맡길 장수를 정합니다. 관직을 받은 장수는 능력이 오르고 충성이 15 오릅니다. 높은 관직은 칭호(공·왕·황제)를 올리거나 천자를 모셔야 열립니다.'), list), cancel: 'x', buttons: [{ k: 'x', label: '닫기' }] });
+      if (!k || k === 'x' || !OFFICE[k]) break;
+      const of = OFFICE[k], key = Object.keys(of.b)[0];
+      const offs = factionOfficers(c.f).filter(o => !isRuler(o)).sort((a, b) => b[key] - a[key]);
+      if (!offs.length) { this.toast('맡길 장수가 없습니다'); break; }
+      let sel = null;
+      const pl = el('div', { class: 'pickList' }, offs.map(o => { const row = el('button', { class: 'offRow', onclick: () => { $$('.pickList .offRow').forEach(x => x.classList.remove('on')); row.classList.add('on'); sel = o; } }, portraitImg(o, ''), el('span', { class: 'n disp' }, o.name), el('span', { class: 's' }, el('b', { style: 'color:var(--brass)' }, `${STAT_NAMES[key]} ${o[key]}`), el('span', {}, `${o.office ? OFFICE[o.office].name + ' · ' : ''}${G.cities[o.city].name} · 충성 ${o.loy}`))); return row; }));
+      const k2 = await this.modal({ title: `${of.name}에 앉힐 장수`, body: pl, cancel: 'x', buttons: [{ k: 'x', label: '뒤로' }, { k: 'ok', label: '임명한다', cls: 'pri', check: () => !!sel }] });
+      if (k2 === 'ok' && sel) { appoint(F, of.id, sel); SFX.play('ok'); this.toast(`${eul(sel.name)} ${of.name}에 임명했습니다`); }
+    }
+    this.refresh();
+  },
+  // ── 조정: 칭호
+  async cmdTitle(c) {
+    const F = G.factions[c.f], r = rankOf(F);
+    if (r >= 3) { this.toast(`이미 ${F.title}입니다`); return; }
+    const nr = r + 1, why = titleNeed(F, nr);
+    if (why.length) { await this.alert({ title: `${RANK_NAME[nr]}에 오르려면`, text: why.map(x => '• ' + x).join('\n') + '\n\n칭호를 올리면 장수들의 충성이 오르고 인재가 모이며, 더 높은 관직을 내릴 수 있습니다. 황제에 오르면 다른 세력들이 반발합니다.' }); return; }
+    let nation = F.nation;
+    if (!nation) {
+      nation = await this.choose({ title: '나라 이름', text: '새 나라의 이름을 고르세요.', options: NATION_NAMES.map(n => ({ k: n, label: n })) });
+      if (!nation) return;
+    }
+    const ok = await this.confirm(`${nation}${nr === 3 ? ' 황제' : RANK_NAME[nr]}에 오를까요?${nr === 3 ? (empHolder() === F.id ? '\n천자에게서 선양을 받아 한 왕조를 끝냅니다.' : '') + '\n다른 세력들이 크게 반발합니다.' : ''}`);
+    if (!ok) return;
+    setRank(F, nr, nation); SFX.play('gong');
+    await this.alert({ title: F.title, portrait: G.officers[F.ruler], text: nr === 3 ? `${G.officers[F.ruler].name}이(가) 하늘에 제사를 올리고 ${F.title}의 자리에 올랐다.` : `${G.officers[F.ruler].name}이(가) ${F.title}에 올랐다. 신하들이 만세를 불렀다.` });
+    this.refresh();
+  },
+  // ── 조정: 칙명
+  async cmdEdict(c) {
+    const F = G.factions[c.f];
+    if (!edictReady(F)) { this.toast(`칙명은 1년에 한 번 내릴 수 있습니다 (${12 - (mIdx() - F.edictAt)}달 남음)`); return; }
+    const cands = G.factions.filter(f => f.alive && f.id !== F.id);
+    const k = await this.choose({ title: '칙명', text: '천자의 이름으로 한 세력을 역적으로 삼습니다. 2년 동안 다른 세력들이 그들을 미워하고, 그들의 장수 충성이 떨어지며, 인재가 그들에게 가지 않습니다.', options: cands.map(f => ({ k: String(f.id), label: `${f.name}군 (성 ${citiesOf(f.id).length})${isRebel(f.id) ? ' · 이미 역적' : ''}` })) });
+    if (k == null || k === '') return;
+    issueEdict(F, +k); SFX.play('gong'); this.refresh();
   },
   async cmdDev(c, kind) {
     const stat = kind === 'order' ? 'war' : 'pol';
@@ -5041,6 +5118,7 @@ const UI = {
     const sks = skillsOf(o);
     const traits = el('div', { class: 'traits' },
       sks.length ? el('div', { class: 'trRow' }, el('span', { class: 'trLab' }, '특기'), sks.map(k => el('span', { class: 'skill', title: SKILL_DEF[k], tabindex: '0' }, k))) : null,
+      o.office ? el('div', { class: 'trRow' }, el('span', { class: 'trLab' }, '관직'), el('span', { class: 'skill' }, OFFICE[o.office].name), el('span', { class: 'trDesc' }, OFFICE[o.office].desc)) : null,
       (o.sworn || []).length ? el('div', { class: 'trRow' }, el('span', { class: 'trLab' }, '의형제'), o.sworn.map(id => el('span', { class: 'skill' }, G.officers[id].name))) : null,
       (o.items || []).length ? el('div', { class: 'trRow' }, el('span', { class: 'trLab' }, '보물'), o.items.map(id => el('span', { class: 'item', title: `${ITEM[id].kind} · ${ITEM[id].desc}`, tabindex: '0' }, ITEM[id].name))) : null,
       sks.length ? el('div', { class: 'trDesc' }, sks.map(k => el('div', {}, el('b', {}, k), ' ', SKILL_DEF[k]))) : null);
@@ -5057,10 +5135,11 @@ const UI = {
       return { f, n: cs.length, o: offs.length, t: cs.reduce((a, c) => a + c.troops, 0) };
     }).sort((a, b) => b.n - a.n || b.t - a.t);
     const tbl = el('div', { style: 'overflow-x:auto' }, el('table', { style: 'width:100%;border-collapse:collapse;font-size:14px' },
-      el('thead', {}, el('tr', { class: 'muted', style: 'text-align:left' }, ['세력', '군주', '성', '장수', '병력', '나와의 관계'].map(h => el('th', { style: 'padding:4px 6px;font-weight:400' }, h)))),
+      el('thead', {}, el('tr', { class: 'muted', style: 'text-align:left' }, ['세력', '군주', '칭호·정책', '성', '장수', '병력', '나와의 관계'].map(h => el('th', { style: 'padding:4px 6px;font-weight:400' }, h)))),
       el('tbody', {}, rows.map(r => el('tr', { style: 'border-top:1px solid var(--line)' },
         el('td', { style: 'padding:5px 6px;white-space:nowrap' }, el('span', { class: 'dot', style: `background:${r.f.color};margin-right:6px` }), el('span', { class: 'disp' }, r.f.name)),
         el('td', { style: 'padding:5px 6px' }, G.officers[r.f.ruler].name),
+        el('td', { style: 'padding:5px 6px;font-size:12px' }, [r.f.title, empHolder() === r.f.id ? '천자를 모심' : null, isRebel(r.f.id) ? '역적' : null, policyOf(r.f.id) ? policyOf(r.f.id).name : null].filter(Boolean).join(' · ') || '—'),
         el('td', { class: 'num', style: 'padding:5px 6px' }, r.n), el('td', { class: 'num', style: 'padding:5px 6px' }, r.o), el('td', { class: 'num', style: 'padding:5px 6px' }, fmt(r.t)),
         el('td', { style: 'padding:5px 6px' }, P && P.st === 'on' ? (r.f.id === P.f ? '아군' : isAlly(r.f.id, P.f) ? '동맹' : `우호 ${getRel(r.f.id, P.f)}`) : '—'))))));
     this.modal({ title: '천하의 세력', wide: true, body: tbl, cancel: 'x', buttons: [{ k: 'x', label: '닫기' }] });
@@ -5267,6 +5346,203 @@ function missionCard() {
     el('div', {}, el('b', {}, '임무 '), missionText(M)),
     el('div', { class: 'bar', style: 'margin-top:4px' }, el('i', { style: `width:${prog / need * 100}%` })),
     el('div', { class: 'muted', style: 'font-size:12px' }, `${prog} / ${need} · 남은 기한 ${Math.max(0, left)}달`)));
+}
+
+// ---- 09c-court.js
+// ===== 조정과 세상: 천자·칭호·관직·칙명, 세력 정책, 이민족, 재해, 관문, 정사/연의 =====
+const YANYI = () => !G || G.yanyi !== false;
+const YY = (yanyi, zhengshi) => YANYI() ? yanyi : zhengshi;
+
+// ── 천자(헌제): 천자가 머무는 성을 가진 세력이 천자를 끼고 있음
+function empHolder() { if (!G.emp || !G.emp.alive) return -1; return G.cities[G.emp.city].f; }
+function setEmpCity(name) { if (G.emp && G.emp.alive) G.emp.city = CITY_BY_NAME[name]; }
+function initEmperor(g, year) {
+  g.emp = year >= 220 ? { alive: false, city: CITY_BY_NAME['허창'] } : { alive: true, city: CITY_BY_NAME[year < 191 ? '낙양' : year < 196 ? '장안' : '허창'] };
+}
+
+// ── 칭호: 0 없음, 1 공, 2 왕, 3 황제
+const RANK_NAME = ['', '공', '왕', '황제'];
+const NATION_NAMES = ['위', '한', '촉한', '오', '연', '초', '제', '양', '진', '조'];
+function rankOf(F) { return F.rank || 0; }
+function titleNeed(F, r) {
+  const n = citiesOf(F.id).length, need = [0, 6, 10, 15][r];
+  const wait = r > 1 && F.rankAt != null ? mIdx() - F.rankAt : 99;
+  const emp = empHolder();
+  const why = [];
+  if (n < need) why.push(`성 ${need}개 이상 (지금 ${n})`);
+  if (r > 1 && wait < 12) why.push(`앞 칭호에서 1년이 지나야 함 (${12 - wait}달 남음)`);
+  if (r === 3 && G.emp && G.emp.alive && emp !== F.id) why.push('한의 천자가 살아 있음 (천자를 모시면 선양을 받을 수 있음)');
+  return why;
+}
+function setRank(F, r, nation) {
+  F.rank = r; F.rankAt = mIdx(); if (nation) F.nation = nation;
+  const nm = F.nation || '';
+  F.title = r === 3 ? `${nm} 황제` : `${nm}${RANK_NAME[r]}`;
+  for (const o of factionOfficers(F.id)) if (!isRuler(o)) o.loy = Math.min(100, o.loy + 5 * r);
+  G.officers[F.ruler].fame += 10 * r;
+  if (r === 3) {
+    if (G.emp && G.emp.alive && empHolder() === F.id) { G.emp.alive = false; logMsg(`한의 천자가 ${F.name}에게 자리를 물려주었습니다. 한 왕조가 끝났습니다`, 'big'); }
+    for (const o of G.factions) if (o.alive && o.id !== F.id) addRel(o.id, F.id, -15);
+  }
+  logMsg(`${F.name}이(가) ${F.title}에 올랐습니다`, 'big');
+}
+// 역사 사건의 칭호도 단계와 맞춤
+function rankFromTitle(t) { return /황제/.test(t) ? 3 : /왕/.test(t) ? 2 : /공/.test(t) ? 1 : 0; }
+
+// ── 관직
+const OFFICES = [
+  { id: 'gunsa', name: '군사', rank: 0, b: { int: 4 }, desc: '지력 +4' },
+  { id: 'pyogi', name: '표기장군', rank: 0, b: { lead: 3, war: 2 }, desc: '통솔 +3 · 무력 +2' },
+  { id: 'geogi', name: '거기장군', rank: 0, b: { lead: 2, war: 3 }, desc: '통솔 +2 · 무력 +3' },
+  { id: 'jeon', name: '전장군', rank: 0, b: { lead: 2, war: 2 }, desc: '통솔 +2 · 무력 +2' },
+  { id: 'hu', name: '후장군', rank: 0, b: { lead: 2, war: 2 }, desc: '통솔 +2 · 무력 +2' },
+  { id: 'jwa', name: '좌장군', rank: 0, b: { lead: 2, war: 2 }, desc: '통솔 +2 · 무력 +2' },
+  { id: 'u', name: '우장군', rank: 0, b: { lead: 2, war: 2 }, desc: '통솔 +2 · 무력 +2' },
+  { id: 'sangseo', name: '상서령', rank: 1, b: { pol: 4 }, desc: '정치 +4' },
+  { id: 'daejang', name: '대장군', rank: 1, b: { lead: 5 }, desc: '통솔 +5' },
+  { id: 'sado', name: '사도', rank: 2, b: { pol: 3, cha: 3 }, desc: '정치 +3 · 매력 +3' },
+  { id: 'seungsang', name: '승상', rank: 2, b: { int: 3, pol: 4 }, desc: '지력 +3 · 정치 +4' },
+  { id: 'daesama', name: '대사마', rank: 3, b: { lead: 4, war: 2 }, desc: '통솔 +4 · 무력 +2' },
+];
+const OFFICE = Object.fromEntries(OFFICES.map(o => [o.id, o]));
+const officeOK = (F, of) => rankOf(F) >= of.rank || (of.rank <= 2 && empHolder() === F.id);
+function officeOf(o) { return o.office ? OFFICE[o.office] : null; }
+function removeOffice(o) {
+  if (!o || !o.office) return;
+  for (const k in o.offB || {}) o[k] -= o.offB[k];
+  const F = G.factions[o.offF]; if (F && F.offices) delete F.offices[o.office];
+  o.office = null; o.offB = null; o.offF = null;
+}
+function appoint(F, offId, o) {
+  F.offices = F.offices || {};
+  const cur = F.offices[offId]; if (cur != null) removeOffice(G.officers[cur]);
+  removeOffice(o);
+  const of = OFFICE[offId], add = {};
+  for (const k in of.b) { const v = Math.max(0, Math.min(of.b[k], 100 - o[k])); o[k] += v; add[k] = v; }
+  o.office = offId; o.offB = add; o.offF = F.id; F.offices[offId] = o.id;
+  if (!isRuler(o)) o.loy = Math.min(100, o.loy + 15);
+}
+function cleanupOffices() {
+  for (const o of G.officers) if (o.office && (o.st !== 'on' || o.f !== o.offF || !G.factions[o.offF].alive || isRuler(o))) removeOffice(o);
+}
+function aiOffices(F) {
+  if (pOf(F.id) && isP(G.officers[F.ruler])) return;
+  F.offices = F.offices || {};
+  const pool = factionOfficers(F.id).filter(o => !isRuler(o) && !o.office && !isP(o));
+  for (const of of OFFICES) {
+    if (F.offices[of.id] != null || !officeOK(F, of)) continue;
+    const k = Object.keys(of.b)[0];
+    pool.sort((a, b) => b[k] - a[k]);
+    const o = pool.shift(); if (!o) break;
+    appoint(F, of.id, o);
+  }
+}
+
+// ── 칙명: 천자를 낀 세력이 적을 역적으로 몰아붙임
+const isRebel = f => !!(G.rebel && G.rebel[f] > mIdx());
+function issueEdict(F, t) {
+  (G.rebel = G.rebel || {})[t] = mIdx() + 24; F.edictAt = mIdx();
+  for (const o of G.factions) if (o.alive && o.id !== t) addRel(o.id, t, -15);
+  for (const o of factionOfficers(t)) if (!isRuler(o) && !isP(o)) o.loy = Math.max(0, o.loy - 6);
+  logMsg(`천자의 칙명: ${G.factions[t].name}군을 역적으로 삼아 천하에 토벌을 명했습니다`, 'big');
+}
+const edictReady = F => F.edictAt == null || mIdx() - F.edictAt >= 12;
+
+// ── 세력 고유 정책
+const POLICY = {
+  cc: { name: '둔전제', desc: '병사가 농사를 지어 쌀 수확 +20%', food: 1.2 },
+  lb: { name: '인덕', desc: '인재가 모여듦: 등용 확률 +6%', hire: .06 },
+  ys: { name: '사세삼공', desc: '4대에 걸친 명문가: 등용 확률 +6%', hire: .06 },
+  sj: { name: '강동 수군', desc: '수전에서 공격 +15%, 산월의 침입이 줄어듦', naval: 1.15 },
+  md: { name: '서량 철기', desc: '기병 공격 +10%, 강족과 친함', cav: 1.1 },
+  dz: { name: '서량 정예', desc: '기병 공격 +10%', cav: 1.1 },
+  gz: { name: '백마의종', desc: '기병 공격 +10%', cav: 1.1 },
+  zl: { name: '오두미도', desc: '치안이 60 아래로 떨어지지 않음', order: 60 },
+  ly: { name: '천부지국', desc: '험한 익주: 성벽 수리 효과 +30%', wall: 1.3 },
+};
+const policyOf = f => f >= 0 && G.factions[f] ? POLICY[G.factions[f].key] || null : null;
+
+// ── 이민족
+const BARBS = [
+  { name: '강족', cities: ['무위', '천수', '안정'], friend: 'md' },
+  { name: '오환', cities: ['계', '북평', '양평'] },
+  { name: '남만', cities: ['건녕'], gone: () => G.ev && G.ev.nanman },
+  { name: '산월', cities: ['회계', '오', '건업'], half: 'sj' },
+];
+async function monthlyBarbarians() {
+  G.barb = G.barb || {};
+  for (const b of BARBS) {
+    if (b.gone && b.gone()) continue;
+    if ((G.barb[b.name] || 0) > mIdx()) continue;
+    const cs = b.cities.map(cityN).filter(c => c.f >= 0 && !(b.friend && G.factions[c.f].key === b.friend));
+    if (!cs.length) continue;
+    let p = .015; if (b.half && cs.some(c => G.factions[c.f].key === b.half)) p /= 2;
+    if (!chance(p)) continue;
+    const c = pick(cs), gov = c.gov >= 0 ? G.officers[c.gov] : null;
+    const mine = me() && me().st === 'on' && c.f === me().f && playerControls(c);
+    if (mine) {
+      const k = await UI.choose({ title: `${b.name}의 침입`, text: `${b.name}이 ${c.name} 경계를 넘어 노략질을 하고 있습니다.\n\n회유하면 금 300을 주고 2년 동안 평화를 얻으며 그들 중 일부가 병사가 됩니다. 토벌하면 병사를 잃지만 명성을 얻고 1년 동안 잠잠해집니다.`, options: [{ k: 'calm', label: `회유한다 (금 300, 지금 ${fmt(c.gold)})`, disabled: c.gold < 300 }, { k: 'war', label: '군사를 내어 토벌한다' }] });
+      if (k === 'calm' && c.gold >= 300) { c.gold -= 300; c.troops = Math.min(troopMax(c), c.troops + 1500); G.barb[b.name] = mIdx() + 24; UI.toast(`${b.name}을 회유했습니다. 병사 1,500이 합류했습니다`); continue; }
+      c.troops = Math.round(c.troops * .92); G.officers[G.factions[c.f].ruler].fame += 5; G.barb[b.name] = mIdx() + 12; UI.toast(`${b.name}을 토벌했습니다. 명성 +5`); continue;
+    }
+    if (gov && gov.war >= 80) { gov.fame += 3; c.troops = Math.round(c.troops * .96); G.barb[b.name] = mIdx() + 12; continue; }
+    c.troops = Math.round(c.troops * (.8 + rand() * .1)); c.order = Math.max(0, c.order - 10); c.pop = Math.round(c.pop * .97);
+    G.barb[b.name] = mIdx() + 6;
+  }
+}
+
+// ── 재해 (해마다 1월)
+const REGIONS = {
+  북방: ['업', '남피', '진양', '계', '북평', '평원'], 중원: ['허창', '진류', '복양', '여남', '낙양', '완'], 서주: ['소패', '하비', '북해', '수춘'],
+  관중: ['장안', '홍농', '안정', '천수', '무위'], 형주: ['양양', '강릉', '신야', '강하', '장사', '무릉', '영릉', '계양'], 강동: ['건업', '오', '회계', '여강', '시상'], 익주: ['성도', '자동', '강주', '한중', '건녕'],
+};
+function yearlyDisaster() {
+  let kind = null, reg = null;
+  if (HIST() && G.year === 217) { kind = 'plague'; reg = '중원'; }
+  else if (HIST() && G.year === 209) { kind = 'plague'; reg = '형주'; }
+  else if (chance(.28)) { kind = pick(['plague', 'locust', 'locust', 'flood']); reg = pick(Object.keys(REGIONS)); }
+  if (!kind) return;
+  const cs = REGIONS[reg].map(cityN);
+  const nm = { plague: '역병', locust: '메뚜기 떼', flood: '큰물' }[kind];
+  for (const c of cs) {
+    if (kind === 'plague') { c.troops = Math.round(c.troops * .88); c.pop = Math.round(c.pop * .94); }
+    if (kind === 'locust') c.food = Math.round(c.food * .65);
+    if (kind === 'flood') { c.agri = Math.round(c.agri * .85); c.wall = Math.max(0, c.wall - 50); }
+  }
+  if (kind === 'plague' && G.year === 217 && HIST()) for (const n of ['진림']) { const o = byName(n); if (o && o.st !== 'dead' && !isP(o)) killOfficer(o, `${n}이(가) 역병으로 세상을 떠났습니다`); }
+  const mineHit = me() && me().st === 'on' && cs.some(c => c.f === me().f);
+  logMsg(`${reg}에 ${nm}이(가) 돌았습니다`, mineHit ? 'big' : '');
+  if (mineHit) UI.queue({ title: nm, text: `${reg} 지방(${cs.filter(c => c.f === me().f).map(c => c.name).join('·')})에 ${nm}이(가) 휩쓸고 지나갔습니다.\n${{ plague: '병사와 백성이 많이 죽었습니다.', locust: '곳간의 쌀을 갉아먹었습니다.', flood: '논밭과 성벽이 쓸려 갔습니다.' }[kind]}` });
+}
+
+// ── 관문: 이 성을 칠 때 전장이 좁은 고갯길이 됨
+const PASSES = { 낙양: '호로관', 장안: '동관', 한중: '양평관', 자동: '검각' };
+
+// ── 정사 모드 능력치 (연의에서 부풀려지거나 깎인 인물)
+const ZHENGSHI_ADJ = { 관우: { war: -4 }, 장비: { war: -3 }, 조운: { war: -3, lead: 2 }, 제갈량: { lead: -4, int: -2, pol: 2 }, 주유: { lead: 3, int: 2 }, 손견: { war: 3, lead: 2 }, 마초: { war: -2 }, 황충: { war: -3 }, 위연: { lead: 3 }, 방통: { int: -3 }, 화웅: { war: -8 }, 장료: { war: 2, lead: 2 }, 순욱: { pol: 2 }, 노숙: { int: 3, lead: 2 }, 여몽: { int: 2 }, 강유: { int: -3 }, 사마의: { lead: 2 } };
+function applyZhengshi(g) {
+  for (const o of g.officers) { const a = ZHENGSHI_ADJ[o.name]; if (a) for (const k in a) o[k] = clamp(o[k] + a[k], 1, 100); }
+}
+
+// ── 매달 / 해마다
+async function monthlyCourt() {
+  cleanupOffices();
+  // 천자를 손에 넣은 세력이 바뀌면 알림
+  const h = empHolder();
+  if (G.emp && G.emp.alive && h !== G.empLast) { if (h >= 0 && G.empLast != null) logMsg(`${G.factions[h].name}군이 천자를 손에 넣었습니다`, 'big'); G.empLast = h; }
+  // 천자를 끼면 매달 명성이 조금씩
+  if (h >= 0) G.officers[G.factions[h].ruler].fame += 1;
+  // AI의 칙명
+  if (h >= 0 && !pOf(h) && G.month === 3 && edictReady(G.factions[h]) && chance(.5)) {
+    const rivals = G.factions.filter(f => f.alive && f.id !== h && facAdj(h, f.id) && !isAlly(h, f.id)).sort((a, b) => citiesOf(b.id).length - citiesOf(a.id).length);
+    if (rivals[0]) issueEdict(G.factions[h], rivals[0].id);
+  }
+  await monthlyBarbarians();
+  for (const c of G.cities) { const pol = policyOf(c.f); if (pol && pol.order) c.order = Math.max(c.order, pol.order); }
+}
+function yearlyCourt() {
+  for (const F of G.factions) if (F.alive) aiOffices(F);
+  yearlyDisaster();
 }
 
 // ---- 10-map.js
@@ -5542,6 +5818,10 @@ const MapView = {
     const w = sz * 2.3, h = sz * 1.15, bx = c.x - w / 2, by = c.y - h / 2 + 2;
     // 그림자
     x.fillStyle = 'rgba(30,20,10,.35)'; x.beginPath(); x.ellipse(c.x + 2, by + h + 1, w * .62, h * .35, 0, 0, 7); x.fill();
+    if (G.emp && G.emp.alive && G.emp.city === c.id) { // 천자가 머무는 성
+      const cx = c.x + w / 2 + 3, cy = by - 4; x.fillStyle = '#f2c94c'; x.strokeStyle = '#5a3a0a'; x.lineWidth = 1;
+      x.beginPath(); x.moveTo(cx - 6, cy + 4); x.lineTo(cx - 6, cy - 2); x.lineTo(cx - 3, cy + 1); x.lineTo(cx, cy - 4); x.lineTo(cx + 3, cy + 1); x.lineTo(cx + 6, cy - 2); x.lineTo(cx + 6, cy + 4); x.closePath(); x.fill(); x.stroke();
+    }
     // 내 세력 성은 은은한 빛
     if (P && P.st === 'on' && c.f === P.f) { const g = x.createRadialGradient(c.x, c.y, 2, c.x, c.y, w * 1.1); g.addColorStop(0, 'rgba(255,225,140,.45)'); g.addColorStop(1, 'rgba(255,225,140,0)'); x.fillStyle = g; x.beginPath(); x.arc(c.x, c.y, w * 1.1, 0, 7); x.fill(); }
     // 성벽
@@ -6599,9 +6879,9 @@ function startPlaying(isNew) {
 }
 
 const Setup = {
-  mode: null, tab: 'all', stats: null, diff: +(store('gunung.diff') ?? 1), hist: store('gunung.hist') !== '0', scen: SCENARIOS[store('gunung.scen')] ? +store('gunung.scen') : 190,
+  mode: null, tab: 'all', stats: null, diff: +(store('gunung.diff') ?? 1), hist: store('gunung.hist') !== '0', yanyi: store('gunung.yanyi') !== '0', scen: SCENARIOS[store('gunung.scen')] ? +store('gunung.scen') : 190,
   open() {
-    newGame({ diff: this.diff, hist: this.hist, scen: this.scen }); // 고르기용 상태
+    newGame({ diff: this.diff, hist: this.hist, scen: this.scen, yanyi: this.yanyi }); // 고르기용 상태
     showScreen('scrSetup');
     this.renderModes();
   },
@@ -6615,7 +6895,9 @@ const Setup = {
         el('div', { class: 'tabs', role: 'radiogroup', 'aria-label': '난이도' }, DIFFS.map((d, i) => el('button', { class: 'tab' + (this.diff === i ? ' on' : ''), role: 'radio', 'aria-checked': this.diff === i ? 'true' : 'false', onclick: () => { this.diff = i; G.diff = i; store('gunung.diff', String(i)); this.renderModes(); } }, d.name))),
         el('div', { class: 'muted', style: 'font-size:13px' }, DIFFS[this.diff].desc),
         el('div', { class: 'tabs', role: 'radiogroup', 'aria-label': '역사 흐름', style: 'margin-top:6px' }, [[true, '역사를 따라'], [false, '자유롭게']].map(([v, n]) => el('button', { class: 'tab' + (this.hist === v ? ' on' : ''), role: 'radio', 'aria-checked': this.hist === v ? 'true' : 'false', onclick: () => { this.hist = v; store('gunung.hist', v ? '1' : '0'); this.open(); } }, n))),
-        el('div', { class: 'muted', style: 'font-size:13px' }, this.hist ? '제후들은 역사에서 다투던 지역 안에서 주로 싸우고, 인물은 역사 속 해에 세상을 떠나며, 큰 사건이 역사대로 일어납니다. 내가 고른 인물만은 오래 삽니다.' : '세력권과 역사 속 몰년 없이, 사건 조건만 맞으면 일어납니다.')),
+        el('div', { class: 'muted', style: 'font-size:13px' }, this.hist ? '제후들은 역사에서 다투던 지역 안에서 주로 싸우고, 인물은 역사 속 해에 세상을 떠나며, 큰 사건이 역사대로 일어납니다. 내가 고른 인물만은 오래 삽니다.' : '세력권과 역사 속 몰년 없이, 사건 조건만 맞으면 일어납니다.'),
+        el('div', { class: 'tabs', role: 'radiogroup', 'aria-label': '정사·연의', style: 'margin-top:6px' }, [[true, '연의'], [false, '정사']].map(([v, n]) => el('button', { class: 'tab' + (this.yanyi === v ? ' on' : ''), role: 'radio', 'aria-checked': this.yanyi === v ? 'true' : 'false', onclick: () => { this.yanyi = v; store('gunung.yanyi', v ? '1' : '0'); this.open(); } }, n))),
+        el('div', { class: 'muted', style: 'font-size:13px' }, this.yanyi ? '소설 「삼국지연의」처럼: 영웅들의 무용이 빛나고 일기토가 잦으며, 칠성단·오관참육장 같은 장면이 나옵니다.' : '역사서 「삼국지」(정사)처럼: 능력치가 기록에 가깝게 조정되고, 일기토가 드물며, 연의에만 있는 장면은 실제 기록으로 바뀝니다.')),
       el('div', { class: 'modeCards' },
         card('ruler', '군주로 시작', '세력 하나를 맡아 모든 성을 다스립니다. 고전적인 방식.'),
         card('officer', '장수로 시작', '군주 밑의 장수나 재야 인물이 되어 출세하거나 떠돌거나 독립합니다.'),
@@ -6713,6 +6995,8 @@ function showHelp() {
     el('p', { style: 'margin:0' }, el('b', {}, '장수 '), '한 달에 행동력 3. 근무로 공을 쌓으면 태수가 됩니다. 태수가 되면 「독립」해 군주가 될 수도 있습니다. 「하야」하면 재야로 돌아갑니다.'),
     el('p', { style: 'margin:0' }, el('b', {}, '재야 '), '어디든 떠돌 수 있습니다. 「탐색」으로 재야 인물을 만나고 「친교」로 사귀세요. 빈 땅(회색 성)에서 「거병」하면 친한 재야 인물이 따라옵니다. 남의 성에서는 「사관」을 청할 수 있습니다.'),
     el('p', { style: 'margin:0' }, el('b', {}, '전투 '), '공격군은 30일 안에 본성(붉은 지붕 칸)을 차지하거나 수비군을 무너뜨려야 합니다. 총대장(노란 점)이 쓰러지면 그쪽이 집니다. 보병은 기병에 강하고, 기병은 빠르며, 궁병은 두 칸 밖에서 쏩니다. 지력 45 이상이면 화계와 혼란을 쓸 수 있고, 불은 바람을 타고 숲으로 번집니다. 적 옆에 붙으면 일기토를 청할 수 있습니다.'),
+    el('p', { style: 'margin:0' }, el('b', {}, '조정 '), '군주는 「조정」에서 장수에게 관직(군사·대장군·승상…)을 내려 능력과 충성을 올리고, 성이 6·10·15개가 되면 공·왕·황제에 오를 수 있습니다. 천자(헌제)가 머무는 성(왕관 표시)을 가지면 「칙명」으로 적을 역적으로 몰 수 있고, 황제에 오를 때 선양을 받습니다. 세력마다 둔전제·인덕·서량 철기 같은 고유 정책이 있습니다.'),
+    el('p', { style: 'margin:0' }, el('b', {}, '세상 '), '변방에는 강족·오환·남만·산월이 쳐들어오고(회유하거나 토벌), 해마다 역병·메뚜기·큰물이 들기도 합니다. 호로관(낙양)·동관(장안)·양평관(한중)·검각(자동)을 칠 때는 좁은 관문에서 싸웁니다. 설정에서 「연의」와 「정사」를 고를 수 있습니다.'),
     el('p', { style: 'margin:0' }, el('b', {}, '진형·병종·원군 '), '싸움이 시작될 때 총대장의 통솔에 따라 진형(어린·방원·봉시·학익)을 고릅니다. 노병은 멀리서 세게 쏘지만 붙은 적은 못 쏘고, 충차는 성벽을 허뭅니다. 성이 공격받으면 이웃 성이나 동맹이 원군을 보내기도 합니다.'),
     el('p', { style: 'margin:0' }, el('b', {}, '장수의 삶 '), '「술집」에서 숨은 인재를 만나거나 보물·전쟁 소문을 듣습니다. 친밀이 80을 넘으면 의형제를 맺을 수 있고, 의형제는 싸움터에서 힘을 북돋우며 떠날 때 함께합니다. 장수로 있으면 군주가 석 달 기한의 임무를 내립니다. 군주는 외교에서 「혼인 동맹」(6년)을 맺을 수 있습니다. 메뉴에서 배경 음악을 끄고 켭니다.'),
     el('p', { style: 'margin:0' }, el('b', {}, '수전 '), '적벽대전은 장강 위에서 배로 싸웁니다. 수군 특기가 없는 북쪽 군사는 뱃멀미로 힘이 빠지지만, 배를 쇠사슬로 묶으면 멀미가 사라지는 대신 불이 묶인 배를 타고 번집니다. 동남풍이 불면 불길은 서쪽으로 갑니다.'),

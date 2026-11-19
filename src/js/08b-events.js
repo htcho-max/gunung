@@ -87,7 +87,7 @@ const EVENTS = [
       ly.wall = Math.round(ly.wall * .6);
       const move = Math.round(ly.troops * .5); ly.troops -= move; ca.troops += move;
       for (const o of [d, li].filter(o => onIn(o, d.f))) { if (ly.gov === o.id) ly.gov = -1; o.city = ca.id; }
-      F.capital = ca.id;
+      F.capital = ca.id; setEmpCity('장안');
       d.fame -= 5; d.cha = Math.max(1, d.cha - 3);
       logMsg('동탁이 낙양을 불태우고 장안으로 천도했습니다', 'big');
       assignGovs();
@@ -236,6 +236,7 @@ const EVENTS = [
       ], options: isP(c) ? [{ k: 'yes', label: '천자를 맞이한다' }, { k: 'no', label: '천자는 짐이 될 뿐이다' }] : null });
       if (ch === 'no') return;
       const cap = cityN('허창').f === c.f ? cityN('허창') : cityN('낙양');
+      if (G.emp && G.emp.alive) G.emp.city = cap.id;
       cap.gold += 1500; cap.food += 8000;
       for (const x of G.cities) if (x.f === c.f) x.order = Math.min(100, x.order + 10);
       c.fame += 20; G.emperor = c.f;
@@ -416,7 +417,7 @@ const EVENTS = [
       const oc = G.cities[other.city]; if (oc.gov === other.id) oc.gov = -1; other.city = c.id;
       const NF = splitOff(other, c, F.id, []);
       addFocus(NF.id, F.id, 24); addFocus(F.id, NF.id, 24);
-      logMsg(`${eun(other.name)} ${r.name}와 갈라서서 ${c.name}에서 따로 섰습니다`, 'big');
+      setEmpCity('낙양'); logMsg(`${eun(other.name)} ${r.name}와 갈라서서 ${c.name}에서 따로 섰습니다`, 'big');
     },
   },
 

@@ -2,7 +2,7 @@
 const COST = { agri: 50, comm: 50, order: 20, wall: 80, train: 0, search: 0 };
 const DEV_NAME = { agri: '개간', comm: '상업', order: '치안', wall: '성벽' };
 
-function devMul(o, kind) { let m = hasSkill(o, '치정') ? 1.3 : 1; if (kind === 'agri' && hasSkill(o, '둔전')) m *= 1.5; if (kind === 'comm' && hasSkill(o, '상재')) m *= 1.5; if (kind === 'wall' && hasSkill(o, '축성')) m *= 1.5; return m; }
+function devMul(o, kind) { let m = hasSkill(o, '치정') ? 1.3 : 1; if (kind === 'agri' && hasSkill(o, '둔전')) m *= 1.5; if (kind === 'comm' && hasSkill(o, '상재')) m *= 1.5; if (kind === 'wall' && hasSkill(o, '축성')) m *= 1.5; if (kind === 'wall' && policyOf(o.f)?.wall) m *= policyOf(o.f).wall; return m; }
 function cmdDevelop(o, c, kind) {
   if (c.gold < COST[kind]) return { ok: false, msg: '금이 모자랍니다' };
   let gain = 0, msg = '';
@@ -81,6 +81,7 @@ function hireChance(o, target, f) {
     if (target.tag && target.fk && G.factions.find(x => x.key === target.fk && x.alive && x.id !== f)) p *= .25;
     if (target.tag) { const lord = G.factions.find(x => x.alive && G.officers[x.ruler].tag === target.tag); if (lord && lord.id !== f) p *= .1; }
     if (G.player === target.id) return 0;
+    p += (policyOf(f)?.hire || 0) + rankOf(G.factions[f]) * .03 - (isRebel(f) ? .1 : 0);
     return clamp(p, .04, .9);
   }
   if (target.st !== 'on' || target.f === f || target.f < 0) return 0;

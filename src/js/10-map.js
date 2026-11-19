@@ -270,6 +270,10 @@ const MapView = {
     const w = sz * 2.3, h = sz * 1.15, bx = c.x - w / 2, by = c.y - h / 2 + 2;
     // 그림자
     x.fillStyle = 'rgba(30,20,10,.35)'; x.beginPath(); x.ellipse(c.x + 2, by + h + 1, w * .62, h * .35, 0, 0, 7); x.fill();
+    if (G.emp && G.emp.alive && G.emp.city === c.id) { // 천자가 머무는 성
+      const cx = c.x + w / 2 + 3, cy = by - 4; x.fillStyle = '#f2c94c'; x.strokeStyle = '#5a3a0a'; x.lineWidth = 1;
+      x.beginPath(); x.moveTo(cx - 6, cy + 4); x.lineTo(cx - 6, cy - 2); x.lineTo(cx - 3, cy + 1); x.lineTo(cx, cy - 4); x.lineTo(cx + 3, cy + 1); x.lineTo(cx + 6, cy - 2); x.lineTo(cx + 6, cy + 4); x.closePath(); x.fill(); x.stroke();
+    }
     // 내 세력 성은 은은한 빛
     if (P && P.st === 'on' && c.f === P.f) { const g = x.createRadialGradient(c.x, c.y, 2, c.x, c.y, w * 1.1); g.addColorStop(0, 'rgba(255,225,140,.45)'); g.addColorStop(1, 'rgba(255,225,140,0)'); x.fillStyle = g; x.beginPath(); x.arc(c.x, c.y, w * 1.1, 0, 7); x.fill(); }
     // 성벽

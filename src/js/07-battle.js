@@ -78,6 +78,10 @@ function makeBattle(opts) {
     for (let i = 0; i < BW * BH; i++) { const q = tQ(i); tiles[i].t = q <= 1 ? (R() < .3 ? 'forest' : 'plain') : q <= 11 ? 'water' : (R() < .25 ? 'forest' : 'plain'); }
     for (const r of [0, 1, 9, 10]) if (R() < .6) tiles[tIdx(14 + (R() < .5 ? 1 : 0), r)].t = 'mount';
   }
+  const passName = !opts.naval && PASSES[G.cities[cityId]?.name];
+  if (passName) { // 관문: 양옆이 산으로 막힌 좁은 길
+    for (let q = 6; q <= 10; q++) for (let r = 0; r < BH; r++) if (r <= 3 || r >= 7) tiles[tIdx(q, r)].t = 'mount'; else if (tiles[tIdx(q, r)].t === 'mount' || tiles[tIdx(q, r)].t === 'river') tiles[tIdx(q, r)].t = 'plain';
+  }
   tiles[keep].t = 'keep';
   for (const n of hexNb(keep)) tiles[n].t = 'castle';
   const B = {
@@ -85,6 +89,7 @@ function makeBattle(opts) {
     attF, defF, cityId, fromId, food: [attFood, c.food], over: false, result: null,
     fx: [], captives: [], killed: [], fled: [[], []], interactive: false, auto: false, msgs: [], wall: c.wall,
   };
+  if (passName) { B.pass = passName; B.wall += 150; bmsg(B, `${passName} — 양옆이 깎아지른 산인 좁은 관문이다. 지키는 쪽이 유리하다`, 'big'); }
   if (opts.naval) {
     B.naval = true; B.northSide = 0; B.chained = !!opts.naval.chained; B.kuyuk = !!opts.naval.kuyuk;
     if (opts.naval.eastWind) { B.wind = 3; B.windLock = true; } // 동남풍: 불길이 서쪽(조조 쪽)으로
@@ -178,7 +183,8 @@ function attackTargets(B, u, from = u.at) {
 }
 function estDamage(B, a, d, ranged) {
   let m = powAtk(a) / Math.max(10, powDef(d) * terrDef(B, d, d.at));
-  if (a.type === 'cav' && !ranged) m *= 1.2;
+  if (a.type === 'cav' && !ranged) m *= 1.2 * (policyOf(a.side === 0 ? B.attF : (a.fac ?? B.defF))?.cav || 1);
+  if (B.naval) { const pf = a.side === 0 ? B.attF : (a.fac ?? B.defF); if (policyOf(pf)?.naval) m *= policyOf(pf).naval; }
   if (d.type === 'inf' && a.type === 'cav') m *= .82;
   if (d.type === 'arc' && !ranged) m *= 1.15;
   if (ranged) m *= a.type === 'xbow' ? .95 : .72;
@@ -458,7 +464,7 @@ function aiPlan(B, u) {
     if (o.war >= 70) {
       for (const e of enemies.filter(e => hexDist(e.at, tile) === 1)) {
         const diff = o.war - bOff(e).war;
-        if (diff >= 12) { const v = 380 + diff * 10 + (e.cmd ? 300 : 0); if (v > av && chance(.5)) { av = v; act = { kind: 'duel', target: e.id }; } }
+        if (diff >= 12) { const v = 380 + diff * 10 + (e.cmd ? 300 : 0); if (v > av && chance(YANYI() ? .5 : .22)) { av = v; act = { kind: 'duel', target: e.id }; } }
       }
     }
     u.at = save;

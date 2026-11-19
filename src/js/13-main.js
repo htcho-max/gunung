@@ -24,9 +24,9 @@ function startPlaying(isNew) {
 }
 
 const Setup = {
-  mode: null, tab: 'all', stats: null, diff: +(store('gunung.diff') ?? 1), hist: store('gunung.hist') !== '0', scen: SCENARIOS[store('gunung.scen')] ? +store('gunung.scen') : 190,
+  mode: null, tab: 'all', stats: null, diff: +(store('gunung.diff') ?? 1), hist: store('gunung.hist') !== '0', yanyi: store('gunung.yanyi') !== '0', scen: SCENARIOS[store('gunung.scen')] ? +store('gunung.scen') : 190,
   open() {
-    newGame({ diff: this.diff, hist: this.hist, scen: this.scen }); // 고르기용 상태
+    newGame({ diff: this.diff, hist: this.hist, scen: this.scen, yanyi: this.yanyi }); // 고르기용 상태
     showScreen('scrSetup');
     this.renderModes();
   },
@@ -40,7 +40,9 @@ const Setup = {
         el('div', { class: 'tabs', role: 'radiogroup', 'aria-label': '난이도' }, DIFFS.map((d, i) => el('button', { class: 'tab' + (this.diff === i ? ' on' : ''), role: 'radio', 'aria-checked': this.diff === i ? 'true' : 'false', onclick: () => { this.diff = i; G.diff = i; store('gunung.diff', String(i)); this.renderModes(); } }, d.name))),
         el('div', { class: 'muted', style: 'font-size:13px' }, DIFFS[this.diff].desc),
         el('div', { class: 'tabs', role: 'radiogroup', 'aria-label': '역사 흐름', style: 'margin-top:6px' }, [[true, '역사를 따라'], [false, '자유롭게']].map(([v, n]) => el('button', { class: 'tab' + (this.hist === v ? ' on' : ''), role: 'radio', 'aria-checked': this.hist === v ? 'true' : 'false', onclick: () => { this.hist = v; store('gunung.hist', v ? '1' : '0'); this.open(); } }, n))),
-        el('div', { class: 'muted', style: 'font-size:13px' }, this.hist ? '제후들은 역사에서 다투던 지역 안에서 주로 싸우고, 인물은 역사 속 해에 세상을 떠나며, 큰 사건이 역사대로 일어납니다. 내가 고른 인물만은 오래 삽니다.' : '세력권과 역사 속 몰년 없이, 사건 조건만 맞으면 일어납니다.')),
+        el('div', { class: 'muted', style: 'font-size:13px' }, this.hist ? '제후들은 역사에서 다투던 지역 안에서 주로 싸우고, 인물은 역사 속 해에 세상을 떠나며, 큰 사건이 역사대로 일어납니다. 내가 고른 인물만은 오래 삽니다.' : '세력권과 역사 속 몰년 없이, 사건 조건만 맞으면 일어납니다.'),
+        el('div', { class: 'tabs', role: 'radiogroup', 'aria-label': '정사·연의', style: 'margin-top:6px' }, [[true, '연의'], [false, '정사']].map(([v, n]) => el('button', { class: 'tab' + (this.yanyi === v ? ' on' : ''), role: 'radio', 'aria-checked': this.yanyi === v ? 'true' : 'false', onclick: () => { this.yanyi = v; store('gunung.yanyi', v ? '1' : '0'); this.open(); } }, n))),
+        el('div', { class: 'muted', style: 'font-size:13px' }, this.yanyi ? '소설 「삼국지연의」처럼: 영웅들의 무용이 빛나고 일기토가 잦으며, 칠성단·오관참육장 같은 장면이 나옵니다.' : '역사서 「삼국지」(정사)처럼: 능력치가 기록에 가깝게 조정되고, 일기토가 드물며, 연의에만 있는 장면은 실제 기록으로 바뀝니다.')),
       el('div', { class: 'modeCards' },
         card('ruler', '군주로 시작', '세력 하나를 맡아 모든 성을 다스립니다. 고전적인 방식.'),
         card('officer', '장수로 시작', '군주 밑의 장수나 재야 인물이 되어 출세하거나 떠돌거나 독립합니다.'),
@@ -138,6 +140,8 @@ function showHelp() {
     el('p', { style: 'margin:0' }, el('b', {}, '장수 '), '한 달에 행동력 3. 근무로 공을 쌓으면 태수가 됩니다. 태수가 되면 「독립」해 군주가 될 수도 있습니다. 「하야」하면 재야로 돌아갑니다.'),
     el('p', { style: 'margin:0' }, el('b', {}, '재야 '), '어디든 떠돌 수 있습니다. 「탐색」으로 재야 인물을 만나고 「친교」로 사귀세요. 빈 땅(회색 성)에서 「거병」하면 친한 재야 인물이 따라옵니다. 남의 성에서는 「사관」을 청할 수 있습니다.'),
     el('p', { style: 'margin:0' }, el('b', {}, '전투 '), '공격군은 30일 안에 본성(붉은 지붕 칸)을 차지하거나 수비군을 무너뜨려야 합니다. 총대장(노란 점)이 쓰러지면 그쪽이 집니다. 보병은 기병에 강하고, 기병은 빠르며, 궁병은 두 칸 밖에서 쏩니다. 지력 45 이상이면 화계와 혼란을 쓸 수 있고, 불은 바람을 타고 숲으로 번집니다. 적 옆에 붙으면 일기토를 청할 수 있습니다.'),
+    el('p', { style: 'margin:0' }, el('b', {}, '조정 '), '군주는 「조정」에서 장수에게 관직(군사·대장군·승상…)을 내려 능력과 충성을 올리고, 성이 6·10·15개가 되면 공·왕·황제에 오를 수 있습니다. 천자(헌제)가 머무는 성(왕관 표시)을 가지면 「칙명」으로 적을 역적으로 몰 수 있고, 황제에 오를 때 선양을 받습니다. 세력마다 둔전제·인덕·서량 철기 같은 고유 정책이 있습니다.'),
+    el('p', { style: 'margin:0' }, el('b', {}, '세상 '), '변방에는 강족·오환·남만·산월이 쳐들어오고(회유하거나 토벌), 해마다 역병·메뚜기·큰물이 들기도 합니다. 호로관(낙양)·동관(장안)·양평관(한중)·검각(자동)을 칠 때는 좁은 관문에서 싸웁니다. 설정에서 「연의」와 「정사」를 고를 수 있습니다.'),
     el('p', { style: 'margin:0' }, el('b', {}, '진형·병종·원군 '), '싸움이 시작될 때 총대장의 통솔에 따라 진형(어린·방원·봉시·학익)을 고릅니다. 노병은 멀리서 세게 쏘지만 붙은 적은 못 쏘고, 충차는 성벽을 허뭅니다. 성이 공격받으면 이웃 성이나 동맹이 원군을 보내기도 합니다.'),
     el('p', { style: 'margin:0' }, el('b', {}, '장수의 삶 '), '「술집」에서 숨은 인재를 만나거나 보물·전쟁 소문을 듣습니다. 친밀이 80을 넘으면 의형제를 맺을 수 있고, 의형제는 싸움터에서 힘을 북돋우며 떠날 때 함께합니다. 장수로 있으면 군주가 석 달 기한의 임무를 내립니다. 군주는 외교에서 「혼인 동맹」(6년)을 맺을 수 있습니다. 메뉴에서 배경 음악을 끄고 켭니다.'),
     el('p', { style: 'margin:0' }, el('b', {}, '수전 '), '적벽대전은 장강 위에서 배로 싸웁니다. 수군 특기가 없는 북쪽 군사는 뱃멀미로 힘이 빠지지만, 배를 쇠사슬로 묶으면 멀미가 사라지는 대신 불이 묶인 배를 타고 번집니다. 동남풍이 불면 불길은 서쪽으로 갑니다.'),

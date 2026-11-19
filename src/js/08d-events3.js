@@ -3,10 +3,21 @@ const facK = k => G.factions.find(f => f.key === k && f.alive) || null;
 const rK = k => { const F = facK(k); return F ? G.officers[F.ruler] : null; };
 const anyP = (...Fs) => Fs.some(F => F && pOf(F.id));
 const after = (id, months) => G.evAt && G.evAt[id] != null && mIdx() >= G.evAt[id] + months;
-function setTitle(F, t) { if (F) { F.title = t; logMsg(`${F.name}이(가) ${t}에 올랐습니다`, 'big'); } }
+function setTitle(F, t) { if (F) { F.title = t; F.rank = Math.max(F.rank || 0, rankFromTitle(t)); F.rankAt = mIdx(); F.nation = t.replace(/ ?(황제|왕|공)$/, '').replace(/ \(.*\)$/, '') || F.nation; logMsg(`${F.name}이(가) ${t}에 올랐습니다`, 'big'); } }
 const kill = (o, why) => { if (o && o.st !== 'dead' && !isP(o)) killOfficer(o, why); };
 
 EVENTS.push(
+  // ── 청주병 (192): 조조가 황건의 무리를 거두어 정예로 삼음
+  {
+    id: 'qingzhou',
+    cond: () => { const c = rulerNamed('조조'); return HIST() && c && G.year >= 192 && G.year <= 195 && citiesOf(c.f).length >= 1; },
+    async run() {
+      const c = rulerNamed('조조'), cs = citiesOf(c.f);
+      await scene({ title: '청주병', involved: pOf(c.f), lines: [[null, '청주의 황건 무리 백만이 연주로 몰려들었다. 조조는 이들을 쳐서 항복을 받아 내고, 날랜 자를 골라 청주병이라 이름 붙였다.'], [c, '이들이면 천하를 다툴 만하다. 남은 이들에게는 땅을 나눠 주어 농사를 짓게 하라.']] });
+      for (const x of cs) { x.troops = Math.min(troopMax(x), x.troops + Math.round(12000 / cs.length)); x.pop += 20000; }
+      c.fame += 10;
+    },
+  },
   // ── 합비 전투 (215)
   {
     id: 'hefei',
@@ -116,7 +127,7 @@ EVENTS.push(
         [null, '천하의 간웅 조조가 낙양에서 숨을 거두었다. 아들 조비는 헌제에게서 황제의 자리를 물려받았다. 사백 년 한 왕조가 끝났다.'],
         [cp, '하늘의 뜻에 따라 위를 세우노라. 연호를 황초라 하겠다.'],
       ] });
-      setTitle(W, '위 황제'); cp.fame += 10;
+      setTitle(W, '위 황제'); cp.fame += 10; if (G.emp) G.emp.alive = false;
     },
   },
   {

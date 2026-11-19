@@ -53,7 +53,7 @@ const UI = {
     const chips = el('div', { class: 'chips' });
     if (P && P.st === 'on') {
       const F = G.factions[P.f], cs = citiesOf(P.f);
-      chips.append(el('span', { class: 'chip', title: '세력' }, el('span', { class: 'dot', style: `background:${F.color}` }), `${F.name}군`),
+      chips.append(el('span', { class: 'chip', title: '세력' }, el('span', { class: 'dot', style: `background:${F.color}` }), `${F.name}군${F.title ? ' · ' + F.title : ''}${empHolder() === F.id ? ' · 천자' : ''}`),
         chip('c', 'wall', '성', cs.length), chip('p', 'people', '장수', factionOfficers(P.f).length),
         chip('t', 'troops', '병력', fmt(cs.reduce((a, c) => a + c.troops, 0))), chip('g', 'gold', '금', fmt(cs.reduce((a, c) => a + c.gold, 0))), chip('f', 'food', '쌀', fmt(cs.reduce((a, c) => a + c.food, 0))));
       if (r !== 'ruler') chips.append(chip('s', 'merit', '공적', P.merit));
@@ -136,7 +136,8 @@ const UI = {
       row('g-in', '인사', B('search', '탐색', () => this.cmdSimple(c, 'search')), B('hire', '등용', () => this.cmdHire(c)), B('reward', '포상', () => this.cmdReward(c), '금 100'), B('move', '이동', () => this.cmdMove(c))),
       row('g-ce', '책략', r === 'ruler' ? B('diplo', '외교', () => this.cmdDiplo(c)) : null, B('plot', '계략', () => this.cmdPlot(c)),
         r === 'ruler' && c.gov !== me().id ? el('button', { class: 'cmd', onclick: () => { c.deleg = true; this.toast(`${c.name}을 태수에게 맡겼습니다`); this.refresh(); }, title: '위임' }, icon('deleg'), el('span', {}, '위임')) : null,
-        r === 'ruler' ? el('button', { class: 'cmd', onclick: () => this.cmdTreasure(c), title: '보물' }, icon('reward'), el('span', {}, '보물'), el('small', {}, `${itemsOfFaction(c.f).length}점`)) : null));
+        r === 'ruler' ? el('button', { class: 'cmd', onclick: () => this.cmdTreasure(c), title: '보물' }, icon('reward'), el('span', {}, '보물'), el('small', {}, `${itemsOfFaction(c.f).length}점`)) : null),
+      r === 'ruler' ? row('g-jo', '조정', B('rank', '관직', () => this.cmdOffices(c)), B('crown', '칭호', () => this.cmdTitle(c), G.factions[c.f].title || '없음'), empHolder() === c.f ? B('edict', '칙명', () => this.cmdEdict(c), edictReady(G.factions[c.f]) ? '천자의 이름으로' : '1년에 한 번') : null) : null);
     return el('div', { class: 'pane' }, el('div', { class: 'secTitle cmdT' }, '명령', el('span', { class: 'r' }, `쓸 수 있는 장수 ${free.length}명`)), g);
   },
   async pickOfficer(c, { title, stat, filter, note }) {
@@ -175,6 +176,53 @@ const UI = {
     const k = await this.modal({ title, body: el('div', {}, note ? el('div', { class: 'muted', style: 'margin-bottom:8px;font-size:13px' }, note) : null, el('div', { style: 'display:flex;align-items:center;justify-content:space-between;margin-bottom:6px' }, count, allBtn), el('div', { class: 'pickList multi' }, rows)), cancel: 'x', buttons: [{ k: 'x', label: '취소' }, { k: 'ok', label: okLabel || '맡긴다', cls: 'pri', check: () => sel.size > 0 }] });
     if (k !== 'ok' || !sel.size) return null;
     return offs.filter(o => sel.has(o));
+  },
+  // ── 조정: 관직
+  async cmdOffices(c) {
+    const F = G.factions[c.f]; F.offices = F.offices || {};
+    for (;;) {
+      const list = el('div', { class: 'pickList' }, OFFICES.map(of => {
+        const h = F.offices[of.id] != null ? G.officers[F.offices[of.id]] : null, ok = officeOK(F, of);
+        return el('button', { class: 'offRow', disabled: !ok, onclick: () => this._close(of.id) }, h ? portraitImg(h, '') : el('span', { style: 'width:30px' }),
+          el('span', { class: 'n disp' }, of.name), el('span', { class: 's' }, el('b', { style: 'color:var(--brass)' }, h ? h.name : ok ? '비어 있음' : ['', '공', '왕', '황제'][of.rank] + ' 이상'), el('span', {}, of.desc)));
+      }));
+      const k = await this.modal({ title: '관직', body: el('div', {}, el('div', { class: 'muted', style: 'font-size:13px;margin-bottom:8px' }, '관직을 고르고 맡길 장수를 정합니다. 관직을 받은 장수는 능력이 오르고 충성이 15 오릅니다. 높은 관직은 칭호(공·왕·황제)를 올리거나 천자를 모셔야 열립니다.'), list), cancel: 'x', buttons: [{ k: 'x', label: '닫기' }] });
+      if (!k || k === 'x' || !OFFICE[k]) break;
+      const of = OFFICE[k], key = Object.keys(of.b)[0];
+      const offs = factionOfficers(c.f).filter(o => !isRuler(o)).sort((a, b) => b[key] - a[key]);
+      if (!offs.length) { this.toast('맡길 장수가 없습니다'); break; }
+      let sel = null;
+      const pl = el('div', { class: 'pickList' }, offs.map(o => { const row = el('button', { class: 'offRow', onclick: () => { $$('.pickList .offRow').forEach(x => x.classList.remove('on')); row.classList.add('on'); sel = o; } }, portraitImg(o, ''), el('span', { class: 'n disp' }, o.name), el('span', { class: 's' }, el('b', { style: 'color:var(--brass)' }, `${STAT_NAMES[key]} ${o[key]}`), el('span', {}, `${o.office ? OFFICE[o.office].name + ' · ' : ''}${G.cities[o.city].name} · 충성 ${o.loy}`))); return row; }));
+      const k2 = await this.modal({ title: `${of.name}에 앉힐 장수`, body: pl, cancel: 'x', buttons: [{ k: 'x', label: '뒤로' }, { k: 'ok', label: '임명한다', cls: 'pri', check: () => !!sel }] });
+      if (k2 === 'ok' && sel) { appoint(F, of.id, sel); SFX.play('ok'); this.toast(`${eul(sel.name)} ${of.name}에 임명했습니다`); }
+    }
+    this.refresh();
+  },
+  // ── 조정: 칭호
+  async cmdTitle(c) {
+    const F = G.factions[c.f], r = rankOf(F);
+    if (r >= 3) { this.toast(`이미 ${F.title}입니다`); return; }
+    const nr = r + 1, why = titleNeed(F, nr);
+    if (why.length) { await this.alert({ title: `${RANK_NAME[nr]}에 오르려면`, text: why.map(x => '• ' + x).join('\n') + '\n\n칭호를 올리면 장수들의 충성이 오르고 인재가 모이며, 더 높은 관직을 내릴 수 있습니다. 황제에 오르면 다른 세력들이 반발합니다.' }); return; }
+    let nation = F.nation;
+    if (!nation) {
+      nation = await this.choose({ title: '나라 이름', text: '새 나라의 이름을 고르세요.', options: NATION_NAMES.map(n => ({ k: n, label: n })) });
+      if (!nation) return;
+    }
+    const ok = await this.confirm(`${nation}${nr === 3 ? ' 황제' : RANK_NAME[nr]}에 오를까요?${nr === 3 ? (empHolder() === F.id ? '\n천자에게서 선양을 받아 한 왕조를 끝냅니다.' : '') + '\n다른 세력들이 크게 반발합니다.' : ''}`);
+    if (!ok) return;
+    setRank(F, nr, nation); SFX.play('gong');
+    await this.alert({ title: F.title, portrait: G.officers[F.ruler], text: nr === 3 ? `${G.officers[F.ruler].name}이(가) 하늘에 제사를 올리고 ${F.title}의 자리에 올랐다.` : `${G.officers[F.ruler].name}이(가) ${F.title}에 올랐다. 신하들이 만세를 불렀다.` });
+    this.refresh();
+  },
+  // ── 조정: 칙명
+  async cmdEdict(c) {
+    const F = G.factions[c.f];
+    if (!edictReady(F)) { this.toast(`칙명은 1년에 한 번 내릴 수 있습니다 (${12 - (mIdx() - F.edictAt)}달 남음)`); return; }
+    const cands = G.factions.filter(f => f.alive && f.id !== F.id);
+    const k = await this.choose({ title: '칙명', text: '천자의 이름으로 한 세력을 역적으로 삼습니다. 2년 동안 다른 세력들이 그들을 미워하고, 그들의 장수 충성이 떨어지며, 인재가 그들에게 가지 않습니다.', options: cands.map(f => ({ k: String(f.id), label: `${f.name}군 (성 ${citiesOf(f.id).length})${isRebel(f.id) ? ' · 이미 역적' : ''}` })) });
+    if (k == null || k === '') return;
+    issueEdict(F, +k); SFX.play('gong'); this.refresh();
   },
   async cmdDev(c, kind) {
     const stat = kind === 'order' ? 'war' : 'pol';
@@ -591,6 +639,7 @@ const UI = {
     const sks = skillsOf(o);
     const traits = el('div', { class: 'traits' },
       sks.length ? el('div', { class: 'trRow' }, el('span', { class: 'trLab' }, '특기'), sks.map(k => el('span', { class: 'skill', title: SKILL_DEF[k], tabindex: '0' }, k))) : null,
+      o.office ? el('div', { class: 'trRow' }, el('span', { class: 'trLab' }, '관직'), el('span', { class: 'skill' }, OFFICE[o.office].name), el('span', { class: 'trDesc' }, OFFICE[o.office].desc)) : null,
       (o.sworn || []).length ? el('div', { class: 'trRow' }, el('span', { class: 'trLab' }, '의형제'), o.sworn.map(id => el('span', { class: 'skill' }, G.officers[id].name))) : null,
       (o.items || []).length ? el('div', { class: 'trRow' }, el('span', { class: 'trLab' }, '보물'), o.items.map(id => el('span', { class: 'item', title: `${ITEM[id].kind} · ${ITEM[id].desc}`, tabindex: '0' }, ITEM[id].name))) : null,
       sks.length ? el('div', { class: 'trDesc' }, sks.map(k => el('div', {}, el('b', {}, k), ' ', SKILL_DEF[k]))) : null);
@@ -607,10 +656,11 @@ const UI = {
       return { f, n: cs.length, o: offs.length, t: cs.reduce((a, c) => a + c.troops, 0) };
     }).sort((a, b) => b.n - a.n || b.t - a.t);
     const tbl = el('div', { style: 'overflow-x:auto' }, el('table', { style: 'width:100%;border-collapse:collapse;font-size:14px' },
-      el('thead', {}, el('tr', { class: 'muted', style: 'text-align:left' }, ['세력', '군주', '성', '장수', '병력', '나와의 관계'].map(h => el('th', { style: 'padding:4px 6px;font-weight:400' }, h)))),
+      el('thead', {}, el('tr', { class: 'muted', style: 'text-align:left' }, ['세력', '군주', '칭호·정책', '성', '장수', '병력', '나와의 관계'].map(h => el('th', { style: 'padding:4px 6px;font-weight:400' }, h)))),
       el('tbody', {}, rows.map(r => el('tr', { style: 'border-top:1px solid var(--line)' },
         el('td', { style: 'padding:5px 6px;white-space:nowrap' }, el('span', { class: 'dot', style: `background:${r.f.color};margin-right:6px` }), el('span', { class: 'disp' }, r.f.name)),
         el('td', { style: 'padding:5px 6px' }, G.officers[r.f.ruler].name),
+        el('td', { style: 'padding:5px 6px;font-size:12px' }, [r.f.title, empHolder() === r.f.id ? '천자를 모심' : null, isRebel(r.f.id) ? '역적' : null, policyOf(r.f.id) ? policyOf(r.f.id).name : null].filter(Boolean).join(' · ') || '—'),
         el('td', { class: 'num', style: 'padding:5px 6px' }, r.n), el('td', { class: 'num', style: 'padding:5px 6px' }, r.o), el('td', { class: 'num', style: 'padding:5px 6px' }, fmt(r.t)),
         el('td', { style: 'padding:5px 6px' }, P && P.st === 'on' ? (r.f.id === P.f ? '아군' : isAlly(r.f.id, P.f) ? '동맹' : `우호 ${getRel(r.f.id, P.f)}`) : '—'))))));
     this.modal({ title: '천하의 세력', wide: true, body: tbl, cancel: 'x', buttons: [{ k: 'x', label: '닫기' }] });

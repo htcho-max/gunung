@@ -66,10 +66,12 @@ function focusTargets(f) { return (G.focus || []).filter(x => x.f === f && x.unt
 function histNeed(F, t) {
   if (!HIST()) return 0;
   if (t.f >= 0 && hasFocus(F.id, t.f)) return -.3;
-  return (inSphere(F, t) ? 0 : sphereLoose(F)) + capPenalty(F);
+  const cao = F.key === 'cc' && G.year >= 192 && G.year < 208 ? -.15 : 0; // 조조는 역사에서 공격적으로 커 나감
+  const reb = isRebel(t.f) ? -.1 : 0; // 칙명으로 역적이 된 세력은 치기 쉬움
+  return (inSphere(F, t) ? 0 : sphereLoose(F)) + capPenalty(F) + cao + reb;
 }
 // 빈 땅을 차지해도 되는가 (초반엔 자기 지역만)
-function histEmptyOK(F, t) { return !HIST() || inSphere(F, t) || G.year >= 193; }
+function histEmptyOK(F, t) { if (!HIST()) return true; if (capPenalty(F) > 0) return false; return inSphere(F, t) || G.year >= 193; }
 // 병력 모을 목표 고르기: 점수(낮을수록 좋음)에 더할 값
 function histTargetBias(F, t) {
   if (!HIST()) return 0;
