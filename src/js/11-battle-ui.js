@@ -50,10 +50,19 @@ const BattleUI = {
     // 진형 고르기
     const myCmd = B.playerSide != null && B.units.find(u => u.side === B.playerSide && u.cmd && u.alive);
     if (myCmd && B.ctrl && B.ctrl(myCmd) && !B.auto) {
-      const av = formsFor(bOff(myCmd));
-      const k = await UI.choose({ title: '진형', portrait: bOff(myCmd), text: `총대장 ${bOff(myCmd).name}(통솔 ${bOff(myCmd).lead})이 펼칠 진형을 고릅니다.`, options: Object.entries(FORMS).sort(([a], [b]) => (b === B.form[B.playerSide]) - (a === B.form[B.playerSide])).map(([k, f]) => ({ k, label: f.name + (k === B.form[B.playerSide] && k !== 'none' ? ' (추천)' : '') + (f.desc ? ' — ' + f.desc : '') + (av.includes(k) ? '' : ` (통솔 ${f.min} 필요)`), disabled: !av.includes(k) })) });
+      const lv = formLevel(B, B.playerSide), av = formsFor(lv);
+      const k = await UI.choose({ title: '진형', portrait: bOff(myCmd), text: `총대장 ${bOff(myCmd).name}(통솔 ${bOff(myCmd).lead})이 펼칠 진형을 고릅니다.${lv > bOff(myCmd).lead ? `\n지략가가 함께 있어 진형 수준 ${lv}까지 쓸 수 있습니다.` : ''}`, options: Object.entries(FORMS).sort(([a], [b]) => (b === B.form[B.playerSide]) - (a === B.form[B.playerSide])).map(([k, f]) => ({ k, label: f.name + (k === B.form[B.playerSide] && k !== 'none' ? ' (추천)' : '') + (f.desc ? ' — ' + f.desc : '') + (av.includes(k) ? '' : ` (통솔·지력 ${f.min} 필요)`), disabled: !av.includes(k) })) });
       if (k && FORMS[k]) B.form[B.playerSide] = k;
+      // 군사의 계책
+      const st = strategist(B, B.playerSide);
+      if (st) {
+        const so = bOff(st), opts = stratOptions(B, B.playerSide);
+        const k2 = await UI.choose({ title: '군사의 계책', portrait: so, text: `${so.name}(지력 ${so.int})이 계책을 올립니다.\n“${pick(['적의 허를 찌를 꾀가 있습니다.', '싸우기 전에 이기는 것이 상책입니다.', '제게 한 가지 계책이 있습니다.'])}”\n상대 진영에서 가장 지력이 높은 장수와 겨뤄 성공이 정해집니다.`, options: [...opts.map(k => ({ k, label: `${STRATS[k].name} (${Math.round(stratChance(B, B.playerSide, k) * 100)}%) — ${STRATS[k].desc}` })), { k: 'none', label: '계책을 쓰지 않는다' }] });
+        B.stratDone = [B.playerSide];
+        if (k2 && STRATS[k2]) applyStrat(B, B.playerSide, k2);
+      }
     }
+    battleOpening(B);
     for (const sd of [0, 1]) if (B.form[sd] !== 'none') bmsg(B, `${facName(sd === 0 ? B.attF : B.defF)}군이 ${eul(FORMS[B.form[sd]].name)} 펼쳤다`);
     for (const sd of [0, 1]) { const cu = B.units.find(u => u.side === sd && u.cmd && u.alive), o = cu && bOff(cu); if (o && SIG[o.name]) bmsg(B, `${o.name}: “${SIG[o.name]}”`); }
     this.updTop();
@@ -104,10 +113,10 @@ const BattleUI = {
     if (!this.myTurn()) { if (u) { this.info = u; this.panel(); } return; }
     if (this.mode === 'target') {
       if (this.targets.includes(i)) await this.doAction(this.tkind, i);
-      else { this.mode = 'act'; this.targets = null; this.panel(); }
+      else { this.mode = TAC_NAME[this.tkind] ? 'tac' : 'act'; this.targets = null; this.panel(); }
       return;
     }
-    if (this.mode === 'act') { if (u && u !== this.sel) { this.info = u; this.panel(); } return; }
+    if (this.mode === 'act' || this.mode === 'tac') { if (u && u !== this.sel) { this.info = u; this.panel(); } return; }
     if (u && u.side === B.side && B.ctrl(u) && !u.done) {
       if (u === this.sel && this.mode === 'move') { this.mode = 'act'; this.panel(); return; }
       if (u.conf) { this.info = u; this.panel(); SFX.play('no'); return; }
@@ -119,6 +128,7 @@ const BattleUI = {
       this.mode = 'act'; this.panel(); return;
     }
     if (u) { this.info = u; this.panel(); }
+    else if (B.walls && B.walls[i]) { this.winfo = i; this.panel(); }
   },
   async moveAlong(u, path) {
     for (let k = 1; k < path.length; k++) { u.at = path[k]; SFX.play('step'); await sleep(this.fast ? 40 : 110); }
@@ -128,7 +138,9 @@ const BattleUI = {
   async doAction(kind, target) {
     const B = this.B, u = this.sel; this.busyAnim = true;
     if (kind === 'attack') { const t = unitAt(B, target); await this.lunge(u, t); doAttack(B, u, t); u.done = true; }
-    else if (kind === 'fire' || kind === 'confuse') { doTactic(B, u, kind, target); u.done = true; await sleep(250); }
+    else if (TAC_NAME[kind]) { doTactic(B, u, kind, target); u.done = true; await sleep(250); }
+    else if (kind === 'siege') { await this.lunge(u, { at: target }); doSiege(B, u, target); u.done = true; }
+    else if (kind === 'repair') { doRepair(B, u, target); u.done = true; await sleep(200); }
     else if (kind === 'duel') {
       const t = unitAt(B, target);
       if (duelAccept(B, u, t)) await this.duel(u, t, 0); else { bmsg(B, `${eun(bOff(t).name)} 일기토를 피했다`); SFX.play('no'); }
@@ -150,6 +162,7 @@ const BattleUI = {
     if (plan.act) {
       const a = plan.act;
       if (a.kind === 'attack') { const t = B.units[a.target]; if (t.alive) { await this.lunge(u, t); doAttack(B, u, t); } }
+      else if (a.kind === 'siege' || a.kind === 'repair') { await this.lunge(u, { at: a.target }); a.kind === 'siege' ? doSiege(B, u, a.target) : doRepair(B, u, a.target); }
       else if (a.kind === 'duel') {
         const t = B.units[a.target];
         if (t.alive && B.ctrl && B.ctrl(t) && !B.auto) {
@@ -331,7 +344,7 @@ const BattleUI = {
     const B = this.B, c = G.cities[B.cityId];
     const top = $('#btop'); top.innerHTML = '';
     const arrow = ['→', '↗', '↖', '←', '↙', '↘'][B.wind];
-    top.append(el('div', { class: 'datePlaque' }, el('b', {}, B.title || `${c.name} 공방전`), el('small', {}, `${B.day}일째 / ${B.maxDay}일 · 바람 ${arrow} · 성벽 ${Math.round(B.wall)}`)));
+    top.append(el('div', { class: 'datePlaque' }, el('b', {}, B.title || `${c.name} 공방전`), el('small', {}, `${B.day}일째 / ${B.maxDay}일 · 바람 ${arrow} · ${B.walls ? `성문 ${Object.values(B.walls).filter(w => w.gate && w.hp > 0).length}/${Object.values(B.walls).filter(w => w.gate).length} · 성벽 내구 ${Math.round(wallsLeft(B).reduce((a, w) => a + w.hp, 0) / Math.max(1, Object.values(B.walls).reduce((a, w) => a + w.max, 0)) * 100)}%` : '성벽 ' + Math.round(B.wall)}`)));
     const side = (f, food, n, sd) => el('span', { class: 'chip', title: `${facName(f)}군 · ${formOf(B, sd).desc || '진형 없음'}` }, el('span', { class: 'dot', style: `background:${facColor(f)}` }), `${facName(f)} `, el('span', { class: 'muted' }, `병 ${fmt(n)} · 쌀 ${fmt(food)}${B.form && B.form[sd] !== 'none' ? ' · ' + formOf(B, sd).name : ''}`));
     const tr = sd => B.units.filter(u => u.alive && u.side === sd).reduce((a, u) => a + u.troops, 0);
     top.append(el('div', { class: 'food' }, side(B.attF, B.food[0], tr(0), 0), side(B.defF, B.food[1], tr(1), 1)));
@@ -358,8 +371,11 @@ const BattleUI = {
         el('div', {}, el('span', { class: 'disp', style: 'font-size:19px' }, o.name), ' ', el('span', { class: 'muted', style: 'font-size:12px' }, `${TYPES[u.type].name}${u.cmd ? ' · 총대장' : ''}${u.ally ? ' · 원군' : ''} · ${facName(u.fac ?? (u.side === 0 ? B.attF : B.defF))}군${u.conf ? ' · 혼란' : ''} · ${TER[B.tiles[u.at].t].name}`)),
         el('div', { class: 'ubars' }, el('span', {}, '병사'), bar(u.troops, u.max, u.troops / u.max > .5 ? 'jade' : 'red'), el('b', {}, `${fmt(u.troops)}`), el('span', {}, '사기'), bar(u.morale, 100, ''), el('b', {}, u.morale)),
         el('div', { class: 'muted num', style: 'font-size:12px' }, `통${o.lead} 무${o.war} 지${o.int} · 훈련 ${u.train}${skillsOf(o).length ? ' · 특기 ' + skillsOf(o).join('·') : ''}${(o.items || []).length ? ' · ' + o.items.map(id => ITEM[id].name).join('·') : ''}`))));
+    } else if (this.winfo != null && B.walls && B.walls[this.winfo]) {
+      const w = B.walls[this.winfo];
+      p.append(el('div', { class: 'uinfo', style: 'font-size:14px' }, el('span', { class: 'disp', style: 'font-size:18px' }, w.hp > 0 ? (w.gate ? '성문' : '성벽') : (w.gate ? '부서진 성문' : '무너진 성벽')), el('span', { class: 'muted num' }, w.hp > 0 ? `내구 ${w.hp}/${w.max} · 공격군은 부숴야 지나갈 수 있습니다` : '누구나 지나갈 수 있습니다')));
     } else p.append(el('div', { class: 'uinfo muted', style: 'font-size:14px' }, this.myTurn() ? '내 부대를 눌러 움직이세요. 파란 칸으로 옮긴 뒤 행동을 고릅니다.' : '상대가 움직이는 중…'));
-    this.info = null;
+    this.info = null; this.winfo = null;
     const acts = el('div', { class: 'acts' });
     const A = (ic, label, fn, cls = '', dis = false) => el('button', { class: 'btn ' + cls, disabled: dis, onclick: fn }, icon(ic), label);
     if (this.myTurn() && this.sel && (this.mode === 'act' || this.mode === 'move')) {
@@ -367,16 +383,29 @@ const BattleUI = {
       const go = (kind, list) => { this.mode = 'target'; this.tkind = kind; this.targets = list; this.panel(); };
       if (this.mode === 'move') acts.append(A('target', '제자리', () => { this.mode = 'act'; this.panel(); }));
       else {
-        acts.append(A(canRange(s) ? (s.type === 'xbow' ? 'xbow' : 'bow') : s.type === 'ram' ? 'ram' : 'sword', canRange(s) ? '사격' : '공격', () => go('attack', at.map(e => e.at)), 'pri', !at.length));
-        const ft = tacticTargets(B, s, 'fire'), ct = tacticTargets(B, s, 'confuse');
-        if (o.int >= 45) { acts.append(A('fire', '화계', () => go('fire', ft), '', !ft.length)); acts.append(A('confuse', '혼란', () => go('confuse', ct), '', !ct.length)); }
+        acts.append(A(canRange(s) ? ({ xbow: 'xbow', tower: 'tower', cata: 'cata' }[s.type] || 'bow') : s.type === 'ram' ? 'ram' : 'sword', canRange(s) ? '사격' : '공격', () => go('attack', at.map(e => e.at)), 'pri', !at.length));
+        if (o.int >= 45) acts.append(A('plot', '계략', () => { this.mode = 'tac'; this.panel(); }));
+        const wt = wallTargets(B, s), rt = repairTargets(B, s);
+        if (B.walls && s.side === 0 && structDmg(s)) acts.append(A('ram', '공성', () => go('siege', wt), '', !wt.length));
+        if (B.walls && s.side === 1) acts.append(A('wall', '수리', () => go('repair', rt), '', !rt.length));
         const dt = enemiesOf(B, s).filter(e => hexDist(e.at, s.at) === 1);
         acts.append(A('duel', '일기토', () => go('duel', dt.map(e => e.at)), '', !dt.length));
         acts.append(A('wait', '대기', async () => { s.done = true; this.mode = 'idle'; this.sel = null; const left = B.units.some(x => x.alive && x.side === B.side && B.ctrl(x) && !x.done && !x.conf); if (!left) this.endPhase(); else this.autoSelect(); }));
         if (s.at !== this.prev) acts.append(A('undo', '되돌리기', () => { s.at = this.prev; this.selectUnit(s); }, 'ghost'));
       }
     }
-    if (this.mode === 'target') acts.append(el('span', { class: 'muted', style: 'font-size:13px;align-self:center' }, this.tkind === 'fire' || this.tkind === 'confuse' ? '주황 칸을 고르세요 (숫자는 성공 가능성)' : '빨간 테두리의 적을 고르세요'), A('close', '취소', () => { this.mode = 'act'; this.targets = null; this.panel(); }, 'ghost'));
+    if (this.myTurn() && this.sel && this.mode === 'tac') {
+      const s = this.sel, o = bOff(s);
+      const go = (kind, list) => { this.mode = 'target'; this.tkind = kind; this.targets = list; this.panel(); };
+      for (const [k, ic] of [['fire', 'fire'], ['confuse', 'confuse'], ['fear', 'plot'], ['rally', 'flag']]) {
+        if (o.int < TAC_MIN[k]) { acts.append(A(ic, TAC_NAME[k], () => {}, '', true)); continue; }
+        const tl = tacticTargets(B, s, k); acts.append(A(ic, TAC_NAME[k], () => go(k, tl), '', !tl.length));
+      }
+      acts.append(el('span', { class: 'muted', style: 'font-size:12px;align-self:center;max-width:260px' }, `화계·혼란·위보(사기−)·고무(아군 사기+, 혼란 풀기) · 사거리 ${tacRange(o)}칸${o.int >= 85 ? ' (지력 85↑)' : ''}`));
+      acts.append(A('close', '뒤로', () => { this.mode = 'act'; this.panel(); }, 'ghost'));
+    }
+    const TIP = { fire: '주황 칸을 고르세요 (숫자는 성공 가능성)', confuse: '주황 칸을 고르세요 (숫자는 성공 가능성)', fear: '주황 칸을 고르세요 (숫자는 성공 가능성)', rally: '초록 칸의 아군을 고르세요 (숫자는 성공 가능성)', siege: '부술 성문·성벽을 고르세요 (숫자는 깎을 내구)', repair: '고칠 성벽을 고르세요' };
+    if (this.mode === 'target') acts.append(el('span', { class: 'muted', style: 'font-size:13px;align-self:center' }, TIP[this.tkind] || '빨간 테두리의 적을 고르세요'), A('close', '취소', () => { this.mode = TAC_NAME[this.tkind] ? 'tac' : 'act'; this.targets = null; this.panel(); }, 'ghost'));
     if (this.myTurn()) acts.append(A('end', '턴 종료', () => this.endPhase(), 'red'));
     p.append(acts);
     setTimeout(() => this.resize(), 0);
@@ -421,6 +450,30 @@ const BattleUI = {
       x.fillStyle = 'rgba(0,0,0,.3)'; x.fillRect(cx - s * .38, cy - s, s * .76, s * 2);
       for (let k = -6; k <= 6; k++) { x.fillStyle = k % 2 ? '#8a6a44' : '#7a5c38'; x.fillRect(cx - s * .34, cy + k * s * .16 - s * .07, s * .68, s * .14); }
       x.fillStyle = '#4e3620'; x.fillRect(cx - s * .4, cy - s, s * .07, s * 2); x.fillRect(cx + s * .33, cy - s, s * .07, s * 2);
+    } else if (t === 'wall' || t === 'gate' || t === 'breach' || t === 'gateo') {
+      grad('#a49a8a', '#7c7366');
+      const broken = t === 'breach' || t === 'gateo';
+      // 돌 쌓은 성벽
+      x.strokeStyle = 'rgba(50,42,34,.45)'; x.lineWidth = 1;
+      for (let row = 0; row < 8; row++) { const yy = cy - s + row * s / 4; x.beginPath(); x.moveTo(0, yy); x.lineTo(W, yy); x.stroke(); for (let col = 0; col < 7; col++) { const xx = (col + (row % 2) * .5) * s / 2.4; x.beginPath(); x.moveTo(xx, yy); x.lineTo(xx, yy + s / 4); x.stroke(); } }
+      if (!broken) {
+        x.fillStyle = '#6b6356'; x.fillRect(cx - s, cy - s * .32, s * 2, s * .7);
+        x.fillStyle = '#5a5347'; for (let k = 0; k < 7; k++) x.fillRect(cx - s + k * s * .3, cy - s * .52, s * .17, s * .22);
+        x.fillStyle = 'rgba(255,255,255,.16)'; x.fillRect(cx - s, cy - s * .32, s * 2, s * .07);
+        x.fillStyle = 'rgba(0,0,0,.28)'; x.fillRect(cx - s, cy + s * .34, s * 2, s * .1);
+        if (t === 'gate') {
+          x.fillStyle = '#2a1a10'; x.beginPath(); x.moveTo(cx - s * .34, cy + s * .38); x.lineTo(cx - s * .34, cy - s * .05); x.quadraticCurveTo(cx, cy - s * .38, cx + s * .34, cy - s * .05); x.lineTo(cx + s * .34, cy + s * .38); x.fill();
+          x.fillStyle = '#7a4a24'; x.fillRect(cx - s * .28, cy - s * .04, s * .56, s * .42);
+          x.strokeStyle = '#3a2210'; x.lineWidth = 1.2; x.beginPath(); x.moveTo(cx, cy - s * .04); x.lineTo(cx, cy + s * .38); x.stroke();
+          x.fillStyle = '#c9a24a'; for (const dx of [-.18, .18]) for (const dy of [.06, .2]) { x.beginPath(); x.arc(cx + dx * s, cy + dy * s, s * .03, 0, 7); x.fill(); }
+          // 문루
+          x.fillStyle = '#8a2a1c'; x.beginPath(); x.moveTo(cx - s * .55, cy - s * .5); x.lineTo(cx + s * .55, cy - s * .5); x.lineTo(cx + s * .35, cy - s * .78); x.lineTo(cx - s * .35, cy - s * .78); x.closePath(); x.fill();
+        }
+      } else {
+        // 무너진 돌무더기
+        for (let k = 0; k < 9; k++) { const px = cx + (R() - .5) * s * 1.5, py = cy + (R() - .3) * s * .9, r = s * (.1 + R() * .12); x.fillStyle = k % 2 ? '#8f8677' : '#6f675a'; x.beginPath(); x.moveTo(px - r, py + r * .6); x.lineTo(px - r * .4, py - r); x.lineTo(px + r, py - r * .3); x.lineTo(px + r * .7, py + r * .7); x.closePath(); x.fill(); }
+        if (t === 'gateo') { x.fillStyle = '#5a3a1c'; x.save(); x.translate(cx + s * .1, cy + s * .2); x.rotate(.5); x.fillRect(-s * .3, -s * .07, s * .6, s * .14); x.restore(); }
+      }
     } else if (t === 'castle' || t === 'keep') {
       grad('#b5ac9c', '#8b8273');
       x.strokeStyle = 'rgba(60,52,42,.35)'; x.lineWidth = 1;
@@ -481,6 +534,13 @@ const BattleUI = {
         for (let k = 0; k < 2; k++) { const ph = ((now / 1400 + k * .5 + i * .13) % 1); x.fillStyle = `rgba(60,55,50,${.35 * (1 - ph)})`; x.beginPath(); x.arc(c.x + Math.sin(ph * 6 + i) * s * .2, c.y - s * .4 - ph * s * 1.2, s * (.18 + ph * .3), 0, 7); x.fill(); }
       }
     }
+    // 성벽·성문 내구
+    if (B.walls) for (const k in B.walls) {
+      const w = B.walls[k]; if (w.hp <= 0 || (w.hp >= w.max && !(this.mode === 'target' && (this.tkind === 'siege' || this.tkind === 'repair')))) continue;
+      const c = this.center(+k), bw = s * 1.1, f = clamp(w.hp / w.max, 0, 1);
+      x.fillStyle = 'rgba(0,0,0,.7)'; x.fillRect(c.x - bw / 2, c.y + s * .58, bw, 4);
+      x.fillStyle = f > .5 ? '#d9c38a' : f > .25 ? '#e9a24a' : '#e05a3a'; x.fillRect(c.x - bw / 2, c.y + s * .58, bw * f, 4);
+    }
     // 이동 가능 칸
     if (this.myTurn() && this.mode === 'move' && this.reach) {
       const pulse = .22 + Math.sin(now / 300) * .06;
@@ -489,10 +549,11 @@ const BattleUI = {
     if (this.mode === 'target' && this.targets) {
       for (const i of this.targets) {
         const c = this.center(i); this.hexPath(c.x, c.y, s - 2);
-        const tac = this.tkind === 'fire' || this.tkind === 'confuse';
-        x.fillStyle = tac ? 'rgba(255,170,60,.18)' : 'rgba(255,70,40,.16)'; x.fill();
-        x.strokeStyle = tac ? '#ffb347' : '#ff5a3c'; x.lineWidth = 3; x.setLineDash([6, 4]); x.lineDashOffset = -now / 40; x.stroke(); x.setLineDash([]);
-        if (tac) { x.fillStyle = 'rgba(20,10,5,.75)'; roundRect(x, c.x - s * .45, c.y + s * .32, s * .9, s * .4, 4); x.fill(); x.fillStyle = '#ffd38a'; x.font = `bold ${Math.round(s * .32)}px sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(Math.round(tacticChance(B, this.sel, this.tkind, i) * 100) + '%', c.x, c.y + s * .53); }
+        const tac = !!TAC_NAME[this.tkind], good = this.tkind === 'rally' || this.tkind === 'repair', wl = this.tkind === 'siege' || this.tkind === 'repair';
+        x.fillStyle = good ? 'rgba(110,220,150,.2)' : tac ? 'rgba(255,170,60,.18)' : 'rgba(255,70,40,.16)'; x.fill();
+        x.strokeStyle = good ? '#7fe0a0' : tac ? '#ffb347' : '#ff5a3c'; x.lineWidth = 3; x.setLineDash([6, 4]); x.lineDashOffset = -now / 40; x.stroke(); x.setLineDash([]);
+        if (tac) { x.fillStyle = 'rgba(20,10,5,.75)'; roundRect(x, c.x - s * .45, c.y + s * .32, s * .9, s * .4, 4); x.fill(); x.fillStyle = '#ffd38a'; x.font = `bold ${Math.round(s * .32)}px sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(Math.round(tacticChance(B, this.sel, this.tkind, i === this.sel.at && !unitAt(B, i) ? this.sel.at : i) * 100) + '%', c.x, c.y + s * .53); }
+        if (wl && B.walls[i]) { x.fillStyle = 'rgba(20,10,5,.75)'; roundRect(x, c.x - s * .5, c.y + s * .32, s, s * .4, 4); x.fill(); x.fillStyle = '#ffe2a8'; x.font = `bold ${Math.round(s * .3)}px sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(this.tkind === 'siege' ? `−${Math.min(B.walls[i].hp, structDmg(this.sel))}` : `+${Math.min(B.walls[i].max - B.walls[i].hp, repairAmt(this.sel))}`, c.x, c.y + s * .53); }
       }
     }
     // 부대 (위에서 아래 순서)
@@ -585,7 +646,7 @@ const BattleUI = {
     // 병종 표지
     const br = rr * .4, bx = px - rr * .78, by = py + rr * .62;
     x.fillStyle = shade(col, -70); x.strokeStyle = '#f3d991'; x.lineWidth = 1.2; x.beginPath(); x.arc(bx, by, br, 0, 7); x.fill(); x.stroke();
-    this.iconAt(x, { cav: 'horse', arc: 'bow', xbow: 'xbow', ram: 'ram' }[u.type] || 'sword', bx, by, br * 1.25, '#f3d991');
+    this.iconAt(x, { cav: 'horse', arc: 'bow', xbow: 'xbow', ram: 'ram', tower: 'tower', cata: 'cata' }[u.type] || 'sword', bx, by, br * 1.25, '#f3d991');
     // 총대장
     if (u.cmd) { x.fillStyle = '#f3d991'; x.strokeStyle = '#5a3f10'; x.lineWidth = 1; star(x, px + rr * .78, py - rr * .72, s * .2); x.fill(); x.stroke(); }
     // 혼란

@@ -32,6 +32,7 @@ function returnAllies(B) {
     if (u.alive) { u.alive = false; if (o.st === 'on') { o.merit += 80; if (B.result && B.result.win === 1) o.fame += 2; } }
   }
 }
+const MAX_ATT = 10, MAX_DEF = 7; // 한 싸움에 나서는 부대 수
 function troopCap(o) { return 1500 + o.lead * 90; }
 // 부대 나누기: 통솔에 비례, 상한 있음
 function splitTroops(offs, total) {
@@ -43,7 +44,7 @@ function defendArmy(c) {
   let offs = officersIn(c.id, c.f);
   offs.sort((a, b) => (b.id === c.gov) - (a.id === c.gov) || (b.lead + b.war) - (a.lead + a.war));
   if (offs[0] && c.gov >= 0 && offs[0].id !== c.gov) { const g = offs.find(o => o.id === c.gov); if (g) offs = [g, ...offs.filter(o => o !== g)]; }
-  offs = offs.slice(0, 5);
+  offs = offs.slice(0, MAX_DEF);
   const tr = splitTroops(offs, c.troops);
   return offs.map((o, i) => ({ oid: o.id, troops: Math.max(tr[i], 200), type: autoType(o), train: c.train })).filter(u => u.troops > 0);
 }
@@ -116,7 +117,7 @@ function applyBattle(B) {
     }
     c.gold = Math.round(c.gold * .5);
     c.food = Math.round(B.food[1] * .5);
-    c.wall = Math.max(60, Math.round(c.wall * .8));
+    const wf = B.wall0 ? B.wall / B.wall0 : 1; c.wall = Math.max(60, Math.round(c.wall * (.5 + .3 * wf)));
     occupy(c, att, attCmd && attCmd.alive ? [attCmd.oid, ...winners.filter(x => x !== attCmd.oid)] : winners, tr, B.units[0].train, B.food[0]);
     for (const f of B.fled[0]) { const o = G.officers[f.oid]; if (o.st !== 'on') continue; const h = homeOf(B, f.oid, att); if (h) { o.city = h.id; h.troops += f.troops; } else o.city = c.id; }
     logMsg(`${facName(att)}군이 ${eul(c.name)} 함락했습니다 (${B.result.why})`, 'war');
@@ -134,7 +135,7 @@ function applyBattle(B) {
     if (back) back.food += B.food[0];
     c.troops = defAlive.reduce((a, u) => a + u.troops, 0) + B.fled[1].reduce((a, f) => a + f.troops, 0);
     c.food = B.food[1];
-    c.wall = Math.max(60, c.wall - ri(10, 40));
+    const wf = B.wall0 ? B.wall / B.wall0 : 1; c.wall = Math.max(60, Math.round(c.wall * (.55 + .45 * wf)) - ri(5, 20));
     for (const f of B.fled[1]) { const o = G.officers[f.oid]; if (o.st === 'on') o.city = c.id; }
     logMsg(`${facName(def)}군이 ${eul(c.name)} 지켜 냈습니다 (${B.result.why})`, 'war');
     for (const u of defAlive) { const o = G.officers[u.oid]; o.merit += 100; o.fame += 3; }

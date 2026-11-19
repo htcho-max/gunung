@@ -61,9 +61,9 @@ function aiPlanAttacks(F) {
       }
       const top = [...offs].sort((a, b) => (b.lead + b.war) - (a.lead + a.war)).slice(0, 5);
       const myQ = top.reduce((a, o) => a + o.lead * .55 + o.war * .45, 0) / top.length;
-      const thQ = tOffs.slice(0, 5).reduce((a, o) => a + o.lead * .6 + o.int * .2 + o.war * .2, 0) / Math.min(5, tOffs.length);
+      const thQ = tOffs.slice(0, MAX_DEF).reduce((a, o) => a + o.lead * .6 + o.int * .2 + o.war * .2, 0) / Math.min(MAX_DEF, tOffs.length);
       const myPow = c.troops * .75 * myQ * (.6 + c.train / 250);
-      const tEff = Math.min(t.troops, tOffs.slice(0, 5).reduce((a, o) => a + troopCap(o), 0));
+      const tEff = Math.min(t.troops, tOffs.slice(0, MAX_DEF).reduce((a, o) => a + troopCap(o), 0));
       const thPow = tEff * thQ * (.6 + t.train / 250) * (1.15 + Math.min(.5, t.wall / 2000));
       const ratio = myPow / Math.max(1, thPow);
       const need = Math.max(.95, DIFF().base / aggr - Math.min(.35, (F.idle || 0) * .015)) + (t.f === pf ? DIFF().vsP : 0) + histNeed(F, t);
@@ -79,16 +79,16 @@ function aiPlanAttacks(F) {
     } else {
       const pool = offs.filter(o => o.id !== c.gov);
       if (!pool.length) continue; // 태수는 성을 지킴
-      let top = [...pool].sort((a, b) => (b.lead + b.war) - (a.lead + a.war)).slice(0, 5);
+      let top = [...pool].sort((a, b) => (b.lead + b.war) - (a.lead + a.war)).slice(0, 6);
       // 플레이어가 이 성의 장수면 데려갈 수 있음
       const P = me();
-      if (P && P.st === 'on' && P.f === F.id && P.city === c.id && !P.travel && !isRuler(P) && c.gov !== P.id && top.length < 5 && (P.lead + P.war > 110 || chance(.5))) top.push(P);
+      if (P && P.st === 'on' && P.f === F.id && P.city === c.id && !P.travel && !isRuler(P) && c.gov !== P.id && top.length < 6 && (P.lead + P.war > 110 || chance(.5))) top.push(P);
       const tr = splitTroops(top, Math.floor(c.troops * .78));
       army = top.map((o, i) => ({ oid: o.id, troops: tr[i], type: autoType(o) })).filter(u => u.troops >= 500);
       if (!army.length) continue;
       // 목표에 붙은 다른 우리 성에서도 함께 출진 (협공)
       for (const s of attackSources(c, bestT).slice(1)) {
-        if (army.length >= 5) break;
+        if (army.length >= 8) break;
         if (playerControls(s) || s.troops < 5000) continue;
         const so = officersIn(s.id, F.id).filter(o => o.id !== s.gov && o.id !== G.player && !o.busyWar).sort((a, b) => (b.lead + b.war) - (a.lead + a.war))[0];
         if (!so || !chance(.8)) continue;
@@ -96,7 +96,9 @@ function aiPlanAttacks(F) {
         if (t >= 1500) army.push({ oid: so.id, troops: t, type: autoType(so), src: s.id });
       }
       // 성벽이 두꺼우면 가장 약한 부대가 충차를 끔
-      if (army.length >= 3 && bestT.wall >= 380 && chance(.6)) { const w = army.reduce((m, u) => G.officers[u.oid].war < G.officers[m.oid].war ? u : m, army[army.length - 1]); if (w !== army[0] && w.oid !== G.player) w.type = 'ram'; }
+      // 성벽이 두꺼우면 공성 병기를 끔: 무력 낮은 장수는 충차, 지력 높은 장수는 투석·정란
+      if (army.length >= 3 && bestT.wall >= 300 && chance(.75)) { const w = army.reduce((m, u) => G.officers[u.oid].war < G.officers[m.oid].war ? u : m, army[army.length - 1]); if (w !== army[0] && w.oid !== G.player) w.type = 'ram'; }
+      if (army.length >= 4 && bestT.wall >= 450 && chance(.6)) { const c2 = army.slice(1).filter(u => u.type !== 'ram' && u.oid !== G.player && G.officers[u.oid].int >= 65 && G.officers[u.oid].war < 75).sort((a, b) => G.officers[b.oid].int - G.officers[a.oid].int)[0]; if (c2) c2.type = chance(.6) ? 'cata' : 'tower'; }
     }
     const tot = army.reduce((a, u) => a + u.troops, 0);
     const food = Math.min(attackSources(c, bestT).filter(s => s === c || army.some(u => u.src === s.id)).reduce((a, s) => a + s.food, 0), Math.ceil(tot * 32 / 80));

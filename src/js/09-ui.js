@@ -361,7 +361,7 @@ const UI = {
         const sc = srcOf[o.id];
         if (srcs.length > 1 && sc !== lastSrc) { lastSrc = sc; wrap.append(el('div', { class: 'secTitle', style: 'margin:4px 0 0' }, sc === c ? `${sc.name} (출발 성)` : `${sc.name}에서 협공`, el('span', { class: 'r' }, `병사 ${fmt(sc.troops)}`))); }
         const p = picked.get(o.id);
-        const chk = el('input', { type: 'checkbox', id: 'at_' + o.id, checked: !!p, onchange: e => { if (e.target.checked) { if (picked.size >= 5) { e.target.checked = false; this.toast('한 번에 다섯 부대까지'); return; } picked.set(o.id, { troops: Math.min(troopCap(o), Math.max(0, Math.floor((sc.troops - usedIn(sc)) / 100) * 100)), type: autoType(o) }); } else picked.delete(o.id); draw(); } });
+        const chk = el('input', { type: 'checkbox', id: 'at_' + o.id, checked: !!p, onchange: e => { if (e.target.checked) { if (picked.size >= MAX_ATT) { e.target.checked = false; this.toast(`한 번에 ${MAX_ATT}부대까지`); return; } picked.set(o.id, { troops: Math.min(troopCap(o), Math.max(0, Math.floor((sc.troops - usedIn(sc)) / 100) * 100)), type: autoType(o) }); } else picked.delete(o.id); draw(); } });
         const line = el('div', { style: 'display:flex;flex-direction:column;gap:4px;padding:6px;border:1px solid var(--line);border-radius:6px' },
           el('label', { style: 'display:flex;align-items:center;gap:8px;cursor:pointer' }, chk, portraitImg(o, ''), el('span', { class: 'disp', style: 'font-size:17px' }, o.name), el('span', { class: 'muted', style: 'font-size:12px;margin-left:auto' }, `통${o.lead} 무${o.war} 지${o.int} · 최대 ${fmt(troopCap(o))}`)));
         line.querySelector('img').style.cssText = 'width:26px;height:30px;border-radius:3px';
@@ -378,7 +378,7 @@ const UI = {
     };
     draw();
     const note = srcs.length > 1 ? `${to.name}에 붙어 있는 ${srcs.slice(1).map(x => x.name).join('·')}의 장수도 함께 출진할 수 있습니다. 다른 성에서 온 부대는 그쪽 가장자리에서 협공합니다. ` : '';
-    const k = await this.modal({ title: `출진 — ${to.name} 공격`, wide: true, body: el('div', { style: 'display:flex;flex-direction:column;gap:8px' }, el('div', { class: 'muted', style: 'font-size:13px' }, note + '보병은 기병에 강하고, 기병은 빠르고 세며, 궁병은 1~2칸, 노병은 2~3칸 밖에서 쏩니다. 충차는 성곽 위의 적과 성벽을 부숩니다.'), wrap, sum), cancel: 'x', buttons: [{ k: 'x', label: '취소' }, { k: 'ok', label: '출진!', cls: 'red' }] });
+    const k = await this.modal({ title: `출진 — ${to.name} 공격`, wide: true, body: el('div', { style: 'display:flex;flex-direction:column;gap:8px' }, el('div', { class: 'muted', style: 'font-size:13px' }, note + `보병은 기병에 강하고, 기병은 빠르고 세며, 궁병은 1~2칸, 노병은 2~3칸 밖에서 쏩니다. 성은 성벽과 성문으로 둘러싸여 있어 부숴야 들어갑니다 — 충차는 성문·성벽을 크게 부수고, 투석은 2~4칸 밖에서 성벽과 적을 치며, 정란은 성벽 위의 적을 방어 이점 없이 쏩니다. 최대 ${MAX_ATT}부대.`), wrap, sum), cancel: 'x', buttons: [{ k: 'x', label: '취소' }, { k: 'ok', label: '출진!', cls: 'red' }] });
     if (k !== 'ok') return;
     const army = offs.filter(o => picked.has(o.id) && picked.get(o.id).troops >= 100).map(o => ({ oid: o.id, troops: picked.get(o.id).troops, type: picked.get(o.id).type, src: srcOf[o.id].id }));
     if (!army.length) { this.toast('병사를 실은 부대가 없습니다'); return; }

@@ -1,7 +1,8 @@
 // ===== 헥스 전투: 엔진 =====
-const TYPES = { inf: { name: '보병', ch: '보', move: 4 }, cav: { name: '기병', ch: '기', move: 6 }, arc: { name: '궁병', ch: '궁', move: 4 }, xbow: { name: '노병', ch: '노', move: 3 }, ram: { name: '충차', ch: '차', move: 3 } };
-const TYPE_DESC = { inf: '기병에 강하고 고르게 싸움', cav: '빠르고 돌격이 셈', arc: '1~2칸 밖에서 쏨', xbow: '2~3칸 밖에서 세게 쏘지만 붙은 적은 못 쏨', ram: '성곽·본성의 적과 성벽에 큰 피해, 들판에서는 약함' };
-const RANGE = { arc: [1, 2], xbow: [2, 3] };
+const TYPES = { inf: { name: '보병', ch: '보', move: 4 }, cav: { name: '기병', ch: '기', move: 6 }, arc: { name: '궁병', ch: '궁', move: 4 }, xbow: { name: '노병', ch: '노', move: 3 }, ram: { name: '충차', ch: '차', move: 3 }, tower: { name: '정란', ch: '란', move: 3 }, cata: { name: '투석', ch: '석', move: 3 } };
+const SIEGE_T = new Set(['ram', 'tower', 'cata']);
+const TYPE_DESC = { inf: '기병에 강하고 고르게 싸움', cav: '빠르고 돌격이 셈', arc: '1~2칸 밖에서 쏨', xbow: '2~3칸 밖에서 세게 쏘지만 붙은 적은 못 쏨', ram: '성문·성벽을 크게 부숨, 들판에서는 약함', tower: '높은 망루에서 1~3칸을 쏨. 성벽 위의 적도 방어 이점 없이 맞힘', cata: '2~4칸 밖으로 돌을 날려 성벽을 부수고 적 부대 주변까지 맞힘. 붙은 적은 못 침' };
+const RANGE = { arc: [1, 2], xbow: [2, 3], tower: [1, 3], cata: [2, 4] };
 // 진형: 총대장의 통솔이 min 이상이어야 씀
 const FORMS = {
   none: { name: '진형 없음', atk: 1, def: 1, mv: 0, min: 0, desc: '' },
@@ -10,11 +11,13 @@ const FORMS = {
   bong: { name: '봉시진', atk: 1.2, def: .85, mv: 1, min: 72, desc: '화살촉처럼 찌르는 진. 공격 +20%, 이동 +1, 방어 −15%' },
   hak: { name: '학익진', atk: 1, def: .95, mv: 0, min: 80, wrap: true, desc: '학의 날개처럼 감싸는 진. 적에게 붙은 아군 하나마다 공격 +7% (최대 +21%)' },
 };
-const formsFor = o => Object.keys(FORMS).filter(k => o && o.lead >= FORMS[k].min);
+const formsFor = o => Object.keys(FORMS).filter(k => o && (typeof o === 'number' ? o : o.lead) >= FORMS[k].min);
+// 진형을 펼 수 있는 수준: 총대장의 통솔, 또는 군사(지력 높은 장수)의 지력 −5
+function formLevel(B, side) { const us = B.units.filter(u => u.side === side && u.alive); const cmd = us.find(u => u.cmd); return Math.max(cmd ? bOff(cmd).lead : 0, ...us.map(u => bOff(u).int - 5)); }
 const formOf = (B, side) => FORMS[(B.form && B.form[side]) || 'none'];
 function aiFormation(B, side) {
   const cmd = B.units.find(u => u.side === side && u.cmd && u.alive); if (!cmd) return 'none';
-  const av = formsFor(bOff(cmd));
+  const av = formsFor(formLevel(B, side));
   const mine = B.units.filter(u => u.side === side).reduce((a, u) => a + u.troops, 0), theirs = B.units.filter(u => u.side !== side).reduce((a, u) => a + u.troops, 0);
   if (side === 1) return av.includes('bang') && mine < theirs * 1.1 ? 'bang' : av.includes('eorin') ? 'eorin' : 'none';
   if (av.includes('hak') && B.units.filter(u => u.side === side).length >= 4 && mine > theirs) return 'hak';
@@ -32,7 +35,13 @@ const TER = {
   bridge: { name: '다리', cost: 1, def: .9, col: '#a58a5c' },
   castle: { name: '성곽', cost: 1, attCost: 2, def: 1, col: '#9b938a' },
   keep: { name: '본성', cost: 1, attCost: 2, def: 1, col: '#b8aa94' },
+  wall: { name: '성벽', cost: 1, def: 1, col: '#8d857a' },
+  gate: { name: '성문', cost: 1, def: 1, col: '#7a5a3a' },
+  breach: { name: '무너진 성벽', cost: 2, def: 1, col: '#9a9184' },
+  gateo: { name: '부서진 성문', cost: 1, def: .95, col: '#8a6a4a' },
 };
+const isWallT = t => t === 'wall' || t === 'gate';
+const isFort = t => t === 'castle' || t === 'keep' || t === 'wall' || t === 'gate';
 const BW = 16, BH = 11;
 const DIRS_E = [[1, 0], [0, -1], [-1, -1], [-1, 0], [-1, 1], [0, 1]];
 const DIRS_O = [[1, 0], [1, -1], [0, -1], [-1, 0], [0, 1], [1, 1]];
@@ -90,6 +99,7 @@ function makeBattle(opts) {
     fx: [], captives: [], killed: [], fled: [[], []], interactive: false, auto: false, msgs: [], wall: c.wall,
   };
   if (passName) { B.pass = passName; B.wall += 150; bmsg(B, `${passName} — 양옆이 깎아지른 산인 좁은 관문이다. 지키는 쪽이 유리하다`, 'big'); }
+  if (!opts.naval) setupWalls(B);
   if (opts.naval) {
     B.naval = true; B.northSide = 0; B.chained = !!opts.naval.chained; B.kuyuk = !!opts.naval.kuyuk;
     if (opts.naval.eastWind) { B.wind = 3; B.windLock = true; } // 동남풍: 불길이 서쪽(조조 쪽)으로
@@ -135,12 +145,14 @@ const unitAt = (B, i) => B.units.find(u => u.alive && u.at === i);
 const enemiesOf = (B, u) => B.units.filter(x => x.alive && x.side !== u.side);
 function terrDef(B, u, i) {
   const t = B.tiles[i].t;
-  if ((t === 'castle' || t === 'keep') && u.side === 1) return 1.3 + Math.min(.7, B.wall / 1400) + (t === 'keep' ? .1 : 0);
+  if (isWallT(t) && u.side === 1) return 1.45 + Math.min(.7, B.wall / 1400);
+  if ((t === 'castle' || t === 'keep') && u.side === 1) return (B.walls ? 1.15 + Math.min(.4, B.wall / 2400) : 1.3 + Math.min(.7, B.wall / 1400)) + (t === 'keep' ? .1 : 0);
   return TER[t].def;
 }
 function moveCost(B, u, i) {
   const T = TER[B.tiles[i].t];
   if (B.tiles[i].fire > 0) return 99;
+  if (u.side === 0 && isWallT(B.tiles[i].t)) return 99; // 성벽·성문은 부숴야 지나감
   if (u.type === 'cav' && T.cavCost) return T.cavCost;
   if (u.side === 0 && T.attCost) return T.attCost;
   return T.cost;
@@ -182,19 +194,23 @@ function attackTargets(B, u, from = u.at) {
   return enemiesOf(B, u).filter(e => inRange(u, hexDist(from, e.at)));
 }
 function estDamage(B, a, d, ranged) {
-  let m = powAtk(a) / Math.max(10, powDef(d) * terrDef(B, d, d.at));
+  let td = terrDef(B, d, d.at); if (a.type === 'tower' && td > 1) td = 1 + (td - 1) * .3; // 정란은 성벽 위를 내려다보고 쏨
+  let m = powAtk(a) / Math.max(10, powDef(d) * td);
   if (a.type === 'cav' && !ranged) m *= 1.2 * (policyOf(a.side === 0 ? B.attF : (a.fac ?? B.defF))?.cav || 1);
   if (B.naval) { const pf = a.side === 0 ? B.attF : (a.fac ?? B.defF); if (policyOf(pf)?.naval) m *= policyOf(pf).naval; }
   if (d.type === 'inf' && a.type === 'cav') m *= .82;
   if (d.type === 'arc' && !ranged) m *= 1.15;
-  if (ranged) m *= a.type === 'xbow' ? .95 : .72;
-  const onWall = d.side === 1 && (B.tiles[d.at].t === 'castle' || B.tiles[d.at].t === 'keep');
+  if (ranged) m *= a.type === 'xbow' ? .95 : a.type === 'tower' ? .85 : a.type === 'cata' ? .6 : .72;
+  const onWall = d.side === 1 && isFort(B.tiles[d.at].t);
   if (a.type === 'ram') m *= onWall && !ranged ? 2.4 : .45;
-  if (d.type === 'ram') m *= 1.3;
+  if (SIEGE_T.has(d.type)) m *= 1.3;
+  if (a.type === 'tower' || a.type === 'cata') m *= .9;
   const fa = formOf(B, a.side), fd = formOf(B, d.side);
   m *= fa.atk / fd.def;
   const rl = relOf(bOff(a), bOff(d)); if (rl && rl.t === 'foe') m *= 1.1; // 원수끼리는 더 맹렬히
-  if (fa.wrap) m *= 1 + Math.min(3, B.units.filter(x => x.alive && x !== a && x.side === a.side && hexDist(x.at, d.at) === 1).length) * .07;
+  const around = Math.min(3, B.units.filter(x => x.alive && x !== a && x.side === a.side && hexDist(x.at, d.at) === 1).length);
+  m *= 1 + around * .06; // 둘러싸고 치면 더 셈
+  if (fa.wrap) m *= 1 + around * .07;
   if (B.units.some(x => x.alive && x !== a && x.side === a.side && hexDist(x.at, a.at) <= 2 && isSworn(bOff(a), bOff(x)))) m *= 1.1;
   if (B.tiles[a.at].t === 'river' && !B.naval) m *= .85;
   const ao = bOff(a), dO = bOff(d);
@@ -202,7 +218,7 @@ function estDamage(B, a, d, ranged) {
   if (ranged && hasSkill(ao, '궁신')) m *= 1.25;
   if (B.day <= 3 && hasSkill(ao, '기습')) m *= 1.25;
   if ((B.naval || B.tiles[a.at].t === 'river') && hasSkill(ao, '수군')) m *= 1.25;
-  if (d.side === 1 && (B.tiles[d.at].t === 'castle' || B.tiles[d.at].t === 'keep') && hasSkill(dO, '수성')) m *= .8;
+  if (d.side === 1 && isFort(B.tiles[d.at].t) && hasSkill(dO, '수성')) m *= .8;
   if (B.naval && a.side === B.northSide && !hasSkill(ao, '수군') && !B.chained) m *= .8; // 북방 군사는 배멀미 (연환이면 덜함)
   return Math.min(d.troops, Math.round(a.troops * .1 * m));
 }
@@ -214,7 +230,8 @@ function doAttack(B, a, d) {
   a.morale = clamp(a.morale + 2, 0, 100);
   let cdmg = 0;
   const counter = d.troops > 0 && (ranged ? (canRange(d) && inRange(d, hexDist(a.at, d.at))) : true);
-  if (a.type === 'ram' && (B.tiles[d.at].t === 'castle' || B.tiles[d.at].t === 'keep') && d.side === 1) { const w = Math.min(B.wall, 70 + ri(0, 40)); B.wall -= w; if (w > 0) bmsg(B, `충차가 성벽을 들이받았다! 성벽 −${w}`, 'good'); }
+  if ((a.type === 'ram' || a.type === 'cata') && B.walls && B.walls[d.at] && B.walls[d.at].hp > 0) hitWall(B, a, d.at, .5);
+  if (a.type === 'cata') for (const n of hexNb(d.at)) { const z = unitAt(B, n); if (z && z.side !== a.side && z.alive) { const sp = Math.round(dmg * .25); z.troops -= sp; bfx(B, n, '−' + fmt(sp), '#ffd2c2', 150); checkRout(B, z, a); } }
   if (counter) {
     cdmg = Math.round(estDamage(B, d, a, ranged) * .45 * (.85 + rand() * .3) * (canRange(d) && !ranged ? .6 : 1));
     a.troops -= cdmg; a.morale = clamp(a.morale - Math.round(cdmg / Math.max(1, a.troops + cdmg) * 30), 0, 100);
@@ -243,40 +260,60 @@ function bmsg(B, t, k = '') { B.msgs.push({ t, k }); if (B.msgs.length > 40) B.m
 function bfx(B, at, text, col, delay = 0) { if (B.interactive) B.fx.push({ at, text, col, t0: performance.now() + delay }); }
 
 // 계략
+// 간파: 대상 곁(2칸)에 지력 높은 아군이 있으면 그 지력 −10으로 막아 줌
+function guardInt(B, t) { let v = bOff(t).int; for (const x of B.units) if (x.alive && x !== t && x.side === t.side && hexDist(x.at, t.at) <= 2) v = Math.max(v, bOff(x).int - 10); return v; }
+const tacRange = o => o.int >= 85 ? 3 : 2;
+const TAC_NAME = { fire: '화계', confuse: '혼란', fear: '위보', rally: '고무' };
+const TAC_MIN = { fire: 45, confuse: 45, fear: 50, rally: 60 };
 function tacticChance(B, u, kind, target) {
   const o = bOff(u);
-  if (o.int < 45) return 0;
+  if (o.int < (TAC_MIN[kind] || 45)) return 0;
+  const sk = (hasSkill(o, '신산') ? .12 : 0) + (o.office === '군사' ? .06 : 0);
   if (kind === 'fire') {
-    const tt = B.tiles[target].t; if (tt === 'river' || tt === 'bridge' || B.tiles[target].fire) return 0;
+    const tt = B.tiles[target].t; if (tt === 'river' || tt === 'bridge' || tt === 'water' && !unitAt(B, target) || B.tiles[target].fire) return 0;
     const occ = unitAt(B, target);
-    const di = occ ? bOff(occ).int : 45;
-    let p = .35 + (o.int - di) / 110 + (tt === 'forest' ? .15 : 0) - ((tt === 'castle' || tt === 'keep') ? .2 : 0) + (hasSkill(o, '신산') ? .12 : 0) + (hasSkill(o, '화신') ? .2 : 0);
+    const di = occ ? guardInt(B, occ) : 45;
+    let p = .35 + (o.int - di) / 110 + (tt === 'forest' ? .15 : 0) - (isFort(tt) ? .2 : 0) + sk + (hasSkill(o, '화신') ? .2 : 0);
     return clamp(p, .05, .95);
   }
-  if (kind === 'confuse') { const t = unitAt(B, target); if (!t || t.side === u.side) return 0; return clamp(.3 + (o.int - bOff(t).int) / 80 + (hasSkill(o, '신산') ? .12 : 0) + (hasSkill(o, '귀모') ? .2 : 0), .05, .92); }
+  if (kind === 'confuse' || kind === 'fear') { const t = unitAt(B, target); if (!t || t.side === u.side) return 0; return clamp((kind === 'fear' ? .38 : .3) + (o.int - guardInt(B, t)) / 80 + sk + (hasSkill(o, '귀모') ? .2 : 0), .05, .92); }
+  if (kind === 'rally') { const t = unitAt(B, target); if (!t || t.side !== u.side) return 0; return clamp(.5 + (o.int - 60) / 90 + (o.cha - 50) / 200 + sk, .3, .95); }
   return 0;
 }
 function tacticTargets(B, u, kind, from = u.at) {
-  const out = [];
+  const out = [], rg = tacRange(bOff(u));
   for (let i = 0; i < B.tiles.length; i++) {
-    const d = hexDist(from, i); if (d < 1 || d > 2) continue;
-    if (kind === 'confuse') { const t = unitAt(B, i); if (t && t.side !== u.side && !t.conf) out.push(i); }
-    else { const t = unitAt(B, i); if ((t && t.side !== u.side) || (!t && B.tiles[i].t === 'forest' && enemiesOf(B, u).some(e => hexDist(e.at, i) === 1))) out.push(i); }
+    const d = hexDist(from, i); if (d > rg || (d < 1 && kind !== 'rally')) continue;
+    const t = unitAt(B, i);
+    if (kind === 'confuse') { if (t && t.side !== u.side && !t.conf) out.push(i); }
+    else if (kind === 'fear') { if (t && t.side !== u.side) out.push(i); }
+    else if (kind === 'rally') { const tt = t || (i === from ? u : null); if (tt && tt.side === u.side && (tt.conf || tt.morale < 92)) out.push(i); }
+    else { if ((t && t.side !== u.side) || (!t && B.tiles[i].t === 'forest' && enemiesOf(B, u).some(e => hexDist(e.at, i) === 1))) out.push(i); }
   }
-  return out.filter(i => tacticChance(B, u, kind, i) > 0);
+  return out.filter(i => tacticChance(B, u, kind, i) > 0 || (kind === 'rally' && i === from));
 }
 function doTactic(B, u, kind, target) {
-  const p = tacticChance(B, u, kind, target), o = bOff(u);
-  u.morale = clamp(u.morale, 0, 100);
-  if (!chance(p)) { bmsg(B, `${o.name}의 ${kind === 'fire' ? '화계가' : '혼란 계략이'} 간파당했다`); bfx(B, target, '실패', '#ddd'); SFX.play('miss'); return false; }
+  const o = bOff(u);
+  const p = kind === 'rally' && target === u.at && !unitAt(B, target) ? tacticChance(B, u, kind, u.at) : tacticChance(B, u, kind, target);
+  if (!chance(p)) { bmsg(B, `${o.name}의 ${TAC_NAME[kind]}${kind === 'rally' ? '가 먹히지 않았다' : (kind === 'fire' ? '가' : '가') + ' 간파당했다'}`); bfx(B, target, '실패', '#ddd'); SFX.play('miss'); return false; }
   if (kind === 'fire') {
     B.tiles[target].fire = (B.tiles[target].t === 'forest' ? 3 : 2) + (hasSkill(o, '화신') ? 1 : 0);
     if (B.onFx) B.onFx({ kind: 'burst', at: target });
     const t = unitAt(B, target); if (t) burn(B, t);
+    if (B.walls && B.walls[target] && B.walls[target].gate && B.walls[target].hp > 0) { const w = B.walls[target]; const d = Math.round(w.max * .18); w.hp -= d; bmsg(B, `성문에 불이 붙었다! 내구 −${d}`, 'good'); if (w.hp <= 0) breakWall(B, target); recalcWall(B); }
     bmsg(B, `${o.name}의 화계! 불길이 치솟는다`, 'good'); SFX.play('fire');
-  } else {
+  } else if (kind === 'confuse') {
     const t = unitAt(B, target); t.conf = 1 + (chance(.4) ? 1 : 0) + (hasSkill(o, '귀모') ? 1 : 0);
     bmsg(B, `${o.name}의 계략에 ${bOff(t).name} 부대가 혼란에 빠졌다`, 'good'); bfx(B, target, '혼란', '#e8d06a'); if (B.onFx) B.onFx({ kind: 'swirl', at: target }); SFX.play('confuse');
+  } else if (kind === 'fear') {
+    const t = unitAt(B, target), d = 12 + Math.round(o.int / 8) + ri(0, 6);
+    t.morale = clamp(t.morale - d, 0, 100);
+    bmsg(B, `${o.name}의 위보! “${pick(['후방이 뚫렸다!', '본진이 불탔다!', '총대장이 달아났다!', '원군은 오지 않는다!'])}” — ${bOff(t).name} 부대 사기 −${d}`, 'good'); bfx(B, target, '사기−' + d, '#e8d06a'); if (B.onFx) B.onFx({ kind: 'swirl', at: target }); SFX.play('confuse');
+    checkRout(B, t, null);
+  } else if (kind === 'rally') {
+    const t = unitAt(B, target) || u, d = 12 + Math.round(o.cha / 10);
+    t.morale = clamp(t.morale + d, 0, 100); const wasC = t.conf; t.conf = 0;
+    bmsg(B, `${o.name}의 고무 — ${bOff(t).name} 부대 사기 +${d}${wasC ? ', 혼란에서 벗어났다' : ''}`, 'good'); bfx(B, t.at, '사기+' + d, '#9fe3b8'); SFX.play('tick');
   }
   bOff(u).merit += 6;
   return true;
@@ -429,16 +466,19 @@ function aiPlan(B, u) {
     if (u.side === 0) {
       pos = weak ? dk * 25 : -dk * 45;
       if (tile === keep && keepFree) pos += 9000;
+      const fo = siegeFocus(B);
+      if (fo != null && u.cmd && !weak && dk <= 3) pos -= 160; // 성벽이 멀쩡하면 총대장은 화살 닿는 곳에 붙지 않음
+      if (fo != null && !weak) { const df = hexDist(tile, fo); pos += u.type === 'cata' ? (df >= 2 && df <= 4 ? 140 : -df * 12) : canRange(u) ? 0 : df === 1 ? 150 : -df * 15; }
     } else {
       const tt = B.tiles[tile].t;
-      pos = (tt === 'keep' ? 120 : tt === 'castle' ? 70 : 0) - Math.max(0, dk - 2) * 55;
+      pos = (tt === 'keep' ? 120 : tt === 'gate' ? 110 : tt === 'wall' ? 95 : tt === 'castle' ? 70 : 0) - Math.max(0, dk - 2) * 55;
       if (nearE > 6) pos -= dk * 20; // 적이 멀면 성에 붙어 있기
       if (u.cmd && tile === keep) pos += 80;
     }
     const adjE = enemies.filter(e => hexDist(e.at, tile) === 1);
-    if (canRange(u)) pos -= adjE.length * (u.type === 'xbow' ? 160 : 120);
-    if (u.type === 'ram' && u.side === 0) pos += (B.tiles[tile].t === 'castle' || B.tiles[tile].t === 'keep') ? 0 : enemies.some(e => hexDist(e.at, tile) === 1 && (B.tiles[e.at].t === 'castle' || B.tiles[e.at].t === 'keep')) ? 60 : 0;
+    if (canRange(u)) pos -= adjE.length * (u.type === 'xbow' || u.type === 'cata' ? 160 : 120) * (isWallT(B.tiles[tile].t) ? .4 : 1);
     if (u.cmd) pos -= Math.max(0, adjE.length - 1) * 90;
+    if (u.cmd && u.side === 0 && B.walls) pos -= enemies.filter(e => canRange(e) && inRange(e, hexDist(tile, e.at)) && isFort(B.tiles[e.at].t)).length * 55; // 성벽 위 궁병의 사정거리는 피함
     if (weak) pos -= adjE.length * 150;
     if (tile !== u.at) pos -= 1;
     // 이동 후 행동
@@ -452,11 +492,22 @@ function aiPlan(B, u) {
       if (weak) v -= 200;
       if (v > av) { av = v; act = { kind: 'attack', target: e.id }; }
     }
-    if (o.int >= 55) {
-      for (const kind of ['confuse', 'fire']) {
+    // 공성: 성벽·성문 부수기 / 수리
+    for (const wi of wallTargets(B, u, tile)) {
+      const w = B.walls[wi], dmg = structDmg(u), back = wallBackfire(B, u, wi, tile);
+      const v = dmg * (u.type === 'ram' || u.type === 'cata' ? 3 : 2) + (dmg >= w.hp ? 500 : 0) + (w.gate ? 40 : 0) - back * .9 - (weak ? 200 : 0);
+      if (v > av) { av = v; act = { kind: 'siege', target: wi }; }
+    }
+    for (const wi of repairTargets(B, u, tile)) { const w = B.walls[wi]; const v = Math.min(w.max - w.hp, repairAmt(u)) * 2.2 * (w.hp < w.max * .5 ? 1.6 : 1); if (v > av) { av = v; act = { kind: 'repair', target: wi }; } }
+    if (o.int >= 50) {
+      for (const kind of ['confuse', 'fire', 'fear', 'rally']) {
+        if (o.int < TAC_MIN[kind]) continue;
         for (const ti of tacticTargets(B, u, kind, tile)) {
-          const p = tacticChance(B, u, kind, ti); const t = unitAt(B, ti);
-          let v = kind === 'confuse' ? p * (t ? t.troops * .18 + (t.cmd ? 200 : 0) : 0) : p * ((t ? t.troops * .17 : 0) + hexNb(ti).filter(n => { const z = unitAt(B, n); return z && z.side !== u.side && B.tiles[n].t === 'forest'; }).length * 300);
+          const p = tacticChance(B, u, kind, ti); const t = unitAt(B, ti) || (ti === tile ? u : null);
+          let v = kind === 'confuse' ? p * (t ? t.troops * .18 + (t.cmd ? 200 : 0) : 0)
+            : kind === 'fear' ? p * (t ? t.troops * .1 + (t.morale < 30 ? 350 : 0) + (t.cmd ? 120 : 0) : 0)
+            : kind === 'rally' ? p * (t ? (92 - t.morale) * 9 + (t.conf ? 420 : 0) : 0)
+            : p * ((t ? t.troops * .17 : 0) + hexNb(ti).filter(n => { const z = unitAt(B, n); return z && z.side !== u.side && B.tiles[n].t === 'forest'; }).length * 300);
           if (B.tiles[ti].t === 'forest' && hexNb(ti).some(n => { const z = unitAt(B, n); return z && z.side === u.side; })) v -= 400; // 아군 옆 숲불은 위험
           if (v > av) { av = v; act = { kind, target: ti }; }
         }
@@ -477,6 +528,7 @@ function aiPlan(B, u) {
 // 전투를 보이지 않게 끝까지 (AI 대 AI)
 function runBattleHeadless(B) {
   let guard = 0;
+  battleOpening(B);
   while (!B.over && guard++ < 2000) {
     for (const side of [0, 1]) {
       const us = B.units.filter(u => u.alive && u.side === side);
@@ -497,7 +549,9 @@ function runBattleHeadless(B) {
 }
 function execAct(B, u, act, headless) {
   if (act.kind === 'attack') { const t = B.units[act.target]; if (t && t.alive) doAttack(B, u, t); }
-  else if (act.kind === 'fire' || act.kind === 'confuse') doTactic(B, u, act.kind, act.target);
+  else if (act.kind === 'siege') doSiege(B, u, act.target);
+  else if (act.kind === 'repair') doRepair(B, u, act.target);
+  else if (TAC_NAME[act.kind]) doTactic(B, u, act.kind, act.target);
   else if (act.kind === 'duel') { const t = B.units[act.target]; if (t && t.alive && duelAccept(B, u, t)) duelAuto(B, u, t); else if (t) bmsg(B, `${eun(bOff(t).name)} 일기토를 피했다`); }
   u.done = true;
 }

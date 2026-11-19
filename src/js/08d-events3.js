@@ -292,7 +292,7 @@ EVENTS.push(
   // ── 촉의 멸망 (263)
   {
     id: 'shu_fall',
-    cond: () => { const W = facK('cc'), L = facK('lb'); return HIST() && W && L && G.year >= 263 && !isP(rulerOf(L.id)) && onIn(byName('등애'), W.id) && onIn(byName('종회'), W.id) && facAdj(W.id, L.id) && cityN('성도').f === L.id; },
+    cond: () => { const W = facK('cc'), L = facK('lb'); return HIST() && W && L && G.year >= 263 && !isP(rulerOf(L.id)) && facAdj(W.id, L.id) && (cityN('성도').f === L.id || citiesOf(L.id).length <= 5) && ((onIn(byName('등애'), W.id) && onIn(byName('종회'), W.id)) || G.year >= 265); },
     async run() {
       const W = facK('cc'), L = facK('lb'), da = byName('등애'), zh = byName('종회'), jw = byName('강유'), ls = rulerOf(L.id);
       await scene({ title: '촉의 멸망', involved: anyP(W, L), lines: [

@@ -47,6 +47,8 @@ const ICONS = {
   sword: '<path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="m13 19 6-6M16 16l4 4M19 21l2-2"/>',
   horse: '<path d="M5 21c0-3 1-5 3-7-1-3 0-6 3-8l1-3 2 3c3 1 5 3 5 6l-2 1-2-1-2 2v7"/><circle cx="14.5" cy="7.5" r=".5"/>',
   xbow: '<path d="M4 9c5-3 11-3 16 0"/><path d="M4 9l8 4 8-4"/><path d="M12 4v17"/><path d="M10 18h4"/><path d="m10 6 2-2 2 2"/>',
+  tower: '<path d="M7 21 9 7h6l2 14"/><path d="M8 7V3h8v4"/><path d="M8 12h8M8.5 16.5h7"/><path d="M10 3v2M14 3v2"/>',
+  cata: '<path d="M4 19h16"/><path d="M6 19l2-6h8l2 6"/><path d="M9 13 17 5"/><circle cx="18" cy="4" r="1.6"/><path d="M12 13v-3"/>',
   ram: '<path d="M3 15h14l3-3"/><path d="M4 15V9h11v6"/><path d="M6 9 9 5h3l3 4"/><path d="M5 18a2 2 0 1 0 4 0a2 2 0 1 0-4 0"/><path d="M12 18a2 2 0 1 0 4 0a2 2 0 1 0-4 0"/><path d="M17 12h4"/>',
   crown: '<path d="M3 8l4 4 5-6 5 6 4-4-2 11H5z"/><path d="M5 19h14"/>',
   rank: '<path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5L12 15.6 7.1 18.2 8 12.7 4 8.8l5.5-.8z"/>',

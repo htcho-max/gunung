@@ -41,7 +41,7 @@ const st = await p.evaluate(() => {
   let rf = 0, forms = {}, rams = 0;
   for (let k = 0; k < 30; k++) {
     const from = G.cities[CITY_BY_NAME['진류']], to = G.cities[CITY_BY_NAME['낙양']];
-    from.troops = 30000; to.troops = 20000; to.wall = 500;
+    from.troops = 30000; to.troops = 12000; to.wall = 500;
     for (const i of ADJ[to.id]) if (G.cities[i].f === to.f) G.cities[i].troops = 15000;
     for (const o of G.officers) o.acted = false;
     const offs = officersIn(from.id, from.f).slice(0, 4);
@@ -49,7 +49,7 @@ const st = await p.evaluate(() => {
     const B = makeBattle({ attF: from.f, defF: to.f, cityId: to.id, fromId: from.id, att: army, def: defendArmy(to), attFood: 9000 });
     const l = gatherReinforce(B, to); rf += l.length;
     forms[B.form.join('/')] = (forms[B.form.join('/')] || 0) + 1;
-    const w0 = B.wall; runBattleHeadless(B); if (B.wall < w0) rams++;
+    runBattleHeadless(B); if (Object.values(B.walls).some(w => w.hp < w.max)) rams++;
     returnAllies(B);
   }
   return { rf, forms, rams };

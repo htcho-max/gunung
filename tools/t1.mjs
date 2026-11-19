@@ -29,7 +29,7 @@ await p.click('.cmd:has-text("출진")'); await p.waitForTimeout(200);
 await p.click('.pickList .offRow:has-text("낙양")'); await p.click('#modalLayer footer .btn.pri'); await p.waitForTimeout(200);
 await p.click('#modalLayer footer .btn.red'); await p.waitForTimeout(1300);
 await p.click('#modalLayer footer .btn.pri'); await p.waitForTimeout(1200);
-if (await p.$('#modalLayer:not([hidden]) footer .btn.pri')) { await p.screenshot({ path: SH + tag + '_form.png' }); await p.click('#modalLayer footer .btn.pri'); await p.waitForTimeout(900); }
+for (let k = 0; k < 3; k++) if (await p.evaluate(() => $('#modalLayer').classList.contains('on'))) { await p.screenshot({ path: SH + tag + (k ? '_strat' : '_form') + '.png' }); await (await p.$('#modalLayer footer .btn.pri') || await p.$('#modalLayer footer .btn')).click(); await p.waitForTimeout(900); }
 await p.screenshot({ path: SH + tag + '_battle.png' });
 // 첫 부대 이동: 오른쪽으로 3칸
 const mv = await p.evaluate(() => { const B = BattleUI.B, u = BattleUI.sel; const r = [...BattleUI.reach.keys()].sort((a, b) => tQ(b) - tQ(a))[0]; const c = BattleUI.center(r); const rc = $('#bcv').getBoundingClientRect(); return { x: rc.left + c.x, y: rc.top + c.y }; });
