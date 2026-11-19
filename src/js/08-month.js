@@ -152,19 +152,19 @@ async function monthlyEvents() {
 }
 
 async function yearlyEvents() {
-  // 수명
-  for (const o of G.officers) {
-    if ((o.st === 'on' || o.st === 'ronin') && G.year >= o.die && chance(.65)) {
-      const notable = o.id === G.player || isRuler(o) || (me() && o.f === me().f && o.f >= 0);
-      killOfficer(o, notable ? `${eun(o.name)} 병으로 세상을 떠났습니다 (향년 ${age(o)}세)` : null);
-    }
-  }
   // 새 인물 등장
   for (const o of G.officers) {
     if (o.st !== 'unborn' || G.year - o.born < 16) continue;
     const F = o.fk ? G.factions.find(f => f.key === o.fk && f.alive) : null;
     if (F) { o.st = 'on'; o.f = -1; joinFaction(o, F.id, G.officers[F.ruler].city); logMsg(`${eun(o.name)} 자라서 ${F.name}군에 들어왔습니다`); }
     else { o.st = 'ronin'; o.f = -1; o.found = false; }
+  }
+  // 수명
+  for (const o of G.officers) {
+    if ((o.st === 'on' || o.st === 'ronin') && G.year >= o.die && chance(.65)) {
+      const notable = o.id === G.player || isRuler(o) || (me() && o.f === me().f && o.f >= 0);
+      killOfficer(o, notable ? `${eun(o.name)} 병으로 세상을 떠났습니다 (향년 ${age(o)}세)` : null);
+    }
   }
   spawnTalents();
   checkFactions();

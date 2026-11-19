@@ -502,7 +502,7 @@ async function runEvents() {
     let ok = false;
     try { ok = !!ev.cond(); } catch (e) { console.error('사건 조건 오류', ev.id, e); }
     if (!ok) continue;
-    G.ev[ev.id] = true;
+    G.ev[ev.id] = true; (G.evAt = G.evAt || {})[ev.id] = mIdx();
     try { await ev.run(); } catch (e) { console.error('사건 오류', ev.id, e); }
     checkFactions(); assignGovs();
     if (UI.q.length) await UI.flush();

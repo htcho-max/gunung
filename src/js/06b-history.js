@@ -25,19 +25,26 @@ const SPHERES = Object.fromEntries(Object.entries({
 }).map(([k, v]) => [k, new Set(v.split(' '))]));
 
 // 역사 속 후계자
-const HEIRS = { 유언: '유장', 손견: '손책', 손책: '손권', 원소: '원상', 조조: '조비', 마등: '마초', 공손도: '공손강', 공손찬: '공손속', 동탁: '이각', 유표: '채모' };
+const HEIRS = { 유언: '유장', 손견: '손책', 손책: '손권', 원소: '원상', 조조: '조비', 마등: '마초', 공손도: '공손강', 공손찬: '공손속', 동탁: '이각', 유표: '채모', 유비: '유선', 조비: '조예', 손권: '손휴', 손휴: '손호', 사마의: '사마사', 사마사: '사마소', 사마소: '사마염' };
 // 사건으로 죽는 인물: 자연사를 이 해까지 미룸
-const EVENT_DEATH = { 동탁: 194, 손견: 194, 도겸: 196, 왕윤: 194, 손책: 202, 한복: 193 };
+const EVENT_DEATH = { 동탁: 194, 손견: 194, 도겸: 196, 왕윤: 194, 손책: 202, 한복: 193, 하후연: 220, 관우: 220, 관평: 220, 방덕: 220, 장비: 222, 마속: 229, 위연: 235, 종회: 265 };
 
 const SJ_LATE = new Set(['장사', '계양', '영릉', '무릉', '강하', '남해']); // 손씨가 형주 남부로 나아간 것은 적벽 뒤
-function inSphere(F, t) { const sp = SPHERES[F.key]; if (F.key === 'sj' && G.year < 209 && SJ_LATE.has(t.name)) return false; return !sp || sp.has(t.name); }
+// 삼국 정립 뒤(215~)의 세력권: 위는 북쪽, 촉은 익주(+북벌 길), 오는 강남
+const NORTH = '허창 진류 복양 여남 소패 하비 낙양 홍농 완 수춘 장안 업 남피 진양 계 북평 평원 북해 신야 양양 무위 천수 안정 양평';
+const LATE_SPH = {
+  cc: y => new Set((NORTH + ' 한중 강릉 여강' + (y >= 262 ? ' 자동 성도 강주 건녕' : '') + (y >= 279 ? ' 건업 오 회계 시상 강하 장사 계양 남해 무릉 영릉' : '')).split(' ')),
+  lb: y => new Set(('성도 자동 강주 건녕 한중' + (y < 220 ? ' 강릉 무릉 영릉 장사 양양' : ' 천수 안정 무위 장안')).split(' ')),
+  sj: y => new Set('건업 오 회계 여강 시상 강하 장사 계양 남해 강릉 무릉 영릉 수춘'.split(' ')),
+};
+function inSphere(F, t) { if (G.year >= 215 && LATE_SPH[F.key] && HIST()) return LATE_SPH[F.key](G.year).has(t.name); const sp = SPHERES[F.key]; if (F.key === 'sj' && G.year < 209 && SJ_LATE.has(t.name)) return false; return !sp || sp.has(t.name); }
 function sphereLoose(F) {
   if (F && F.key === 'dz' && !G.ev.chain && !G.ev.dong_death) return 9; // 동탁은 살아 있는 동안 관중을 지킴
-  return G.year < 192 ? 9 : G.year < 196 ? .8 : G.year < 202 ? .4 : G.year < 208 ? .15 : 0;
+  return G.year < 192 ? 9 : G.year < 196 ? .8 : G.year < 202 ? .4 : G.year < 208 ? .15 : G.year < 215 ? 0 : G.year < 280 ? .35 : 0;
 }
 
 // 역사 속 세력 크기: 그해까지 이 정도 성을 넘으면 공격을 망설임
-const HIST_CAP = { sj: [[197, 5], [203, 7], [208, 8], [215, 11]], cc: [[196, 5], [199, 9], [203, 14], [208, 22]], ys: [[199, 9]], md: [[210, 6]], ly: [[214, 5]], lbi: [[208, 9]], dz: [[200, 5]], zl: [[214, 2]] };
+const HIST_CAP = { sj: [[197, 5], [203, 7], [208, 8], [215, 11], [279, 13]], cc: [[196, 5], [199, 9], [203, 14], [208, 22], [262, 26], [279, 31]], lb: [[213, 6], [221, 10], [262, 6]], ys: [[199, 9]], md: [[210, 6]], ly: [[214, 5]], lbi: [[208, 9]], dz: [[200, 5]], zl: [[214, 2]] };
 function capPenalty(F) {
   const tb = HIST_CAP[F.key]; if (!tb) return 0;
   const row = tb.find(([y]) => G.year <= y); if (!row) return 0;

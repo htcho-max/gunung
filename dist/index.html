@@ -406,7 +406,7 @@ input[type=text]:focus,select:focus{outline:2px solid var(--brass);outline-offse
 <script>
 // ---- 00-util.js
 // ===== 공용 도구 =====
-const VERSION = '0.8.1';
+const VERSION = '0.9.0';
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -721,6 +721,43 @@ const OFFICER_DEFS = `
 맹획,180,76,88,40,40,72,,건녕,240
 사섭,137,58,40,76,86,80,,남해,226
 원상,178,66,68,56,54,74,ys,업,207
+조예,205,70,40,82,78,72,cc,허창,239,F1
+조진,185,85,78,66,60,70,cc,장안,231,F1
+조휴,180,78,72,60,55,62,cc,수춘,228,F1
+하후패,200,80,84,56,40,60,cc,장안,259,F1
+곽회,187,86,72,80,74,70,,진양,255
+사마사,208,88,62,90,82,72,,낙양,255
+사마소,211,85,58,88,86,74,,낙양,265
+종회,225,82,58,94,82,70,,허창,264
+진태,200,85,70,82,76,70,,허창,260
+문앙,238,78,93,50,40,60,,수춘,291
+학소,185,88,72,80,70,66,,진양,229
+왕쌍,190,68,90,30,20,40,,장안,228
+가충,217,60,30,88,86,40,,진양,282
+두예,222,90,50,90,86,74,,장안,285
+양호,221,92,60,88,88,90,,진양,278
+사마염,236,70,40,72,80,86,,낙양,290
+관흥,196,76,86,60,52,74,lb,평원,234
+장포,196,72,86,50,40,60,lb,평원,229
+유선,205,20,10,30,40,60,lb,신야,271
+왕평,190,83,74,64,50,60,,한중,248
+요화,185,72,74,60,52,60,,양양,264
+장의,190,75,76,60,58,58,,성도,254
+비의,195,62,30,80,88,82,,강하,253
+장완,190,70,30,86,92,80,,영릉,246
+동윤,195,40,20,78,88,74,,강하,246
+등지,180,70,60,80,78,72,,성도,251
+육항,226,90,60,88,86,82,sj,오,274
+제갈각,203,82,60,90,72,70,,오,253
+정봉,195,80,82,60,50,60,sj,여강,271
+주환,177,85,80,70,60,64,sj,오,238
+주연,182,78,70,72,66,62,sj,오,249
+반장,180,74,80,40,40,50,sj,건업,234
+서성,175,84,78,70,60,64,sj,건업,225
+능통,189,70,84,50,40,66,sj,오,217
+손등,209,60,40,72,76,86,sj,건업,241,F2
+손휴,235,40,30,70,72,62,sj,건업,264,F2
+손호,242,50,60,60,40,20,sj,건업,284,F2
 `;
 
 // 해안선(땅 다각형)과 강
@@ -789,6 +826,43 @@ const BIOS = {
   순심: ['우약', '영천 영음', '순욱의 형. 한복을 설득해 기주를 원소에게 넘기게 했다.'],
   고람: ['', '', '원소의 장수. 관도에서 장합과 함께 조조에게 항복했다.'],
   국의: ['', '', '원소의 장수. 계교 전투에서 강노병으로 공손찬의 백마의종을 무너뜨렸으나, 공을 믿고 교만하다 원소에게 죽었다.'],
+  조예: ['원중', '패국 초', '조비의 맏아들로 위의 두 번째 황제. 총명하여 제갈량의 북벌을 사마의·조진에게 막게 했으나, 말년에는 궁궐 짓기에 빠졌고 어린 조방에게 나라를 맡기고 일찍 죽었다.'],
+  조진: ['자단', '패국 초', '조조가 거둬 기른 일족. 대장군으로 서쪽을 맡아 제갈량의 첫 북벌을 막았으나, 위가 촉을 치러 나선 원정은 장마로 거두어야 했다.'],
+  조휴: ['문열', '패국 초', '조조가 "우리 집안의 천리마"라 부른 일족 장수. 석정에서 주방의 거짓 항복에 속아 육손에게 크게 지고 분을 이기지 못해 죽었다.'],
+  하후패: ['중권', '패국 초', '하후연의 아들. 사마의가 정권을 잡자 위협을 느껴 촉으로 넘어가 강유와 함께 북벌에 나섰다.'],
+  곽회: ['백제', '태원 양곡', '위의 서쪽 방어를 오래 맡은 명장. 가정 싸움 뒤 열류성을 지켰고, 강유의 북벌을 여러 번 막아 냈다.'],
+  사마사: ['자원', '하내 온', '사마의의 맏아들. 고평릉 정변을 함께 꾸몄고, 아버지의 뒤를 이어 위의 권력을 쥐고 황제 조방을 폐했다.'],
+  사마소: ['자상', '하내 온', '사마의의 둘째 아들. 형 사마사의 뒤를 이어 정권을 잡고 촉을 멸망시켰다. "사마소의 마음은 길 가는 사람도 안다"는 말이 생겼다.'],
+  종회: ['사계', '영천 장사', '어려서부터 재주가 뛰어났던 위의 책사. 등애와 함께 촉을 무너뜨렸으나, 강유와 손잡고 반란을 꾀하다 난군에게 죽었다.'],
+  진태: ['현백', '영천 허창', '진군의 아들. 곽회와 함께 강유의 북벌을 막았고, 조모가 시해되자 사마소에게 가충을 베라고 요구했다.'],
+  문앙: ['차건', '초국', '문흠의 아들로 위에서 손꼽히는 맹장. 연의에서는 홀로 수천 군을 몇 번이고 뚫고 나와 "조운이 다시 왔다"는 말을 들었다.'],
+  학소: ['백도', '태원', '진창성을 겨우 천여 명으로 지켜 제갈량의 수만 대군을 스무날 넘게 막아 낸 장수.'],
+  왕쌍: ['자전', '농서', '연의에서 위의 맹장으로 나와 북벌 중 촉의 장수들을 베었으나, 제갈량이 물러날 때 위연에게 목이 베인다.'],
+  가충: ['공려', '평양 양릉', '사마소의 심복. 황제 조모를 시해하는 일을 사주했고, 진에서 높은 벼슬에 올랐다.'],
+  두예: ['원개', '경조 두릉', '진의 장수이자 학자. 오를 칠 때 "대나무를 쪼개는 기세(파죽지세)"로 강남을 휩쓸어 천하 통일을 마무리했다.'],
+  양호: ['숙자', '태산 남성', '진의 형주를 맡아 덕으로 다스린 장수. 오의 육항과 서로 존중하며 국경을 지켰고, 죽기 전 두예를 추천해 오 정벌의 길을 닦았다.'],
+  사마염: ['안세', '하내 온', '사마소의 아들. 위의 선양을 받아 진을 세우고 280년 오를 멸해 삼국 시대를 끝냈다.'],
+  관흥: ['안국', '하동 해', '관우의 아들. 젊어서 이름이 났으나 일찍 죽었다. 연의에서는 장포와 함께 아버지의 원수를 갚으러 이릉에 나선다.'],
+  장포: ['', '탁군', '장비의 맏아들. 연의에서는 장팔사모를 쓰며 관흥과 의형제를 맺고 북벌에 나선다.'],
+  유선: ['공사', '탁군', '유비의 아들로 촉한의 두 번째 황제. 장판에서 조운에게 구출된 아두. 제갈량에게 나라를 맡겼고, 촉이 망한 뒤 "이곳이 즐거워 촉이 생각나지 않는다(낙불사촉)"고 했다.'],
+  왕평: ['자균', '파서 탕거', '글은 열 자밖에 몰랐으나 군사에 밝았던 장수. 가정에서 마속에게 산 위에 진을 치지 말라고 말렸고, 흥세에서 위의 대군을 막았다.'],
+  요화: ['원검', '양양 중려', '관우의 주부였다가 촉의 장수로 오래 살아남았다. "촉에 대장이 없어 요화가 선봉이 된다"는 말이 있다.'],
+  장의: ['백기', '촉군 무양', '남중을 다스리고 강유의 북벌에 함께한 장수. 마지막 북벌에서 싸우다 죽었다.'],
+  비의: ['문위', '강하 맹', '제갈량과 장완의 뒤를 이어 촉을 이끈 재상. 바쁜 일도 웃으며 처리했으나 연회 자리에서 위의 항장에게 찔려 죽었다.'],
+  장완: ['공염', '영릉 상향', '제갈량이 "나라를 함께 짊어질 사람"이라 한 신하. 제갈량이 죽은 뒤 침착하게 촉을 안정시켰다.'],
+  동윤: ['휴소', '남군 지강', '유선을 바른말로 이끈 신하. 그가 살아 있는 동안 환관 황호가 함부로 날뛰지 못했다.'],
+  등지: ['백묘', '의양 신야', '이릉 뒤 오에 사신으로 가 손권을 설득해 촉·오 동맹을 되살렸다.'],
+  육항: ['유절', '오군 오', '육손의 아들. 오의 마지막 명장으로 서릉을 되찾고, 진의 양호와 서로 존중하며 국경을 지켰다.'],
+  제갈각: ['원손', '낭야 양도', '제갈근의 아들. 재주가 넘쳤으나 오만하여, 동흥에서 이긴 뒤 합비를 무리하게 치다 지고 손준에게 죽었다.'],
+  정봉: ['승연', '여강 안풍', '오에서 오래 활약한 장수. 동흥 싸움에서 눈 속에 갑옷을 벗고 돌격해 위군을 깨뜨렸다.'],
+  주환: ['휴목', '오군 오', '유수에서 조인의 대군을 적은 군사로 막아 낸 오의 명장. 석정 싸움에서도 공을 세웠다.'],
+  주연: ['의봉', '단양 고장', '이릉에서 유비를 뒤쫓았고, 강릉을 위의 대군으로부터 지켜 냈다.'],
+  반장: ['문규', '동군 발간', '관우를 사로잡은 오의 장수. 연의에서는 관우의 청룡언월도를 손에 넣는다.'],
+  서성: ['문향', '낭야 거', '적벽 뒤 여러 싸움에 나섰고, 연의에서는 강가에 가짜 성벽을 세워 조비의 대군을 물리친다.'],
+  능통: ['공적', '오군 여항', '능조의 아들. 아버지를 죽인 감녕과 원수였으나, 합비에서 손권을 지키며 목숨을 걸고 싸웠다.'],
+  손등: ['자고', '오군 부춘', '손권의 맏아들로 태자. 어질고 인재를 아꼈으나 일찍 죽어 오의 후계 다툼이 시작되었다.'],
+  손휴: ['자열', '오군 부춘', '손권의 여섯째 아들로 오의 세 번째 황제. 권신 손침을 제거했으나 일찍 죽었다.'],
+  손호: ['원종', '오군 부춘', '오의 마지막 황제. 처음엔 기대를 모았으나 갈수록 잔혹해져 민심을 잃었고, 진에 항복했다.'],
   원상: ['현보', '여남 여양', '원소의 셋째 아들. 용모가 빼어나 아버지의 총애를 받아 뒤를 이었으나, 형 원담과 싸우다 조조에게 쫓겨 요동에서 공손강에게 목이 베였다.'],
   원담: ['현사', '여남 여양', '원소의 맏아들. 아버지가 죽은 뒤 동생 원상과 후계를 다투다 조조에게 망했다.'],
   공손찬: ['백규', '요서 영지', '흰 말을 탄 기병 백마의종으로 이민족을 떨게 한 유주의 군벌. 원소와 다투다 역경에 틀어박혔고, 끝내 스스로 목숨을 끊었다.'],
@@ -1071,6 +1145,51 @@ const SCENARIOS = {
     items: { jeokto: '관우', cheonggang: '조운', jeongno: '유비', gojeong: '손권', okse: null },
     focus: [['cc', 'sj', 24], ['cc', 'lb', 24]],
     ally: [['sj', 'lb', 36]],
+  },
+
+  219: {
+    year: 219, month: 7, title: '219년 · 한중왕과 형주', desc: '정군산에서 하후연을 벤 유비가 한중왕에 올랐다. 형주의 관우는 북쪽 번성을 노리고, 강동의 손권은 형주를 되찾을 기회를 엿본다.',
+    factions: [
+      ['cc', '조조', '#2f5fa8', '허창 진류 복양 여남 소패 하비 낙양 홍농 완 수춘 장안 업 남피 진양 계 북평 평원 북해 신야 양양 무위 천수 안정', '조조 하후돈 조인 조홍 조비 조진 조휴 장료 서황 장합 우금 방덕 허저 만총 가후 사마의 정욱 화흠 왕랑 전예 문빙 장패 곽회 하후패 학소 왕쌍 등애 진태', 1.3],
+      ['lb', '유비', '#3d8c4a', '성도 자동 강주 건녕 한중 강릉 무릉 영릉', '유비 관우 장비 조운 제갈량 황충 마초 법정 위연 관평 이적 마량 마속 엄안 황권 오의 이엄 미방 미축 간옹 관흥 장포 왕평 요화 장의 비의 장완 동윤 마대 등지', 1.2],
+      ['sj', '손권', '#c0392b', '건업 오 회계 여강 시상 강하 장사 계양 남해', '손권 여몽 육손 감녕 장흠 주태 장소 제갈근 한당 서성 반장 주환 주연 정봉 손소 사섭', 1.15],
+      ['gd', '공손강', '#7a6a5a', '양평', '공손강', 1],
+    ],
+    dead: '하후연 능통 악진 진림 노숙',
+    ronin: '강유@천수 맹획@건녕',
+    done: 'peach coalition luoyang_fire jade_seal sunjian_death jizhou chain dong_death cao_song xuzhou sun_zhou li_guo emperor yuan_emperor xiapi yijing guandu sun_ce_death xushu three_visits yuan_split guanyu_return changban liubei_rout baekmun jingzhou_surrender chibi shu_entry luofeng hefei dingjun hanzhong_king',
+    items: { jeokto: '관우', cheonggang: '조운', jeongno: '유비', gojeong: '손권' },
+    focus: [['lb', 'cc', 18], ['sj', 'lb', 18]],
+    ally: [],
+  },
+  221: {
+    year: 221, month: 7, title: '221년 · 삼국 정립', desc: '조조가 죽고 조비가 한의 선양을 받아 위를 세웠다. 유비는 촉한의 황제가 되었고, 관우와 장비를 잃은 원한을 갚으려 오를 향해 군사를 일으킨다.',
+    factions: [
+      ['cc', '조비', '#2f5fa8', '허창 진류 복양 여남 소패 하비 낙양 홍농 완 수춘 장안 업 남피 진양 계 북평 평원 북해 신야 양양 무위 천수 안정', '조비 조인 조홍 조진 조휴 장료 서황 장합 허저 만총 가후 사마의 화흠 왕랑 전예 문빙 장패 곽회 하후패 학소 왕쌍 우금 등애 진태', 1.3],
+      ['lb', '유비', '#3d8c4a', '성도 자동 강주 건녕 한중', '유비 조운 제갈량 황권 마초 위연 마량 마속 이엄 오의 관흥 장포 왕평 요화 장의 비의 장완 동윤 마대 등지 미축', 1.25],
+      ['sj', '손권', '#c0392b', '건업 오 회계 여강 시상 강하 장사 계양 남해 강릉 무릉 영릉', '손권 육손 주태 장소 제갈근 한당 서성 반장 주환 주연 정봉 손소 사섭 미방', 1.2],
+      ['gd', '공손강', '#7a6a5a', '양평', '공손강', 1],
+    ],
+    dead: '관우 관평 장비 황충 법정 여몽 감녕 장흠 조조 하후돈 하후연 방덕 정욱 능통 노숙',
+    ronin: '강유@천수 맹획@건녕',
+    done: 'peach coalition luoyang_fire jade_seal sunjian_death jizhou chain dong_death cao_song xuzhou sun_zhou li_guo emperor yuan_emperor xiapi yijing guandu sun_ce_death xushu three_visits yuan_split guanyu_return changban liubei_rout baekmun jingzhou_surrender chibi shu_entry luofeng hefei dingjun hanzhong_king fan_castle maicheng wei_found shu_found zhangfei_death',
+    items: { cheonggang: '조운', jeongno: '유비', gojeong: '손권', jeokto: null },
+    focus: [['lb', 'sj', 24]],
+    ally: [['cc', 'sj', 18]],
+  },
+  234: {
+    year: 234, month: 2, title: '234년 · 오장원', desc: '제갈량이 마지막 북벌에 나섰다. 오장원에서 사마의와 마주한 채 별이 지려 한다. 조예의 위, 유선의 촉, 손권의 오가 천하를 셋으로 나누었다.',
+    factions: [
+      ['cc', '조예', '#2f5fa8', '허창 진류 복양 여남 소패 하비 낙양 홍농 완 수춘 장안 업 남피 진양 계 북평 평원 북해 신야 양양 무위 천수 안정 양평', '조예 사마의 사마사 사마소 곽회 진태 하후패 만총 전예 등애 가충', 1.3],
+      ['lb', '유선', '#3d8c4a', '성도 자동 강주 건녕 한중', '유선 제갈량 위연 강유 마대 왕평 요화 장의 비의 장완 동윤 등지 오의 관흥 맹획', 1.2],
+      ['sj', '손권', '#c0392b', '건업 오 회계 여강 시상 강하 장사 계양 남해 강릉 무릉 영릉', '손권 육손 제갈근 장소 주환 주연 정봉 반장 손등 제갈각 손소', 1.2],
+    ],
+    dead: '조비 조진 조휴 장합 학소 왕쌍 조운 마량 마속 황권 이엄 미방 장포 서성',
+    ronin: '',
+    done: 'peach coalition luoyang_fire jade_seal sunjian_death jizhou chain dong_death cao_song xuzhou sun_zhou li_guo emperor yuan_emperor xiapi yijing guandu sun_ce_death xushu three_visits yuan_split guanyu_return changban liubei_rout baekmun jingzhou_surrender chibi shu_entry luofeng hefei dingjun hanzhong_king fan_castle maicheng wei_found shu_found wu_found zhangfei_death yiling baidi nanman northern jieting',
+    items: { gojeong: '손권', jeongno: '유선' },
+    focus: [['lb', 'cc', 24], ['cc', 'lb', 24]],
+    ally: [['lb', 'sj', 48]],
   },
 };
 const SCEN_EXTRA_SPHERES = { lp: '복양 진류 소패 하비 허창', zl: '한중 자동', wl: '회계 오', ybh: '오 회계', sx: '남해 계양 영릉' };
@@ -2326,19 +2445,26 @@ const SPHERES = Object.fromEntries(Object.entries({
 }).map(([k, v]) => [k, new Set(v.split(' '))]));
 
 // 역사 속 후계자
-const HEIRS = { 유언: '유장', 손견: '손책', 손책: '손권', 원소: '원상', 조조: '조비', 마등: '마초', 공손도: '공손강', 공손찬: '공손속', 동탁: '이각', 유표: '채모' };
+const HEIRS = { 유언: '유장', 손견: '손책', 손책: '손권', 원소: '원상', 조조: '조비', 마등: '마초', 공손도: '공손강', 공손찬: '공손속', 동탁: '이각', 유표: '채모', 유비: '유선', 조비: '조예', 손권: '손휴', 손휴: '손호', 사마의: '사마사', 사마사: '사마소', 사마소: '사마염' };
 // 사건으로 죽는 인물: 자연사를 이 해까지 미룸
-const EVENT_DEATH = { 동탁: 194, 손견: 194, 도겸: 196, 왕윤: 194, 손책: 202, 한복: 193 };
+const EVENT_DEATH = { 동탁: 194, 손견: 194, 도겸: 196, 왕윤: 194, 손책: 202, 한복: 193, 하후연: 220, 관우: 220, 관평: 220, 방덕: 220, 장비: 222, 마속: 229, 위연: 235, 종회: 265 };
 
 const SJ_LATE = new Set(['장사', '계양', '영릉', '무릉', '강하', '남해']); // 손씨가 형주 남부로 나아간 것은 적벽 뒤
-function inSphere(F, t) { const sp = SPHERES[F.key]; if (F.key === 'sj' && G.year < 209 && SJ_LATE.has(t.name)) return false; return !sp || sp.has(t.name); }
+// 삼국 정립 뒤(215~)의 세력권: 위는 북쪽, 촉은 익주(+북벌 길), 오는 강남
+const NORTH = '허창 진류 복양 여남 소패 하비 낙양 홍농 완 수춘 장안 업 남피 진양 계 북평 평원 북해 신야 양양 무위 천수 안정 양평';
+const LATE_SPH = {
+  cc: y => new Set((NORTH + ' 한중 강릉 여강' + (y >= 262 ? ' 자동 성도 강주 건녕' : '') + (y >= 279 ? ' 건업 오 회계 시상 강하 장사 계양 남해 무릉 영릉' : '')).split(' ')),
+  lb: y => new Set(('성도 자동 강주 건녕 한중' + (y < 220 ? ' 강릉 무릉 영릉 장사 양양' : ' 천수 안정 무위 장안')).split(' ')),
+  sj: y => new Set('건업 오 회계 여강 시상 강하 장사 계양 남해 강릉 무릉 영릉 수춘'.split(' ')),
+};
+function inSphere(F, t) { if (G.year >= 215 && LATE_SPH[F.key] && HIST()) return LATE_SPH[F.key](G.year).has(t.name); const sp = SPHERES[F.key]; if (F.key === 'sj' && G.year < 209 && SJ_LATE.has(t.name)) return false; return !sp || sp.has(t.name); }
 function sphereLoose(F) {
   if (F && F.key === 'dz' && !G.ev.chain && !G.ev.dong_death) return 9; // 동탁은 살아 있는 동안 관중을 지킴
-  return G.year < 192 ? 9 : G.year < 196 ? .8 : G.year < 202 ? .4 : G.year < 208 ? .15 : 0;
+  return G.year < 192 ? 9 : G.year < 196 ? .8 : G.year < 202 ? .4 : G.year < 208 ? .15 : G.year < 215 ? 0 : G.year < 280 ? .35 : 0;
 }
 
 // 역사 속 세력 크기: 그해까지 이 정도 성을 넘으면 공격을 망설임
-const HIST_CAP = { sj: [[197, 5], [203, 7], [208, 8], [215, 11]], cc: [[196, 5], [199, 9], [203, 14], [208, 22]], ys: [[199, 9]], md: [[210, 6]], ly: [[214, 5]], lbi: [[208, 9]], dz: [[200, 5]], zl: [[214, 2]] };
+const HIST_CAP = { sj: [[197, 5], [203, 7], [208, 8], [215, 11], [279, 13]], cc: [[196, 5], [199, 9], [203, 14], [208, 22], [262, 26], [279, 31]], lb: [[213, 6], [221, 10], [262, 6]], ys: [[199, 9]], md: [[210, 6]], ly: [[214, 5]], lbi: [[208, 9]], dz: [[200, 5]], zl: [[214, 2]] };
 function capPenalty(F) {
   const tb = HIST_CAP[F.key]; if (!tb) return 0;
   const row = tb.find(([y]) => G.year <= y); if (!row) return 0;
@@ -3051,19 +3177,19 @@ async function monthlyEvents() {
 }
 
 async function yearlyEvents() {
-  // 수명
-  for (const o of G.officers) {
-    if ((o.st === 'on' || o.st === 'ronin') && G.year >= o.die && chance(.65)) {
-      const notable = o.id === G.player || isRuler(o) || (me() && o.f === me().f && o.f >= 0);
-      killOfficer(o, notable ? `${eun(o.name)} 병으로 세상을 떠났습니다 (향년 ${age(o)}세)` : null);
-    }
-  }
   // 새 인물 등장
   for (const o of G.officers) {
     if (o.st !== 'unborn' || G.year - o.born < 16) continue;
     const F = o.fk ? G.factions.find(f => f.key === o.fk && f.alive) : null;
     if (F) { o.st = 'on'; o.f = -1; joinFaction(o, F.id, G.officers[F.ruler].city); logMsg(`${eun(o.name)} 자라서 ${F.name}군에 들어왔습니다`); }
     else { o.st = 'ronin'; o.f = -1; o.found = false; }
+  }
+  // 수명
+  for (const o of G.officers) {
+    if ((o.st === 'on' || o.st === 'ronin') && G.year >= o.die && chance(.65)) {
+      const notable = o.id === G.player || isRuler(o) || (me() && o.f === me().f && o.f >= 0);
+      killOfficer(o, notable ? `${eun(o.name)} 병으로 세상을 떠났습니다 (향년 ${age(o)}세)` : null);
+    }
   }
   spawnTalents();
   checkFactions();
@@ -3635,7 +3761,7 @@ async function runEvents() {
     let ok = false;
     try { ok = !!ev.cond(); } catch (e) { console.error('사건 조건 오류', ev.id, e); }
     if (!ok) continue;
-    G.ev[ev.id] = true;
+    G.ev[ev.id] = true; (G.evAt = G.evAt || {})[ev.id] = mIdx();
     try { await ev.run(); } catch (e) { console.error('사건 오류', ev.id, e); }
     checkFactions(); assignGovs();
     if (UI.q.length) await UI.flush();
@@ -4002,6 +4128,327 @@ function chibiFront(cf, qf) {
   for (const t of G.cities) if (t.f === qf) { const f = ADJ[t.id].map(i => G.cities[i]).find(x => x.f === cf); if (f) return [f, t]; }
   return null;
 }
+
+// ---- 08d-events3.js
+// ===== 역사 사건 3: 합비 ~ 진의 통일 (215~280) =====
+const facK = k => G.factions.find(f => f.key === k && f.alive) || null;
+const rK = k => { const F = facK(k); return F ? G.officers[F.ruler] : null; };
+const anyP = (...Fs) => Fs.some(F => F && pOf(F.id));
+const after = (id, months) => G.evAt && G.evAt[id] != null && mIdx() >= G.evAt[id] + months;
+function setTitle(F, t) { if (F) { F.title = t; logMsg(`${F.name}이(가) ${t}에 올랐습니다`, 'big'); } }
+const kill = (o, why) => { if (o && o.st !== 'dead' && !isP(o)) killOfficer(o, why); };
+
+EVENTS.push(
+  // ── 합비 전투 (215)
+  {
+    id: 'hefei',
+    cond: () => { const W = facK('cc'), S = facK('sj'), zl = byName('장료'), h = cityN('수춘'); return HIST() && W && S && G.year >= 215 && onIn(zl, W.id) && h.f === W.id && ADJ[h.id].some(i => G.cities[i].f === S.id); },
+    async run() {
+      const W = facK('cc'), S = facK('sj'), zl = byName('장료'), lt = byName('능통'), q = rK('sj'), h = cityN('수춘');
+      await scene({ title: '합비 — 장료, 강동을 울리다', involved: anyP(W, S), lines: [
+        [null, '손권이 십만 대군으로 합비를 에워쌌다. 성안의 군사는 겨우 칠천.'],
+        [zl, '적이 자리 잡기 전에 꺾어야 한다. 나를 따를 자는 앞으로!'],
+        [null, '장료가 팔백 결사대를 이끌고 손권의 본진으로 뛰어들어 장수 둘을 베었다. 손권은 무덤 위로 달아나 겨우 몸을 피했다.'],
+        [onIn(lt, S.id) ? lt : q, '주공, 어서 소요진 다리를 건너십시오! 이 몸이 뒤를 막겠습니다!'],
+        [null, '그 뒤로 강동에서는 우는 아이도 "장료가 온다" 하면 울음을 그쳤다고 한다.'],
+      ] });
+      zl.fame += 15; if (onIn(lt, S.id)) lt.fame += 5;
+      h.troops = Math.min(troopMax(h), h.troops + 3000);
+      for (const i of ADJ[h.id]) { const c = G.cities[i]; if (c.f === S.id) c.troops = Math.round(c.troops * .8); }
+      logMsg('합비에서 장료가 손권의 대군을 물리쳤습니다', 'big');
+    },
+  },
+  // ── 정군산 (219)
+  {
+    id: 'dingjun',
+    cond: () => { const L = facK('lb'), W = facK('cc'), hz = byName('황충'), hy = byName('하후연'), hj = cityN('한중'); return HIST() && L && W && G.year >= 218 && onIn(hz, L.id) && onIn(hy, W.id) && hj.f === W.id && ADJ[hj.id].some(i => G.cities[i].f === L.id); },
+    async run() {
+      const L = facK('lb'), W = facK('cc'), hz = byName('황충'), hy = byName('하후연'), fz = byName('법정'), hj = cityN('한중');
+      await scene({ title: '정군산', involved: anyP(L, W), lines: [
+        [onIn(fz, L.id) ? fz : null, '적이 녹각을 고치러 흩어졌습니다. 지금이 칠 때입니다!', '산 위에서 깃발이 흔들렸다.'],
+        [hz, '늙었다고 얕보지 마라! 북을 울려라!'],
+        [null, '황충이 산 위에서 내리꽂듯 돌격해 하후연을 단칼에 베었다. 위군은 무너졌고 한중은 유비의 손에 들어왔다.'],
+      ] });
+      kill(hy, '하후연이 정군산에서 황충에게 목이 베였습니다');
+      handCity(hj, L.id, 12000); moveOfficer(hz, hj); hz.fame += 15;
+      logMsg('정군산에서 황충이 하후연을 베고 한중을 얻었습니다', 'big');
+    },
+  },
+  // ── 한중왕 (219)
+  {
+    id: 'hanzhong_king',
+    cond: () => { const L = facK('lb'), lb = rulerNamed('유비'); return HIST() && L && lb && lb.f === L.id && cityN('한중').f === L.id && cityN('성도').f === L.id; },
+    async run() {
+      const L = facK('lb'), lb = rulerNamed('유비'), zg = byName('제갈량');
+      await scene({ title: '한중왕', involved: pOf(L.id), lines: [
+        [onIn(zg, L.id) ? zg : null, '조조가 위왕을 칭했으니, 주공께서도 왕위에 올라 한실의 깃발을 높이 드셔야 합니다.', '신하들이 유비에게 왕위에 오르기를 청했다.'],
+        [lb, '…천하의 뜻이 그렇다면 따르겠소. 다만 한실을 다시 일으키는 일을 잊지 않으리다.'],
+      ] });
+      setTitle(L, '한중왕'); lb.fame += 10;
+      for (const o of factionOfficers(L.id)) if (o !== lb) o.loy = Math.min(100, o.loy + 5);
+    },
+  },
+  // ── 관우, 번성을 치다 (219)
+  {
+    id: 'fan_castle',
+    cond: () => { const L = facK('lb'), W = facK('cc'), gy = byName('관우'); return HIST() && L && W && G.year >= 219 && onIn(gy, L.id) && cityN('강릉').f === L.id && cityN('양양').f === W.id; },
+    async run() {
+      const L = facK('lb'), W = facK('cc'), S = facK('sj'), gy = byName('관우'), yj = byName('우금'), pd = byName('방덕'), sm = byName('사마의'), xy = cityN('양양');
+      moveOfficer(gy, cityN('강릉'));
+      const ch = await scene({ title: '위진화하 — 물이 일곱 군을 삼키다', involved: anyP(L, W), lines: [
+        [gy, '번성을 깨뜨리고 허도로 나아가겠다!'],
+        [null, '가을 장마에 한수가 넘쳤다. 관우는 배를 몰아 물에 잠긴 우금의 일곱 군을 사로잡았고, 끝까지 버틴 방덕을 베었다.'],
+        [onIn(pd, W.id) ? pd : null, '나는 위의 귀신이 될지언정 적의 장수는 되지 않겠다!', null],
+      ].filter(x => x[0] || x[2] !== null), options: isP(gy) || isP(rulerOf(L.id)) ? [{ k: 'go', label: '번성을 친다 (역사대로)' }, { k: 'hold', label: '형주를 굳게 지킨다', danger: false }] : null });
+      if (ch === 'hold') { logMsg('관우가 북진을 미루고 형주를 지켰습니다'); return; }
+      if (onIn(yj, W.id) && !isP(yj)) { joinFaction(yj, L.id, cityN('강릉').id); yj.loy = 15; }
+      kill(pd, '방덕이 번성에서 관우에게 목이 베였습니다');
+      xy.troops = Math.round(xy.troops * .5); gy.fame += 20;
+      await scene({ title: '위진화하', involved: anyP(W, S), lines: [
+        [rulerOf(W.id), '관우의 위세가 하늘을 찌르는구나. 도읍을 옮겨야 하는가…'],
+        [onIn(sm, W.id) ? sm : null, '손권은 관우가 커지는 것을 결코 바라지 않습니다. 강남을 떼어 주겠다 하고 그 뒤를 치게 하소서.', '위의 모사들은 손권과 손잡고 관우의 뒤를 치자고 했다.'],
+      ] });
+      if (S) { makeAllyFor(W.id, S.id, 24); addFocus(S.id, L.id, 18); }
+      logMsg('관우가 번성에서 우금을 사로잡고 방덕을 베어 천하를 뒤흔들었습니다', 'big');
+    },
+  },
+  // ── 맥성: 관우의 최후 (219~220)
+  {
+    id: 'maicheng',
+    cond: () => { const L = facK('lb'), S = facK('sj'), jl = cityN('강릉'); return HIST() && L && S && G.ev.fan_castle && after('fan_castle', 2) && jl.f === L.id && ADJ[jl.id].some(i => G.cities[i].f === S.id) && (onIn(byName('여몽'), S.id) || onIn(byName('육손'), S.id)); },
+    async run() {
+      const L = facK('lb'), S = facK('sj'), gy = byName('관우'), gp = byName('관평'), ym = byName('여몽'), mf = byName('미방'), jl = cityN('강릉');
+      let ch = 'stand';
+      if (isP(gy)) ch = await scene({ title: '맥성', involved: true, lines: [[null, '흰옷을 입은 오군이 장사꾼으로 꾸미고 강을 건너 강릉을 빼앗았다. 관우는 작은 맥성에 갇혔다.']], options: [{ k: 'stand', label: '끝까지 싸운다 (역사대로)' }, { k: 'flee', label: '샛길로 익주를 향해 빠져나간다' }] });
+      await scene({ title: '백의도강', involved: anyP(L, S), lines: [
+        [onIn(ym, S.id) ? ym : null, '병사들은 모두 흰옷을 입고 장사꾼처럼 꾸며라. 봉화대를 소리 없이 넘는다.', '오군이 흰옷을 입고 몰래 강을 건넜다.'],
+        [onIn(mf, L.id) ? mf : null, '…성문을 열어라. 오에 항복하겠다.', null],
+        [gy, ch === 'flee' ? '여기서 죽을 수는 없다. 익주로 가서 형님을 뵙겠다!' : '옥은 부서져도 그 흰빛을 잃지 않고, 대나무는 타도 그 마디를 잃지 않는다!'],
+      ].filter(x => x[0] || x[2] !== null) });
+      handCity(jl, S.id, 10000);
+      for (const n of ['무릉', '영릉']) { const c = cityN(n); if (c.f === L.id && ADJ[c.id].some(i => G.cities[i].f === S.id)) handCity(c, S.id, Math.round(c.troops * .6)); }
+      if (onIn(mf, L.id) && !isP(mf)) joinFaction(mf, S.id, jl.id);
+      if (ch === 'flee') { const cd = cityN('성도'); if (cd.f === L.id) { gy.city = cd.id; delete gy.travel; } gy.fame -= 5; }
+      else {
+        if (G.items && G.items.jeokto && G.items.jeokto.holder === gy.id) { const pz = byName('반장'); passItem('jeokto', onIn(pz, S.id) ? pz : rulerOf(S.id)); }
+        if (G.items && G.items.cheongnyong && G.items.cheongnyong.holder === gy.id) { const pz = byName('반장'); passItem('cheongnyong', onIn(pz, S.id) ? pz : rulerOf(S.id)); }
+        kill(gy, '관우가 맥성에서 사로잡혀 목숨을 잃었습니다'); kill(gp, '관평이 아버지와 함께 목숨을 잃었습니다');
+      }
+      addFocus(L.id, S.id, 36, '유비가 관우의 원수를 갚으려 합니다');
+      logMsg('오가 형주를 빼앗았습니다', 'big');
+    },
+  },
+  // ── 조조의 죽음과 위 건국 (220)
+  {
+    id: 'wei_found',
+    cond: () => { const W = facK('cc'), cp = rulerNamed('조비'); return HIST() && W && cp && cp.f === W.id && G.year >= 220 && byName('조조').st === 'dead'; },
+    async run() {
+      const W = facK('cc'), cp = rulerNamed('조비');
+      await scene({ title: '한의 선양, 위의 건국', involved: pOf(W.id), lines: [
+        [null, '천하의 간웅 조조가 낙양에서 숨을 거두었다. 아들 조비는 헌제에게서 황제의 자리를 물려받았다. 사백 년 한 왕조가 끝났다.'],
+        [cp, '하늘의 뜻에 따라 위를 세우노라. 연호를 황초라 하겠다.'],
+      ] });
+      setTitle(W, '위 황제'); cp.fame += 10;
+    },
+  },
+  {
+    id: 'shu_found',
+    cond: () => { const L = facK('lb'), lb = rulerNamed('유비'); return HIST() && G.ev.wei_found && L && lb && lb.f === L.id && G.year >= 221; },
+    async run() {
+      const L = facK('lb'), lb = rulerNamed('유비');
+      await scene({ title: '촉한의 건국', involved: pOf(L.id), lines: [[null, '헌제가 죽었다는 소문이 성도에 닿았다. 신하들은 한의 대를 잇기를 청했다.'], [lb, '한실의 종친으로서 한의 이름을 지키겠다. 성도에서 황제의 자리에 오르노라.']] });
+      setTitle(L, '촉한 황제');
+    },
+  },
+  {
+    id: 'wu_king',
+    cond: () => { const S = facK('sj'), q = rulerNamed('손권'); return HIST() && G.ev.wei_found && S && q && q.f === S.id && G.year >= 221; },
+    async run() { const S = facK('sj'); await scene({ title: '오왕', involved: pOf(S.id), lines: [[rulerOf(S.id), '위의 책봉을 받아 오왕이 되겠다. 지금은 몸을 낮출 때다.']] }); setTitle(S, '오왕'); },
+  },
+  {
+    id: 'wu_found',
+    cond: () => { const S = facK('sj'), q = rulerNamed('손권'); return HIST() && S && q && q.f === S.id && G.year >= 229; },
+    async run() { const S = facK('sj'); await scene({ title: '오의 칭제', involved: pOf(S.id), lines: [[rulerOf(S.id), '하늘에 셋의 해가 있을 수는 없으나, 강동도 더는 남의 아래에 있지 않겠다. 무창에서 황제에 오르노라.']] }); setTitle(S, '오 황제'); },
+  },
+  // ── 장비의 죽음 (221)
+  {
+    id: 'zhangfei_death',
+    cond: () => { const L = facK('lb'), zf = byName('장비'); return HIST() && L && onIn(zf, L.id) && !isP(zf) && G.ev.maicheng && G.year >= 221; },
+    async run() {
+      const zf = byName('장비'), L = facK('lb');
+      await scene({ title: '장비의 죽음', involved: pOf(L.id), lines: [[zf, '사흘 안에 흰 갑옷과 흰 깃발을 마련하라! 형님의 원수를 갚으러 간다!'], [null, '매질을 견디다 못한 부하 범강과 장달이 술에 취해 잠든 장비의 목을 베어 오로 달아났다.']] });
+      kill(zf, '장비가 부하의 손에 목숨을 잃었습니다');
+    },
+  },
+  // ── 이릉대전 (222)
+  {
+    id: 'yiling',
+    cond: () => { const L = facK('lb'), S = facK('sj'), lb = rulerNamed('유비'); return HIST() && L && S && lb && lb.f === L.id && G.ev.maicheng && after('maicheng', 12) && G.year >= 221 && (G.ev.shu_found || G.year >= 222) && facAdj(L.id, S.id) && onIn(byName('육손'), S.id); },
+    async run() {
+      const L = facK('lb'), S = facK('sj'), W = facK('cc'), lb = rulerNamed('유비'), ls = byName('육손'), zy = byName('조운'), hq = byName('황권'), ml = byName('마량');
+      const ch = await scene({ title: '이릉 — 칠백 리의 영채', involved: anyP(L, S), lines: [
+        [onIn(zy, L.id) ? zy : null, '나라의 원수는 조조이지 손권이 아닙니다. 위를 먼저 치셔야 합니다.', '신하들은 오를 치는 것을 말렸다.'],
+        [lb, '운장과 익덕의 원수를 갚지 않고서 어찌 형제라 하겠는가!'],
+      ].filter(x => x[0] || x[2] !== null), options: isP(lb) ? [{ k: 'go', label: '오를 친다 (역사대로)' }, { k: 'stop', label: '원한을 삼키고 군사를 거둔다' }] : null });
+      if (ch === 'stop') { lb.fame += 5; G.focus = (G.focus || []).filter(x => !(x.f === L.id && x.t === S.id)); logMsg('유비가 신하들의 말을 듣고 오 정벌을 거두었습니다', 'big'); return; }
+      await scene({ title: '이릉 — 불타는 숲', involved: anyP(L, S), lines: [
+        [null, '유비는 무더위를 피해 숲속에 칠백 리에 걸쳐 영채를 늘어세웠다. 오의 젊은 대도독 육손은 반년 동안 싸우지 않고 기다렸다.'],
+        [ls, '저들이 지쳤다. 바람이 분다 — 모든 영채에 불을 놓아라!'],
+        [null, '불길이 숲을 따라 번져 촉군의 영채 사십여 곳이 잿더미가 되었다. 유비는 겨우 백제성으로 달아났다.'],
+      ] });
+      for (const c of G.cities) if (c.f === L.id && ADJ[c.id].some(i => G.cities[i].f === S.id)) c.troops = Math.round(c.troops * .45);
+      lb.die = Math.min(lb.die, Math.max(G.year + 1, 223));
+      if (W && onIn(hq, L.id) && !isP(hq)) joinFaction(hq, W.id, G.factions[W.id].capital);
+      kill(ml, '마량이 이릉에서 목숨을 잃었습니다');
+      ls.fame += 25;
+      G.focus = (G.focus || []).filter(x => !(x.f === L.id && x.t === S.id));
+      logMsg('이릉에서 육손이 유비의 대군을 불살랐습니다', 'big');
+    },
+  },
+  // ── 백제성 탁고 (223)
+  {
+    id: 'baidi',
+    cond: () => { const L = facK('lb'), ls = rulerNamed('유선'); return HIST() && L && ls && ls.f === L.id && byName('유비').st === 'dead' && onIn(byName('제갈량'), L.id); },
+    async run() {
+      const L = facK('lb'), S = facK('sj'), zg = byName('제갈량'), dz = byName('등지');
+      await scene({ title: '백제성의 유언', involved: pOf(L.id), lines: [
+        [null, '병석의 유비가 제갈량의 손을 잡았다.'],
+        [null, '"그대의 재주는 조비의 열 배이니 반드시 나라를 안정시키고 대업을 이룰 것이오. 아들이 도울 만하면 돕고, 그렇지 못하면 그대가 스스로 맡으시오."'],
+        [zg, '신이 어찌 팔다리의 힘을 다해 충성을 바치지 않겠습니까. 죽을 때까지 그리하겠습니다.'],
+        [onIn(dz, L.id) ? dz : null, '오와 다시 손을 잡아야 위를 막을 수 있습니다. 제가 사신으로 가겠습니다.', null],
+      ].filter(x => x[0] || x[2] !== null) });
+      zg.loy = 100;
+      if (S) { makeAllyFor(L.id, S.id, 60); addRel(L.id, S.id, 40); }
+    },
+  },
+  // ── 남만 정벌 (225)
+  {
+    id: 'nanman',
+    cond: () => { const L = facK('lb'), mh = byName('맹획'); return HIST() && L && G.year >= 225 && onIn(byName('제갈량'), L.id) && cityN('건녕').f === L.id && live(mh) && !isP(mh) && mh.f !== L.id; },
+    async run() {
+      const L = facK('lb'), zg = byName('제갈량'), mh = byName('맹획'), jn = cityN('건녕');
+      await scene({ title: '칠종칠금', involved: pOf(L.id), lines: [
+        [zg, '남만을 칠 때는 성을 치기보다 마음을 치는 것이 으뜸입니다.'],
+        [null, '제갈량은 남만의 왕 맹획을 일곱 번 사로잡고 일곱 번 풀어 주었다.'],
+        [mh, '승상은 하늘의 위엄을 지니셨습니다. 남쪽 사람들은 다시는 배반하지 않겠습니다!'],
+      ] });
+      if (mh.st === 'on') leaveToRonin(mh);
+      joinFaction(mh, L.id, jn.id); mh.loy = 100;
+      jn.order = 100; jn.troops = Math.min(troopMax(jn), jn.troops + 5000); zg.fame += 10;
+    },
+  },
+  // ── 출사표 (227)
+  {
+    id: 'northern',
+    cond: () => { const L = facK('lb'), W = facK('cc'); return HIST() && L && W && G.year >= 227 && onIn(byName('제갈량'), L.id) && cityN('한중').f === L.id && facAdj(L.id, W.id); },
+    async run() {
+      const L = facK('lb'), W = facK('cc'), zg = byName('제갈량'), jw = byName('강유'), hj = cityN('한중');
+      await scene({ title: '출사표', involved: anyP(L, W), lines: [
+        [zg, '선제께서 창업하신 지 반도 못 되어 중도에 붕어하시고, 지금 천하는 셋으로 나뉘어 익주는 지쳐 있으니, 이는 참으로 나라가 살고 죽는 때입니다…'],
+        [zg, '…신은 다만 몸을 굽혀 온 힘을 다하고, 죽은 뒤에야 그만둘 것입니다.'],
+        [null, '제갈량이 한중에서 북쪽으로 군사를 일으켰다.'],
+      ] });
+      addFocus(L.id, W.id, 72, '제갈량의 북벌');
+      hj.troops = Math.min(troopMax(hj), hj.troops + 8000);
+      if (live(jw) && jw.f !== L.id && !isP(jw)) {
+        await scene({ title: '천수의 기린아', involved: pOf(L.id), lines: [[zg, '천수에서 이런 인재를 얻다니! 내가 배운 것을 모두 그대에게 전하겠다.'], [jw, '승상을 모시고 한실을 위해 힘을 다하겠습니다.']] });
+        if (jw.st === 'on') leaveToRonin(jw);
+        joinFaction(jw, L.id, hj.id); jw.loy = 100;
+      }
+    },
+  },
+  // ── 가정 (228)
+  {
+    id: 'jieting',
+    cond: () => { const L = facK('lb'), ms = byName('마속'); return HIST() && L && G.ev.northern && after('northern', 10) && onIn(ms, L.id) && !isP(ms); },
+    async run() {
+      const L = facK('lb'), ms = byName('마속'), wp = byName('왕평'), zg = byName('제갈량'), hj = cityN('한중');
+      const ch = await scene({ title: '가정 — 읍참마속', involved: pOf(L.id), lines: [
+        [onIn(wp, L.id) ? wp : null, '길목을 지켜야 합니다. 산 위에 진을 치면 물길이 끊깁니다!', '부장이 길목에 진을 치라고 말렸다.'],
+        [ms, '병법에 높은 곳에 올라 아래를 내려다보면 기세가 대나무를 쪼개듯 한다 했다!'],
+        [null, '위의 장합이 산을 에워싸 물길을 끊자 마속의 군은 무너졌다. 가정을 잃은 제갈량은 군사를 거둘 수밖에 없었다.'],
+        [onIn(zg, L.id) ? zg : null, '군율을 바로 세우지 않으면 어찌 적을 이기겠는가…', null],
+      ].filter(x => x[0] || x[2] !== null), options: isP(zg) || isP(rulerOf(L.id)) ? [{ k: 'cut', label: '눈물을 흘리며 마속을 벤다 (역사대로)' }, { k: 'spare', label: '마속을 살려 둔다' }] : null });
+      hj.troops = Math.round(hj.troops * .7);
+      if (ch === 'spare') { for (const o of factionOfficers(L.id)) if (o !== ms) o.loy = Math.max(0, o.loy - 5); logMsg('마속을 살려 두자 장수들이 수군거립니다'); return; }
+      kill(ms, '마속이 군령을 어긴 죄로 처형되었습니다 (읍참마속)');
+      for (const o of factionOfficers(L.id)) o.loy = Math.min(100, o.loy + 3);
+    },
+  },
+  // ── 오장원 (234)
+  {
+    id: 'wuzhang',
+    cond: () => { const L = facK('lb'), zg = byName('제갈량'); return HIST() && L && G.ev.northern && zg && zg.st === 'dead'; },
+    async run() {
+      const L = facK('lb'), W = facK('cc'), sm = byName('사마의'), wy = byName('위연'), md = byName('마대'), jw = byName('강유');
+      await scene({ title: '오장원 — 별이 지다', involved: anyP(L, W), lines: [
+        [null, '오장원의 진중에서 큰 별이 떨어졌다. 승상 제갈량이 숨을 거두었다.'],
+        [null, '촉군이 물러나자 사마의가 뒤쫓았다. 그때 수레 위에 깃털 부채를 든 제갈량이 나타났다 — 나무로 깎은 상이었다.'],
+        [live(sm) ? sm : null, '공명이 살아 있다! 물러나라!', null],
+        [null, '사람들은 "죽은 공명이 산 중달을 쫓았다"고 말했다.'],
+      ].filter(x => x[0] || x[2] !== null) });
+      if (onIn(wy, L.id) && !isP(wy) && onIn(md, L.id)) {
+        await scene({ title: '위연의 반란', involved: pOf(L.id), lines: [[wy, '승상이 없다고 군을 물리다니! 누가 감히 나를 죽일 수 있겠느냐!'], [md, '내가 너를 죽이겠다!'], [null, '승상이 남긴 계책대로 마대가 위연의 목을 베었다.']] });
+        kill(wy, '위연이 반란을 꾀하다 마대에게 목이 베였습니다');
+      }
+      if (onIn(jw, L.id)) { jw.fame += 10; jw.loy = 100; }
+    },
+  },
+  // ── 고평릉 정변 (249)
+  {
+    id: 'gaoping',
+    cond: () => { const W = facK('cc'), sm = byName('사마의'); return HIST() && W && G.year >= 249 && onIn(sm, W.id) && !isRuler(sm) && !isP(rulerOf(W.id)) && byName('조예').st === 'dead'; },
+    async run() {
+      const W = facK('cc'), sm = byName('사마의'), ss = byName('사마사'), old = rulerOf(W.id);
+      await scene({ title: '고평릉 정변', involved: pOf(W.id), lines: [
+        [null, '병들어 죽어 간다던 사마의가 황제와 조상이 고평릉에 간 틈을 타 낙양의 성문을 닫았다.'],
+        [onIn(ss, W.id) ? ss : null, '아버지, 군사는 모두 준비되었습니다.', null],
+        [sm, '조상의 무리는 나라를 어지럽혔다. 이제부터 사마씨가 위를 바로잡겠다.'],
+      ].filter(x => x[0] || x[2] !== null) });
+      W.ruler = sm.id; W.name = sm.name; W.capital = sm.city; sm.loy = 100; W.title = '위 (사마씨 집권)';
+      if (old && old !== sm) old.loy = 30;
+      logMsg('사마의가 고평릉 정변으로 위의 권력을 쥐었습니다', 'big');
+    },
+  },
+  // ── 촉의 멸망 (263)
+  {
+    id: 'shu_fall',
+    cond: () => { const W = facK('cc'), L = facK('lb'); return HIST() && W && L && G.year >= 263 && !isP(rulerOf(L.id)) && onIn(byName('등애'), W.id) && onIn(byName('종회'), W.id) && facAdj(W.id, L.id) && cityN('성도').f === L.id; },
+    async run() {
+      const W = facK('cc'), L = facK('lb'), da = byName('등애'), zh = byName('종회'), jw = byName('강유'), ls = rulerOf(L.id);
+      await scene({ title: '촉의 멸망', involved: anyP(W, L), lines: [
+        [onIn(jw, L.id) ? jw : null, '검각을 지키는 한 위군은 한 걸음도 들어오지 못한다!', '촉군은 검각에서 종회의 대군을 막았다.'],
+        [da, '음평의 샛길로 칠백 리 산을 넘는다. 길이 없으면 모포를 두르고 굴러 내려간다!'],
+        [null, '등애가 험한 산을 넘어 성도 앞에 나타나자, 촉의 황제는 싸우지 않고 항복했다.'],
+        [ls, '…이곳이 즐거워 촉이 생각나지 않는구려.'],
+      ].filter(x => x[0] || x[2] !== null) });
+      mergeFaction(L.id, W.id);
+      await scene({ title: '종회의 난', involved: pOf(W.id), lines: [[zh, '촉 땅을 얻었으니 이제 내가 천하를 노리겠다.'], [null, '종회와 강유가 성도에서 반란을 꾀했으나 난군에게 죽었고, 등애도 그 와중에 목숨을 잃었다.']] });
+      kill(zh, '종회가 반란을 꾀하다 죽었습니다'); kill(jw, '강유가 마지막까지 한실을 꿈꾸다 죽었습니다'); kill(da, '등애가 난군 속에서 목숨을 잃었습니다');
+      logMsg('촉한이 멸망했습니다', 'big');
+    },
+  },
+  // ── 진의 건국 (265)
+  {
+    id: 'jin_found',
+    cond: () => { const W = facK('cc'), sy = rulerNamed('사마염'); return HIST() && W && sy && sy.f === W.id && G.year >= 265; },
+    async run() { const W = facK('cc'); await scene({ title: '진의 건국', involved: pOf(W.id), lines: [[rulerOf(W.id), '위의 선양을 받아 진을 세우노라. 할아버지와 아버지가 닦은 길을 마무리하겠다.']] }); setTitle(W, '진 황제'); },
+  },
+  // ── 오의 멸망과 천하 통일 (280)
+  {
+    id: 'wu_fall',
+    cond: () => { const W = facK('cc'), S = facK('sj'); return HIST() && G.ev.jin_found && W && S && G.year >= 279 && !isP(rulerOf(S.id)) && facAdj(W.id, S.id); },
+    async run() {
+      const W = facK('cc'), S = facK('sj'), dy = byName('두예');
+      await scene({ title: '파죽지세 — 천하 통일', involved: anyP(W, S), lines: [
+        [onIn(dy, W.id) ? dy : null, '지금 우리 군의 기세는 대나무를 쪼개는 것과 같습니다. 몇 마디만 쪼개면 나머지는 칼날을 따라 갈라집니다!', '진군이 장강을 따라 내려갔다.'],
+        [null, '쇠사슬로 막은 장강도 진의 배를 막지 못했다. 오의 마지막 황제가 항복하니, 황건의 난으로부터 거의 백 년 만에 천하가 하나가 되었다.'],
+      ].filter(x => x[0] || x[2] !== null) });
+      mergeFaction(S.id, W.id);
+      logMsg('진이 오를 멸하고 천하를 통일했습니다', 'big');
+    },
+  },
+);
 
 // ---- 09-ui.js
 // ===== 화면: 모달·패널·명령 =====

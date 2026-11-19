@@ -71,6 +71,51 @@ const SCENARIOS = {
     focus: [['cc', 'sj', 24], ['cc', 'lb', 24]],
     ally: [['sj', 'lb', 36]],
   },
+
+  219: {
+    year: 219, month: 7, title: '219년 · 한중왕과 형주', desc: '정군산에서 하후연을 벤 유비가 한중왕에 올랐다. 형주의 관우는 북쪽 번성을 노리고, 강동의 손권은 형주를 되찾을 기회를 엿본다.',
+    factions: [
+      ['cc', '조조', '#2f5fa8', '허창 진류 복양 여남 소패 하비 낙양 홍농 완 수춘 장안 업 남피 진양 계 북평 평원 북해 신야 양양 무위 천수 안정', '조조 하후돈 조인 조홍 조비 조진 조휴 장료 서황 장합 우금 방덕 허저 만총 가후 사마의 정욱 화흠 왕랑 전예 문빙 장패 곽회 하후패 학소 왕쌍 등애 진태', 1.3],
+      ['lb', '유비', '#3d8c4a', '성도 자동 강주 건녕 한중 강릉 무릉 영릉', '유비 관우 장비 조운 제갈량 황충 마초 법정 위연 관평 이적 마량 마속 엄안 황권 오의 이엄 미방 미축 간옹 관흥 장포 왕평 요화 장의 비의 장완 동윤 마대 등지', 1.2],
+      ['sj', '손권', '#c0392b', '건업 오 회계 여강 시상 강하 장사 계양 남해', '손권 여몽 육손 감녕 장흠 주태 장소 제갈근 한당 서성 반장 주환 주연 정봉 손소 사섭', 1.15],
+      ['gd', '공손강', '#7a6a5a', '양평', '공손강', 1],
+    ],
+    dead: '하후연 능통 악진 진림 노숙',
+    ronin: '강유@천수 맹획@건녕',
+    done: 'peach coalition luoyang_fire jade_seal sunjian_death jizhou chain dong_death cao_song xuzhou sun_zhou li_guo emperor yuan_emperor xiapi yijing guandu sun_ce_death xushu three_visits yuan_split guanyu_return changban liubei_rout baekmun jingzhou_surrender chibi shu_entry luofeng hefei dingjun hanzhong_king',
+    items: { jeokto: '관우', cheonggang: '조운', jeongno: '유비', gojeong: '손권' },
+    focus: [['lb', 'cc', 18], ['sj', 'lb', 18]],
+    ally: [],
+  },
+  221: {
+    year: 221, month: 7, title: '221년 · 삼국 정립', desc: '조조가 죽고 조비가 한의 선양을 받아 위를 세웠다. 유비는 촉한의 황제가 되었고, 관우와 장비를 잃은 원한을 갚으려 오를 향해 군사를 일으킨다.',
+    factions: [
+      ['cc', '조비', '#2f5fa8', '허창 진류 복양 여남 소패 하비 낙양 홍농 완 수춘 장안 업 남피 진양 계 북평 평원 북해 신야 양양 무위 천수 안정', '조비 조인 조홍 조진 조휴 장료 서황 장합 허저 만총 가후 사마의 화흠 왕랑 전예 문빙 장패 곽회 하후패 학소 왕쌍 우금 등애 진태', 1.3],
+      ['lb', '유비', '#3d8c4a', '성도 자동 강주 건녕 한중', '유비 조운 제갈량 황권 마초 위연 마량 마속 이엄 오의 관흥 장포 왕평 요화 장의 비의 장완 동윤 마대 등지 미축', 1.25],
+      ['sj', '손권', '#c0392b', '건업 오 회계 여강 시상 강하 장사 계양 남해 강릉 무릉 영릉', '손권 육손 주태 장소 제갈근 한당 서성 반장 주환 주연 정봉 손소 사섭 미방', 1.2],
+      ['gd', '공손강', '#7a6a5a', '양평', '공손강', 1],
+    ],
+    dead: '관우 관평 장비 황충 법정 여몽 감녕 장흠 조조 하후돈 하후연 방덕 정욱 능통 노숙',
+    ronin: '강유@천수 맹획@건녕',
+    done: 'peach coalition luoyang_fire jade_seal sunjian_death jizhou chain dong_death cao_song xuzhou sun_zhou li_guo emperor yuan_emperor xiapi yijing guandu sun_ce_death xushu three_visits yuan_split guanyu_return changban liubei_rout baekmun jingzhou_surrender chibi shu_entry luofeng hefei dingjun hanzhong_king fan_castle maicheng wei_found shu_found zhangfei_death',
+    items: { cheonggang: '조운', jeongno: '유비', gojeong: '손권', jeokto: null },
+    focus: [['lb', 'sj', 24]],
+    ally: [['cc', 'sj', 18]],
+  },
+  234: {
+    year: 234, month: 2, title: '234년 · 오장원', desc: '제갈량이 마지막 북벌에 나섰다. 오장원에서 사마의와 마주한 채 별이 지려 한다. 조예의 위, 유선의 촉, 손권의 오가 천하를 셋으로 나누었다.',
+    factions: [
+      ['cc', '조예', '#2f5fa8', '허창 진류 복양 여남 소패 하비 낙양 홍농 완 수춘 장안 업 남피 진양 계 북평 평원 북해 신야 양양 무위 천수 안정 양평', '조예 사마의 사마사 사마소 곽회 진태 하후패 만총 전예 등애 가충', 1.3],
+      ['lb', '유선', '#3d8c4a', '성도 자동 강주 건녕 한중', '유선 제갈량 위연 강유 마대 왕평 요화 장의 비의 장완 동윤 등지 오의 관흥 맹획', 1.2],
+      ['sj', '손권', '#c0392b', '건업 오 회계 여강 시상 강하 장사 계양 남해 강릉 무릉 영릉', '손권 육손 제갈근 장소 주환 주연 정봉 반장 손등 제갈각 손소', 1.2],
+    ],
+    dead: '조비 조진 조휴 장합 학소 왕쌍 조운 마량 마속 황권 이엄 미방 장포 서성',
+    ronin: '',
+    done: 'peach coalition luoyang_fire jade_seal sunjian_death jizhou chain dong_death cao_song xuzhou sun_zhou li_guo emperor yuan_emperor xiapi yijing guandu sun_ce_death xushu three_visits yuan_split guanyu_return changban liubei_rout baekmun jingzhou_surrender chibi shu_entry luofeng hefei dingjun hanzhong_king fan_castle maicheng wei_found shu_found wu_found zhangfei_death yiling baidi nanman northern jieting',
+    items: { gojeong: '손권', jeongno: '유선' },
+    focus: [['lb', 'cc', 24], ['cc', 'lb', 24]],
+    ally: [['lb', 'sj', 48]],
+  },
 };
 const SCEN_EXTRA_SPHERES = { lp: '복양 진류 소패 하비 허창', zl: '한중 자동', wl: '회계 오', ybh: '오 회계', sx: '남해 계양 영릉' };
 
