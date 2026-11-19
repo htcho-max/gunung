@@ -193,6 +193,7 @@ function estDamage(B, a, d, ranged) {
   if (d.type === 'ram') m *= 1.3;
   const fa = formOf(B, a.side), fd = formOf(B, d.side);
   m *= fa.atk / fd.def;
+  const rl = relOf(bOff(a), bOff(d)); if (rl && rl.t === 'foe') m *= 1.1; // 원수끼리는 더 맹렬히
   if (fa.wrap) m *= 1 + Math.min(3, B.units.filter(x => x.alive && x !== a && x.side === a.side && hexDist(x.at, d.at) === 1).length) * .07;
   if (B.units.some(x => x.alive && x !== a && x.side === a.side && hexDist(x.at, a.at) <= 2 && isSworn(bOff(a), bOff(x)))) m *= 1.1;
   if (B.tiles[a.at].t === 'river' && !B.naval) m *= .85;

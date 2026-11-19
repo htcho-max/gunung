@@ -55,6 +55,7 @@ const BattleUI = {
       if (k && FORMS[k]) B.form[B.playerSide] = k;
     }
     for (const sd of [0, 1]) if (B.form[sd] !== 'none') bmsg(B, `${facName(sd === 0 ? B.attF : B.defF)}군이 ${eul(FORMS[B.form[sd]].name)} 펼쳤다`);
+    for (const sd of [0, 1]) { const cu = B.units.find(u => u.side === sd && u.cmd && u.alive), o = cu && bOff(cu); if (o && SIG[o.name]) bmsg(B, `${o.name}: “${SIG[o.name]}”`); }
     this.updTop();
     while (!B.over) {
       for (const side of [0, 1]) {
@@ -180,6 +181,7 @@ const BattleUI = {
         el('header', {}, el('h4', {}, '일기토'), el('span', { class: 'muted num', id: 'duelRound', style: 'font-size:13px' }, '')),
         el('div', { class: 'body' }, stage, el('div', { class: 'duel' }, side(A, 0), el('div', { class: 'vs' }, '對'), side(D, 1)), logBox), btns);
       layer.innerHTML = ''; layer.append(box); layer.classList.add('on');
+      for (const [o, t] of duelOpening(A, D)) logBox.append(el('div', { style: o ? '' : 'color:var(--muted)' }, o ? el('b', { class: 'disp', style: 'color:var(--brass);margin-right:6px' }, o.name) : null, o ? `“${t}”` : t));
       // ── 무대
       const sx = stage.getContext('2d');
       const dpr = Math.min(2, devicePixelRatio || 1); stage.width = 640 * dpr; stage.height = 220 * dpr; sx.scale(dpr, dpr);

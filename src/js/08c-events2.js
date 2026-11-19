@@ -283,6 +283,7 @@ EVENTS.push(
       SFX.play('drum');
       await runWar(from, to, army, 9000, { naval: { chained, kuyuk, eastWind }, allies, title: '적벽대전' });
       // 6. 결과
+      G.chibiWin = to.f === q.f ? 'coalition' : 'cao'; if (G.chibiWin === 'cao') (G.div = G.div || {}).chibi = 'cao';
       if (to.f === q.f) {
         const lines = [[null, '불길이 강을 덮고 하늘을 태웠다. 조조의 선단은 잿더미가 되었고 북군은 오림으로 달아났다.']];
         const gy = byName('관우');

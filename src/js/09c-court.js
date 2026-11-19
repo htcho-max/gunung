@@ -93,6 +93,7 @@ function issueEdict(F, t) {
   (G.rebel = G.rebel || {})[t] = mIdx() + 24; F.edictAt = mIdx();
   for (const o of G.factions) if (o.alive && o.id !== t) addRel(o.id, t, -15);
   for (const o of factionOfficers(t)) if (!isRuler(o) && !isP(o)) o.loy = Math.max(0, o.loy - 6);
+  if (pOf(F.id)) unlock('edict');
   logMsg(`천자의 칙명: ${G.factions[t].name}군을 역적으로 삼아 천하에 토벌을 명했습니다`, 'big');
 }
 const edictReady = F => F.edictAt == null || mIdx() - F.edictAt >= 12;
@@ -131,6 +132,7 @@ async function monthlyBarbarians() {
     const mine = me() && me().st === 'on' && c.f === me().f && playerControls(c);
     if (mine) {
       const k = await UI.choose({ title: `${b.name}의 침입`, text: `${b.name}이 ${c.name} 경계를 넘어 노략질을 하고 있습니다.\n\n회유하면 금 300을 주고 2년 동안 평화를 얻으며 그들 중 일부가 병사가 됩니다. 토벌하면 병사를 잃지만 명성을 얻고 1년 동안 잠잠해집니다.`, options: [{ k: 'calm', label: `회유한다 (금 300, 지금 ${fmt(c.gold)})`, disabled: c.gold < 300 }, { k: 'war', label: '군사를 내어 토벌한다' }] });
+      unlock('barb');
       if (k === 'calm' && c.gold >= 300) { c.gold -= 300; c.troops = Math.min(troopMax(c), c.troops + 1500); G.barb[b.name] = mIdx() + 24; UI.toast(`${b.name}을 회유했습니다. 병사 1,500이 합류했습니다`); continue; }
       c.troops = Math.round(c.troops * .92); G.officers[G.factions[c.f].ruler].fame += 5; G.barb[b.name] = mIdx() + 12; UI.toast(`${b.name}을 토벌했습니다. 명성 +5`); continue;
     }

@@ -75,6 +75,7 @@ function cmdSearch(o, c, forPlayer) {
 
 function hireChance(o, target, f) {
   const ruler = G.officers[G.factions[f].ruler];
+  if (foeBlocks(target, ruler)) return 0; // 원수 밑에서는 일하지 않음
   if (target.st === 'ronin') {
     if (G.player !== target.id && (isSworn(target, o) || isSworn(target, ruler))) return .95;
     let p = .28 + o.cha / 260 + (25 - affDist(target, ruler)) / 90 + (hasSkill(o, '인덕') ? .12 : 0);

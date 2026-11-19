@@ -40,6 +40,7 @@ async function endMonth() {
     if (G.month > 12) { G.month = 1; G.year++; await yearlyEvents(); }
     await runEvents();
     monthlyMission();
+    checkAch();
     for (const o of G.officers) o.acted = false;
     G.ap = me() && me().travel ? 0 : 3;
     assignGovs();
@@ -169,6 +170,7 @@ async function yearlyEvents() {
   }
   spawnTalents();
   yearlyCourt();
+  yearlyHistoryNote();
   checkFactions();
   assignGovs();
   await checkHegemon();
@@ -184,7 +186,8 @@ async function afterMonthChecks() {
     const F = alive[0];
     G.over = true;
     const mine = P.st === 'on' && P.f === F.id;
-    await UI.alert({ title: mine ? '천하 통일!' : '천하가 정해지다', portrait: G.officers[F.ruler], text: mine ? `${G.year}년 ${G.month}월, ${F.name}군이 천하를 하나로 모았습니다.\n${P.name}의 이름은 길이 전해질 것입니다.` : `${F.name}군이 천하를 통일했습니다.` });
+    if (mine) { unlock('unify'); if (F.key === 'lb' || G.officers[F.ruler].name === '유비') unlock('unify_liu'); if (!YANYI()) unlock('unify_zhengshi'); }
+    await UI.alert({ title: mine ? '천하 통일!' : '천하가 정해지다', portrait: G.officers[F.ruler], text: `${G.year}년 ${G.month}월, ${F.name}군이 천하를 하나로 모았습니다.\n\n` + endingText(F, P) });
     UI.gameOver(mine);
   }
 }

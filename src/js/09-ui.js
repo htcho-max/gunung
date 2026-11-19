@@ -684,13 +684,24 @@ const UI = {
     draw();
     this.modal({ title: '인물', wide: true, body: box, cancel: 'x', buttons: [{ k: 'x', label: '닫기' }] });
   },
-  chronicle() {
+  chronicle(tab = 'ev') {
     const ch = G.chron || [];
-    const body = ch.length ? el('div', { class: 'pickList', style: 'max-height:60vh' }, [...ch].reverse().map(r => el('button', { class: 'offRow', onclick: async () => { await replayChron(r); this.chronicle(); } }, el('span', { class: 'muted num', style: 'width:64px;flex:none;font-size:12px' }, r.d.replace('.', '년 ') + '월'), el('span', { class: 'n disp' }, r.title), el('span', { class: 's' }, (r.lines.find(l => l[0]) || [])[0] || '')))) : el('div', { class: 'hint' }, '아직 일어난 역사 사건이 없습니다.');
-    this.modal({ title: '연표', wide: true, body, cancel: 'x', buttons: [{ k: 'x', label: '닫기' }] });
+    const tabs = el('div', { class: 'tabs', style: 'margin-bottom:8px' }, [['ev', `사건 (${ch.length})`], ['hist', '역사와 비교'], ['ach', `업적 (${Object.keys(G.ach || {}).length}/${ACHS.length})`]].map(([k, n]) => el('button', { class: 'tab' + (tab === k ? ' on' : ''), onclick: () => { this._close('x'); setTimeout(() => this.chronicle(k), 0); } }, n)));
+    let body;
+    if (tab === 'ev') body = ch.length ? el('div', { class: 'pickList', style: 'max-height:60vh' }, [...ch].reverse().map(r => el('button', { class: 'offRow', onclick: async () => { await replayChron(r); this.chronicle(); } }, el('span', { class: 'muted num', style: 'width:64px;flex:none;font-size:12px' }, r.d.replace('.', '년 ') + '월'), el('span', { class: 'n disp' }, r.title), el('span', { class: 's' }, (r.lines.find(l => l[0]) || [])[0] || '')))) : el('div', { class: 'hint' }, '아직 일어난 역사 사건이 없습니다.');
+    else if (tab === 'hist') {
+      const m = histMatch();
+      const lab = { same: ['역사대로', 'var(--jade)'], diff: ['다르게 흘러감', 'var(--cinnabar)'], early: ['일찍 일어남', 'var(--brass)'], late: ['늦게 일어남', 'var(--brass)'], none: ['일어나지 않음', 'var(--cinnabar)'], future: ['아직', 'var(--muted)'], before: ['시작 전', 'var(--muted)'] };
+      body = el('div', {}, el('div', { class: 'hint', style: 'margin-bottom:8px' }, `역사 일치율 ${m.pct}% (지금까지 ${m.n}개 중 ${m.ok}개가 역사대로). 실제 역사의 큰 사건이 이 판에서 그 무렵(±2년)에 같은 모습으로 일어났는지 봅니다.`),
+        el('div', { style: 'max-height:58vh;overflow:auto' }, el('table', { style: 'width:100%;border-collapse:collapse;font-size:13px' }, el('tbody', {}, REAL_HISTORY.map(r => { const st = histStatus(r), at = G.evAt && G.evAt[r[2]]; const gy = at != null ? START_YEAR + Math.floor((at - 1) / 12) : null; return el('tr', { style: 'border-top:1px solid var(--line)' }, el('td', { class: 'num muted', style: 'padding:5px 6px;white-space:nowrap' }, r[0] + '년'), el('td', { style: 'padding:5px 6px' }, r[1]), el('td', { style: `padding:5px 6px;white-space:nowrap;color:${lab[st][1]}` }, lab[st][0] + (gy && st !== 'before' ? ` (${gy})` : ''))); })))));
+    } else {
+      const all = achStore();
+      body = el('div', { class: 'pickList', style: 'max-height:60vh' }, ACHS.map(([id, n, d]) => { const got = (G.ach || {})[id], ever = all[id]; return el('div', { class: 'offRow', style: got || ever ? '' : 'opacity:.55' }, el('span', { style: 'font-size:20px;width:28px;text-align:center' }, got ? '🏆' : ever ? '🎖' : '·'), el('span', { class: 'n disp' }, n), el('span', { class: 's' }, el('span', {}, d), got ? el('b', { style: 'color:var(--brass)' }, `이 판 ${got}`) : ever ? el('span', { class: 'muted' }, `예전 판에서 ${ever}`) : null)); }));
+    }
+    this.modal({ title: '연표', wide: true, body: el('div', {}, tabs, body), cancel: 'x', buttons: [{ k: 'x', label: '닫기' }] });
   },
   async menu() {
-    const k = await this.choose({ title: `메뉴 · 난이도 ${DIFF().name}`, options: [{ k: 'save', label: '저장하기' }, { k: 'load', label: '불러오기' }, { k: 'snd', label: SFX.on ? '소리 끄기' : '소리 켜기' }, { k: 'bgm', label: BGM.on ? '배경 음악 끄기' : '배경 음악 켜기' }, { k: 'scn', label: scenesOn() ? '남의 역사 사건 장면 끄기' : '남의 역사 사건 장면 켜기' }, { k: 'chron', label: `연표 (${(G.chron || []).length}개 사건)` }, { k: 'anim', label: `지도 연출: ${({ 1: '보통', 0.5: '빠르게', 0: '끔' })[+(store('gunung.anim') ?? 1)]} → 바꾸기` }, { k: 'help', label: '하는 법' }, { k: 'title', label: '처음 화면으로' }, { k: 'x', label: '닫기' }] });
+    const k = await this.choose({ title: `메뉴 · 난이도 ${DIFF().name}`, options: [{ k: 'save', label: '저장하기' }, { k: 'load', label: '불러오기' }, { k: 'snd', label: SFX.on ? '소리 끄기' : '소리 켜기' }, { k: 'bgm', label: BGM.on ? '배경 음악 끄기' : '배경 음악 켜기' }, { k: 'scn', label: scenesOn() ? '남의 역사 사건 장면 끄기' : '남의 역사 사건 장면 켜기' }, { k: 'chron', label: `연표 · 역사와 비교 (일치율 ${histMatch().pct}%)` }, { k: 'ach', label: `업적 (${Object.keys(G.ach || {}).length}/${ACHS.length})` }, { k: 'anim', label: `지도 연출: ${({ 1: '보통', 0.5: '빠르게', 0: '끔' })[+(store('gunung.anim') ?? 1)]} → 바꾸기` }, { k: 'help', label: '하는 법' }, { k: 'title', label: '처음 화면으로' }, { k: 'x', label: '닫기' }] });
     if (k === 'save') this.saveDialog();
     if (k === 'load') this.loadDialog();
     if (k === 'scn') { store('gunung.scenes', scenesOn() ? '0' : '1'); this.toast(scenesOn() ? '모든 역사 사건을 장면으로 봅니다' : '내가 얽힌 사건만 장면으로 봅니다'); }
@@ -699,6 +710,7 @@ const UI = {
     if (k === 'help') showHelp();
     if (k === 'anim') { const cur = +(store('gunung.anim') ?? 1), nx = cur === 1 ? .5 : cur === .5 ? 0 : 1; store('gunung.anim', String(nx)); this.toast(`지도 연출: ${({ 1: '보통', 0.5: '빠르게', 0: '끔' })[nx]}`); }
     if (k === 'chron') this.chronicle();
+    if (k === 'ach') this.chronicle('ach');
     if (k === 'title') { if (await this.confirm('처음 화면으로', '저장하지 않은 진행은 자동 저장(매달 초)까지만 남습니다.')) showScreen('scrTitle'); }
   },
   async saveDialog() {

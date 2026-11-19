@@ -25,7 +25,9 @@ async function scene({ title, lines, options, involved }) {
       : el('p', { class: 'nar' }, alt || text)));
   SFX.play('gong');
   if (!options) { await UI.modal({ title, body, wide: true, buttons: [{ k: 'ok', label: '계속', cls: 'pri' }] }); return 'ok'; }
-  return UI.modal({ title, body, wide: true, col: options.length > 2, buttons: options.map((o, i) => ({ k: o.k, label: o.label, cls: i === 0 ? 'pri' : '', danger: o.danger })) });
+  const k = await UI.modal({ title, body, wide: true, col: options.length > 2, buttons: options.map((o, i) => ({ k: o.k, label: o.label, cls: i === 0 ? 'pri' : '', danger: o.danger })) });
+  if (k !== options[0].k && G._cur) (G.div = G.div || {})[G._cur] = k; // 역사와 다른 선택
+  return k;
 }
 
 // 세력 합치기 (서주 양도)
@@ -503,7 +505,7 @@ async function runEvents() {
     let ok = false;
     try { ok = !!ev.cond(); } catch (e) { console.error('사건 조건 오류', ev.id, e); }
     if (!ok) continue;
-    G.ev[ev.id] = true; (G.evAt = G.evAt || {})[ev.id] = mIdx();
+    G.ev[ev.id] = true; (G.evAt = G.evAt || {})[ev.id] = mIdx(); G._cur = ev.id;
     try { await ev.run(); } catch (e) { console.error('사건 오류', ev.id, e); }
     checkFactions(); assignGovs();
     if (UI.q.length) await UI.flush();
